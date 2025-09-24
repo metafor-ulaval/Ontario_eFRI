@@ -1,0 +1,12 @@
+models <- list(model1 = c("z_p95", "z_cv", "z_above2"),
+               model2 = c("z_p95", "z_cv", "z_above2", "slope"),
+               model3 = c("z_p95", "z_cv", "z_above2", "fractional_cover_05_2"),
+               model4 = c("z_p95", "z_cv", "z_above2", "sagawi", "fractional_cover_05_2"),
+               model5 = c("z_p95", "z_cv", "z_above2", "NDMI"),
+               model6 = c("z_p95", "slope", "fractional_cover_05_2", "NDVI"),
+               model7 = c("z_p80", "sagawi", "z_skew", "DVI"),
+               model8 = c("z_p80", "slope", "fractional_cover_05_2", "NDMI"),
+               model9 = c("z_p80", "z_cv", "z_above2", "fractional_cover_05_2"),
+               model10 = c("z_p80", "z_cv", "sagawi", "fractional_cover_05_2"),
+               model11 = c("z_p80", "DVI", "sagawi", "z_above2"),
+               model12 = c("z_p80", "sagawi", "z_above2", "B4"))
