@@ -108,5 +108,16 @@ for(sub_sector in 1:10){
 
   placette_data %>%
     bind_cols() %>%
-    st_write(paste0("./", sub_sector ,"/placettes/01_corrige/placettes_data.gpkg"), "placettes_data", quiet = T)
+    saveRDS(paste0("./S", sub_sector ,"/placettes/01_corrige/placettes_data.rds"))
 }
+
+
+
+
+
+# Read test
+readRDS(paste0("./S", sub_sector ,"/placettes/01_corrige/placettes_data.rds")) -> data
+
+data %>%
+  dplyr::select(contains("drop_ground_cm")) %>%
+  dplyr::select(contains("radius_1410_cm"))
