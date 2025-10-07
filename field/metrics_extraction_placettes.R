@@ -116,8 +116,14 @@ for(sub_sector in 1:10){
 
 
 # Read test
-readRDS(paste0("./S", sub_sector ,"/placettes/01_corrige/placettes_data.rds")) -> data
+map(1:10,
+    ~{readRDS(paste0("./S", .x ,"/placettes/01_corrige/placettes_data.rds"))}) %>%
+  map(dplyr::select, -geometry) %>%
+  bind_rows() -> data
 
 data %>%
+  saveRDS("data.rds")
+
+readRDS("data.rds") %>%
   dplyr::select(contains("drop_ground_cm")) %>%
   dplyr::select(contains("radius_1410_cm"))
