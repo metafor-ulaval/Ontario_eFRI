@@ -104,6 +104,7 @@ for(sub_sector in 1:10){
                         width = 1,
                         lower = c(1, 2, 3, 1),
                         upper = c(2, 3, 4, 4)) %>%
+    st_drop_geometry() %>%
     append(placette_data) -> placette_data
 
   placette_data %>%
@@ -118,7 +119,7 @@ for(sub_sector in 1:10){
 # Read test
 map(1:10,
     ~{readRDS(paste0("./S", .x ,"/placettes/01_corrige/placettes_data.rds"))}) %>%
-  map(dplyr::select, -geometry) %>%
+  map(dplyr::select) %>% # Maybe remove geometry if it doesn't work
   bind_rows() -> data
 
 data %>%

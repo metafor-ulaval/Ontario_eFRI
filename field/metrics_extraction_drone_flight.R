@@ -55,60 +55,60 @@ for(sub_sector in sub_sectors){
   #                                                                   vox_size = 1,
   #                                                                   KeepReturns = c(1, 2, 3, 4)),
   #                                   res = 20)
-  # 
+  #
   # # Write individual metrics
   # for(metric in names(all_lidr_metrics)){
   #   cat(paste0(metric, "\n"))
   #   all_lidr_metrics[[metric]] %>%
   #     writeRaster(paste0("./", sub_sector ,"/metrics/", metric, ".tif"))
   # }
-  # 
-  # 
-  # 
-  # 
-  # 
+  #
+  #
+  #
+  #
+  #
   # # DEM 1 m and 20 m resolution
   # #read <- reader("-keep_random_fraction 0.1")
   # read <- reader()
-  # 
+  #
   # dem_20m <- lasR::dtm(20,
   #                      ofile = paste0("./", sub_sector ,"/metrics/dem_20m.tif"))
-  # 
+  #
   # dem_1m <- lasR::dtm(1,
   #                     ofile = paste0("./", sub_sector ,"/metrics/dem_1m.tif"))
-  # 
+  #
   # # Apply pipe
   # lasR::exec(read + dem_20m + dem_1m,
   #            on = ctg,
   #            progress = TRUE,
   #            ncores = nested(ncores = ceiling((ncores()-4)/4L), ncores2 = 4L))
-  # 
-  # 
-  # 
-  # 
-  # 
+  #
+  #
+  #
+  #
+  #
   # # SAGAWI 1 m resolution
   # wbt_feature_preserving_smoothing(dem = paste0("./", sub_sector ,"/metrics/dem_1m.tif"),
   #                                  output = paste0("./", sub_sector ,"/metrics/dem_smoothed_1m.tif"),
   #                                  filter = 15,
   #                                  num_iter = 3,
   #                                  norm_diff = 30)
-  # 
+  #
   # wbt_breach_depressions(dem = paste0("./", sub_sector ,"/metrics/dem_smoothed_1m.tif"),
   #                        output = paste0("./", sub_sector ,"/metrics/dem_breached_1m.tif"),
   #                        flat_increment = 0.0001,
   #                        fill_pits = TRUE)
-  # 
+  #
   # RSAGA::rsaga.wetness.index(in.dem = paste0("./", sub_sector ,"/metrics/dem_breached_1m.tif"),
   #                            out.wetness.index = paste0("./", sub_sector ,"/metrics/sagawi_1m.tif"),
   #                            suction = 10,
   #                            area.type = "absolute",
   #                            slope.type = "local",
   #                            env = env_saga)
-  # 
-  # 
-  # 
-  # 
+  #
+  #
+  #
+  #
 
   # Buffered Area Based Approach
     # Create pipe step
@@ -129,17 +129,17 @@ for(sub_sector in sub_sectors){
                             operators = "z_cv",
                             filter = c(keep_first(), keep_z_above(1.3)),
                             ofile = paste0("./", sub_sector ,"/metrics/z_cv_MWABA_frac_", frac*100, "_buffer_", w,"m.tif"))
-    
+
     start_time <- Sys.time()
 
     # Apply pipe
     lasR::exec(read + z_p95 + z_above2 + z_cv,
                on = ctg_normalized,
                progress = TRUE,
-               ncores = nested(ncores = ceiling((ncores()-4)/8L), ncores2 = 8L))
-    
+               ncores = nested(ncores = ceiling((ncores()-4L)/8L), ncores2 = 8L))
+
     end_time <- Sys.time()
-    
+
     end_time - start_time
 
 }
