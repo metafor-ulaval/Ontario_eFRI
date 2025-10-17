@@ -32,6 +32,7 @@ for(sub_sector in 1:10){
     for(zmin_threshold in c(NA, 0.5, 1, 1.3, 2)){
       cat(paste0("Radius : ", radius_threshold, " / Zmin : ", zmin_threshold, "\n"))
       placettes %>%
+        st_geometry() %>%
         plot_metrics(ctg_normalized,
                      ~lidRmetrics::metrics_set3(x = X, # Calculer toutes les metriques disponibles (package lidRmetrics)
                                                 y = Y,
@@ -49,8 +50,8 @@ for(sub_sector in 1:10){
                                                 KeepReturns = c(1, 2, 3, 4)),
                      geometry = .,
                      radius = radius_threshold) %>%
+        st_as_sf() %>%
         st_drop_geometry() %>%
-        dplyr::select(-Name) %>%
         rename_with(.fn = ~ paste0(., "_radius_", radius_threshold*100, "_cm_zmin_", zmin_threshold*100, "_cm")) %>%
         append(placette_data) -> placette_data
     }
@@ -62,6 +63,7 @@ for(sub_sector in 1:10){
     opt_filter(ctg_normalized) <- "-drop_class 2"
 
     placettes %>%
+      st_geometry() %>%
       plot_metrics(ctg_normalized,
                    ~lidRmetrics::metrics_set3(x = X, # Calculer toutes les metriques disponibles (package lidRmetrics)
                                               y = Y,
@@ -79,8 +81,8 @@ for(sub_sector in 1:10){
                                               KeepReturns = c(1, 2, 3, 4)),
                    geometry = .,
                    radius = radius_threshold) %>%
+      st_as_sf() %>%
       st_drop_geometry() %>%
-      dplyr::select(-Name) %>%
       rename_with(.fn = ~ paste0(., "_radius_", radius_threshold*100, "_cm_zmin_drop_ground_cm")) %>%
       append(placette_data) -> placette_data
 
@@ -88,17 +90,20 @@ for(sub_sector in 1:10){
 
     # Calculer le fractional cover sur un rayon de « radius_threshold »
     placettes %>%
+      st_geometry() %>%
+      st_as_sf() %>%
       fractional.plot(ctg_normalized,
                       radius = radius_threshold,
                       lower = c(1, 2, 3, 1),
                       upper = c(2, 3, 4, 4)) %>%
       st_drop_geometry() %>%
-      dplyr::select(-Name) %>%
       rename_with(.fn = ~ paste0(., "_radius_", radius_threshold*100)) %>%
       append(placette_data) -> placette_data
   }
   # Calculer le fractional cover sur un transect Nord-Sud et Est-Ouest de 1m x 10m
   placettes %>%
+    st_geometry() %>%
+    st_as_sf() %>%
     fractional.transect(ctg_normalized,
                         length = 10,
                         width = 1,
@@ -107,8 +112,11 @@ for(sub_sector in 1:10){
     st_drop_geometry() %>%
     append(placette_data) -> placette_data
 
-  placette_data %>%
-    bind_cols() %>%
+  placette_data %<>%
+    bind_cols()
+
+  placettes %>%
+    bind_cols(placette_data) %>%
     saveRDS(paste0("./S", sub_sector ,"/placettes/01_corrige/placettes_data.rds"))
 }
 
