@@ -26,6 +26,7 @@ library(exactextractr)
 library(rmapshaper)
 library(sf)
 library(pfif)
+# remotes::install_github('metafor-ulaval/eFRItools')
 library(eFRItools)
 library(knitr)
 library(basemapR)
@@ -153,26 +154,8 @@ rast(paste0(wd, "/metrics/other/forest_age_2019.tif")) -> forest_age_2019
 # 7. Forest fire between 1985-2020
 rast(paste0(wd, "/metrics/other/forest_fire_1985_2020.tif")) -> forest_fire_1985_2020
 
-forest_fire_1985_2020 %>% 
-  as.polygons() %>% 
-  st_as_sf() %>% 
-  dplyr::filter(.[[1]] != 0) %>% 
-  st_cast("MULTIPOLYGON") %>% 
-  st_cast("POLYGON") %>% 
-  rename(year_fire = 1) %>% 
-  st_transform(epsg) -> forest_fire_1985_2020_poly
-
 # 8. Forest harvest between 1985-2020
 rast(paste0(wd, "/metrics/other/forest_harvest_1985_2020.tif")) -> forest_harvest_1985_2020
-
-forest_harvest_1985_2020 %>% 
-  as.polygons() %>% 
-  st_as_sf() %>% 
-  dplyr::filter(.[[1]] != 0) %>% 
-  st_cast("MULTIPOLYGON") %>% 
-  st_cast("POLYGON") %>% 
-  rename(year_harvest = 1) %>% 
-  st_transform(epsg) -> forest_harvest_1985_2020_poly
 ```
 
 1. Index of LiDAR data in polygonal format. This layer allows the year of LiDAR data acquisition to be selected in order to adequately filter ecoforest polygons. The area in yellow will be used to display next data in order to properly see the details of the layers;
