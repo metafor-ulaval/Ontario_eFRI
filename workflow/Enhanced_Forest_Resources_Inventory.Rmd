@@ -4,7 +4,7 @@ output:
   pdf_document: default
   html_document:
     df_print: paged
-date: "2025-09-04"
+date: "2025-11-14"
 ---
 
 ```{r Setup, include=FALSE}
@@ -26,7 +26,7 @@ library(exactextractr)
 library(rmapshaper)
 library(sf)
 library(pfif)
-# remotes::install_github('metafor-ulaval/eFRItools')
+pak::pak("metafor-ulaval/eFRItools")
 library(eFRItools)
 library(knitr)
 library(basemapR)
