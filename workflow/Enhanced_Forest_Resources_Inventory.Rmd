@@ -26,36 +26,17 @@ library(exactextractr)
 library(rmapshaper)
 library(sf)
 library(pfif)
-remotes::install_github("metafor-ulaval/eFRItools")
+# remotes::install_github("metafor-ulaval/eFRItools")
 library(eFRItools)
 library(knitr)
 library(basemapR)
 ```
 
-```{r Set working directory, include=FALSE, message=FALSE, warning=FALSE}
-"D:/00_Ontario_eFRI/RMF" -> wd
-```
-
-## **1.2** Metrics informations {-#parameters_metrics}
-
-Next, all informations of available metrics are read. Three categories of metrics are used. First, metrics derived from raw lidar data, or from derivative products such as DTM, are named “lidar.” Second, dendrometric variables derived from lidar data and RandomForest models have been calculated. These metrics are intended to characterize certain forest attributes more explicitly. Third, data from spectral imagery are referred to as “sentinel_2.” This includes all available bands (11 bands) as well as a few indices calculated using these bands (10 indices). The following table shows all available metrics:
-
-```{r Read metrics informations, include=FALSE, message=FALSE, warning=FALSE}
-read_metrics(c("D:/00_Ontario_eFRI/RMF/metrics/lidar",
-               "D:/00_Ontario_eFRI/RMF/metrics/sentinel2",
-               "D:/00_Ontario_eFRI/RMF/metrics/dendro")) -> metrics_infos
-```
-
-```{r Show metricss list, echo=FALSE, message=FALSE, warning=FALSE}
-knitr::kable(metrics_infos %>% dplyr::select(name, description, resolution, type), 
-             caption = "Table 1: Metrics list")
-```
-
-## **1.3** Selected metrics {-#parameters_selected}
-
-Next, the user must decide which metrics will be used to perform the segmentation of ecoforest polygons. The more metrics used, the smaller the resulting polygons will be. Using three to five metrics normally provides accurate segmentation. It is particularly important to select metrics that are as uncorrelated as possible and which have ecological significance. For example, if moisture is to be a discriminating factor in the segmentation, the saga wetness index should be used. Another example would be to use the fractional cover 50 cm - 2 m if the ecoforest stands are to be distinguished by their understory density. For now, the five metrics used allow for the segmentation of a wide variety of ecoforest stands. 
-
 ```{r Parameters, include=FALSE, message=FALSE, warning=FALSE}
+wd <- "D:/00_Ontario_eFRI/RMF" # wd
+name <- "efri_polygon"
+segmentation_wd <- paste0(wd, "/segmentations/", name)
+dir.create(segmentation_wd)
 epsg <- "EPSG:2958" # RMF
 otb_dir <- "D:/00_Ontario_eFRI/logiciels/OTB-9.1.0-Win64/bin"
 Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
@@ -75,6 +56,25 @@ best_models %>%
   unique() -> best_models_variables
 
 ```
+
+## **1.2** Metrics informations {-#parameters_metrics}
+
+Next, all informations of available metrics are read. Three categories of metrics are used. First, metrics derived from raw lidar data, or from derivative products such as DTM, are named “lidar.” Second, dendrometric variables derived from lidar data and RandomForest models have been calculated. These metrics are intended to characterize certain forest attributes more explicitly. Third, data from spectral imagery are referred to as “sentinel_2.” This includes all available bands (11 bands) as well as a few indices calculated using these bands (10 indices). The following table shows all available metrics:
+
+```{r Read metrics informations, include=FALSE, message=FALSE, warning=FALSE}
+list.files(paste0(wd, "/metrics"), full.names = TRUE) %>%
+  read_metrics() -> metrics_infos
+```
+
+```{r Show metricss list, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::kable(metrics_infos %>% dplyr::select(name, description, resolution, type), 
+             caption = "Table 1: Metrics list")
+```
+
+## **1.3** Selected metrics {-#parameters_selected}
+
+Next, the user must decide which metrics will be used to perform the segmentation of ecoforest polygons. The more metrics used, the smaller the resulting polygons will be. Using three to five metrics normally provides accurate segmentation. It is particularly important to select metrics that are as uncorrelated as possible and which have ecological significance. For example, if moisture is to be a discriminating factor in the segmentation, the saga wetness index should be used. Another example would be to use the fractional cover 50 cm - 2 m if the ecoforest stands are to be distinguished by their understory density. For now, the five metrics used allow for the segmentation of a wide variety of ecoforest stands. 
+
 
 ```{r Show parameters 1, echo=FALSE, message=FALSE, warning=FALSE}
 segmentation_metrics
@@ -148,75 +148,6 @@ st_read(paste0(wd, "/shp/PolygonForest.shp")) %>%
 # 5. Landcover
 rast(paste0(wd, "/metrics/other/landcover.tif")) -> landcover
 
-# 6. Forest age in 2019
-rast(paste0(wd, "/metrics/other/forest_age_2019.tif")) -> forest_age_2019
-
-# 7. Forest fire between 1985-2020
-rast(paste0(wd, "/metrics/other/forest_fire_1985_2020.tif")) -> forest_fire_1985_2020
-
-# 8. Forest harvest between 1985-2020
-rast(paste0(wd, "/metrics/other/forest_harvest_1985_2020.tif")) -> forest_harvest_1985_2020
-```
-
-1. Index of LiDAR data in polygonal format. This layer allows the year of LiDAR data acquisition to be selected in order to adequately filter ecoforest polygons. The area in yellow will be used to display next data in order to properly see the details of the layers;
-
-```{r Show data 3, echo=FALSE, message=FALSE, warning=FALSE}
-ggplot() +
-  geom_sf(data = ctg, aes(fill = Fl_Cr_Y), size = 0.5, alpha = 0.5) +
-  geom_sf(data = subset_area, alpha = 0.2, color = "yellow") +
-  labs(fill = "Acquisition year") +
-  theme_void()
-```
-
-
-2. Metrics used for all steps, including:
-      * Metrics used in the best imputation models;
-      * Metrics selected for polygon segmentation;
-      * Dendrometric variables selected for final extraction;
-      * Basic metrics allowing the extraction of general stand attributes:
-        * HEIGHT = z_p95;
-        * CANOPY_COVER = z_above2;
-        * DENSITY = fractional_cover_05_2;
-        * SLOPE = slope;
-        * MOISTURE = sagawi;
-
-```{r Show data 1, echo=FALSE, message=FALSE, warning=FALSE}
-for(metric in metrics_names){
-  print(ggplot() +
-          geom_spatraster(data = metrics[[metric]] %>% crop(subset_area)) +
-          scale_fill_whitebox_c(palette = "muted") +
-          theme_void() +
-          labs(fill = metric))
-}
-```
-
-3. Masks used for segmentation. Segmentation is therefore not performed on roads or waterbodies;
-
-```{r Show data 2, echo=FALSE, message=FALSE, warning=FALSE}
-ggplot() +
-  base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
-           basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
-  geom_sf(data = masks[[1]] %>% st_as_sf %>% ms_clip(subset_area) %>% st_transform(4326), 
-          color = "black", size = 1) +
-  geom_sf(data = masks[[2]] %>% st_as_sf %>% ms_clip(subset_area) %>% st_transform(4326), 
-          color = "blue", fill = "lightblue", size = 0.5) +
-  theme_void()
-```
-
-4. Ecoforest polygons from the most recent inventory;
-
-```{r Show data 4, echo=FALSE, message=FALSE, warning=FALSE}
-ggplot() +
-  base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
-           basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
-  geom_sf(data = fri_polygons %>% st_geometry() %>% st_as_sf %>% st_filter(subset_area) %>% ms_clip(subset_area) %>% st_transform(4326), 
-          color = "black", alpha = 0, size = 0.5) +
-  theme_void()
-```
-
-5. Ontario Land Cover Version 2.0;
-
-```{r Show data 5, echo=FALSE, message=FALSE, warning=FALSE}
 landcover_codes <- c(`1` = "Clear_Open_Water",
                      `2` = "Turbid_Water",
                      `3` = "Shoreline",
@@ -247,15 +178,111 @@ landcover_codes <- c(`1` = "Clear_Open_Water",
                      `157` = "Other",
                      `247` = "Cloud_Shadow")
 
-landcover_plot <- landcover
-
 # Attach levels (lookup table)
-levels(landcover_plot) <- data.frame(value = as.integer(names(landcover_codes)),
+levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
                                      class = unname(landcover_codes))
 
-# Remove NA cells from plotting
+# 6. Forest age in 2019
+rast(paste0(wd, "/metrics/other/forest_age_2019.tif")) -> forest_age_2019
+
+# 7. Forest fire between 1985-2020
+rast(paste0(wd, "/metrics/other/forest_fire_1985_2020.tif")) -> forest_fire_1985_2020
+
+# 8. Forest harvest between 1985-2020
+rast(paste0(wd, "/metrics/other/forest_harvest_1985_2020.tif")) -> forest_harvest_1985_2020
+
+
+
+
+
+# CLIP ALL DATA FOR TESTING #
+ctg %<>% 
+  ms_clip(subset_area)
+
+metrics %<>% 
+  crop(subset_area)
+
+masks %<>% 
+  map(crop, subset_area)
+
+fri_polygons %<>% 
+  st_filter(subset_area) %>% 
+  ms_clip(subset_area)
+
+landcover %<>% 
+  crop(subset_area)
+
+forest_age_2019 %<>% 
+  crop(subset_area)
+
+forest_fire_1985_2020 %<>% 
+  crop(subset_area)
+
+forest_harvest_1985_2020 %<>% 
+  crop(subset_area)
+```
+
+1. Index of LiDAR data in polygonal format. This layer allows the year of LiDAR data acquisition to be selected in order to adequately filter ecoforest polygons. The area in yellow will be used to display next data in order to properly see the details of the layers;
+
+```{r Show data 1, echo=FALSE, message=FALSE, warning=FALSE}
 ggplot() +
-  geom_spatraster(data = landcover_plot %>% crop(subset_area), na.rm = TRUE) +
+  geom_sf(data = ctg, aes(fill = Fl_Cr_Y), size = 0.5, alpha = 0.5) +
+  geom_sf(data = subset_area, alpha = 0.2, color = "yellow") +
+  labs(fill = "Acquisition year") +
+  theme_void()
+```
+
+
+2. Metrics used for all steps, including:
+      * Metrics used in the best imputation models;
+      * Metrics selected for polygon segmentation;
+      * Dendrometric variables selected for final extraction;
+      * Basic metrics allowing the extraction of general stand attributes:
+        * HEIGHT = z_p95;
+        * CANOPY_COVER = z_above2;
+        * DENSITY = fractional_cover_05_2;
+        * SLOPE = slope;
+        * MOISTURE = sagawi;
+
+```{r Show data 2, echo=FALSE, message=FALSE, warning=FALSE}
+for(metric in metrics_names){
+  print(ggplot() +
+          geom_spatraster(data = metrics[[metric]] %>% crop(subset_area)) +
+          scale_fill_whitebox_c(palette = "muted") +
+          theme_void() +
+          labs(fill = metric))
+}
+```
+
+3. Masks used for segmentation. Segmentation is therefore not performed on roads or waterbodies;
+
+```{r Show data 3, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
+           basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
+  geom_sf(data = masks[[1]] %>% st_as_sf %>% ms_clip(subset_area) %>% st_transform(4326), 
+          color = "black", size = 1) +
+  geom_sf(data = masks[[2]] %>% st_as_sf %>% ms_clip(subset_area) %>% st_transform(4326), 
+          color = "blue", fill = "lightblue", size = 0.5) +
+  theme_void()
+```
+
+4. Ecoforest polygons from the most recent inventory;
+
+```{r Show data 4, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
+           basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
+  geom_sf(data = fri_polygons %>% st_geometry() %>% st_as_sf %>% st_filter(subset_area) %>% ms_clip(subset_area) %>% st_transform(4326), 
+          color = "black", alpha = 0, size = 0.5) +
+  theme_void()
+```
+
+5. Ontario Land Cover Version 2.0;
+
+```{r Show data 5, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  geom_spatraster(data = landcover %>% crop(subset_area), na.rm = TRUE) +
   scale_fill_discrete(name = "Landcover", na.translate = FALSE) +
   theme_void()
 ```
@@ -302,26 +329,25 @@ ggplot() +
 The first step after reading the data is to segment the selected metrics. To perform this task, the Generic Region Merging algorithm from Orfeo ToolBox (OTB) is used.
 
 ```{r Segmentation, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
-eFRI_segmentation(metrics = rast(metrics),
-                  masks = map(masks, vect),
+eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
+                  masks = masks,
                   thresh = 47,
                   spec = 0.6,
                   spat = 0.6,
                   method = "bs",
-                  output_path = "D:/00_Ontario_eFRI/Test_Shiny",
-                  output_name = "grm1",
+                  output_path = segmentation_wd,
+                  output_name = "segmentation",
                   otb_dir = "D:/00_Ontario_eFRI/logiciels/OTB-9.1.0-Win64/bin")
 ```
 
 ```{r Segmentation results, echo=FALSE, message=FALSE, warning=FALSE}
-st_read(paste0(wd, "/segmentations/Rmarkdown/grm_polygons.gpkg"), 
-        layer = "grm_polygons",
-        quiet = T) -> grm_polygons
+st_read(paste0(segmentation_wd, "/segmentation.shp"),
+        quiet = T) -> segmentation
 
 ggplot() +
   base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
            basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
-  geom_sf(data = grm_polygons %>% st_geometry() %>% st_as_sf %>% st_filter(subset_area) %>% ms_clip(subset_area) %>% st_transform(4326), 
+  geom_sf(data = segmentation %>% st_geometry() %>% st_as_sf %>% st_filter(subset_area) %>% ms_clip(subset_area) %>% st_transform(4326), 
           color = "black", alpha = 0, size = 0.5) +
   theme_void()
 ```
@@ -332,24 +358,21 @@ Since the resulting polygons were extracted from a raster with a resolution of 2
 
 ```{r Smoothing, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 # Smoothing
-grm_polygons %>% 
+segmentation %>% 
   smoothr::smooth(method = "ksmooth", smoothness = 1) %>%
-  st_make_valid() %>% 
-  st_write(paste0(wd, "/segmentations/Rmarkdown/grm_polygons.gpkg"), 
-           layer = "grm_polygons_smoothed",
+  st_make_valid() -> segmentation_smoothed
+
+segmentation_smoothed %>% 
+  st_write(paste0(segmentation_wd, "/segmentation_smoothed.shp"),
            quiet = T)
 
 ```
 
 ```{r Segmentation smoothing results, echo=FALSE, message=FALSE, warning=FALSE}
-st_read(paste0(wd, "/segmentations/Rmarkdown/grm_polygons.gpkg"), 
-        layer = "grm_polygons_smoothed",
-        quiet = T) -> grm_polygons_smoothed
-
 ggplot() +
   base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
            basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
-  geom_sf(data = grm_polygons_smoothed %>% st_geometry() %>% st_as_sf %>% st_filter(subset_area) %>% ms_clip(subset_area) %>% st_transform(4326), 
+  geom_sf(data = segmentation_smoothed %>% st_geometry() %>% st_as_sf %>% st_filter(subset_area) %>% ms_clip(subset_area) %>% st_transform(4326), 
           color = "black", alpha = 0, size = 0.5) +
   theme_void()
 ```
@@ -358,7 +381,7 @@ ggplot() +
 
 ```{r Segmentation distribution results results, echo=FALSE, message=FALSE, warning=FALSE}
 bind_rows(fri_polygons %>% st_geometry() %>% st_as_sf() %>% mutate(type = "fri"),
-          grm_polygons %>% st_geometry() %>% st_as_sf() %>% mutate(type = "grm")) %>% 
+          segmentation %>% st_geometry() %>% st_as_sf() %>% mutate(type = "grm")) %>% 
   mutate(area = st_area(.) %>% as.numeric(),
          area_ha = area/10000,
          perimeter = st_perimeter(.) %>% as.numeric(),
@@ -389,27 +412,27 @@ segmentation_results %>%
 ```
 
 ```{r Imputation, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
-eFRI_imputation(segmentation = st_read("D:/00_Ontario_eFRI/Test_Shiny/grm1.shp"),
+eFRI_imputation(segmentation = segmentation,
                 forest_polygon = fri_polygons,
-                metrics = rast(metrics),
-                landcover = rast(landcover),
-                forest_fire = rast(forest_fire_1985_2020),
-                forest_harvest = rast(forest_harvest_1985_2020),
-                ctg = st_read(paste0(wd, "/ctg/ctg.shp")) %>% st_transform("EPSG:2958"),
+                metrics = metrics,
+                landcover = landcover,
+                forest_fire = forest_fire_1985_2020,
+                forest_harvest = forest_harvest_1985_2020,
+                ctg = ctg,
                 lidar_year_field = "Fl_Cr_Y",
                 forest_year_field = "YRUPD",
                 forest_composition_field = "SPCOMP",
                 forest_type_field = "POLYTYPE",
                 target_var = best_models$target_var,
-                knn_var = best_models$knn_vars)
+                knn_var = best_models$knn_vars) -> segmentation_imputation
 ```
 
 ```{r eFRI attibute table, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
-eFRI_attribute_table(segmentation = st_read("D:/00_Ontario_eFRI/Test_Shiny/grm1.shp"),
-                     metrics = rast(metrics),
-                     landcover = rast(landcover),
-                     forest_fire = rast(forest_fire_1985_2020),
-                     forest_harvest = rast(forest_harvest_1985_2020),
-                     forest_age = rast(forest_age_2019))
+eFRI_attribute_table(segmentation = segmentation_imputation,
+                     metrics = metrics,
+                     landcover = landcover,
+                     forest_fire = forest_fire_1985_2020,
+                     forest_harvest = forest_harvest_1985_2020,
+                     forest_age = forest_age_2019) -> segmentation_data
 
 ```

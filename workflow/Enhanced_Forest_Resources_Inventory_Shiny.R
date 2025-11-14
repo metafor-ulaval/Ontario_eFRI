@@ -41,7 +41,7 @@ ui <- fluidPage(
         bsCollapsePanel("Create new segmentation",
                         div(class = "sidebar-panel",
                             # Parameters
-                            uiOutput("metric_list"), # Peut-être mettre un min et un max a cocher
+                            uiOutput("segmentation_metrics_list"), # Peut-être mettre un min et un max a cocher
                             uiOutput("dendrometric_list"), # Peut-être mettre un min et un max a cocher
                             checkboxGroupInput("masks",
                                                "Choose the masks to peform segmentation :",
@@ -128,7 +128,7 @@ server <- function(input, output, session) {
     read_metrics() -> metrics_infos
 
   # 🟣 Metric list 🟣
-  output$metric_list <- renderUI({
+  output$segmentation_metrics_list <- renderUI({
     checkboxGroupInput(
       inputId = "segmentation_metrics",
       label = "Choose 3 to 8 metrics to peform segmentation :",
@@ -186,11 +186,6 @@ server <- function(input, output, session) {
     # Assign metrics names
     names(metrics) <- metrics_names
 
-    ################### CLIP
-    metrics %<>% ################### CLIP
-      crop(subset_circle) %>% ################### CLIP
-      mask(subset_circle) ################### CLIP
-
     # Masks
     paste0(selected_wd_reactive(), "/shp/", input$masks, ".shp") %>%
       map(vect) %>%
@@ -200,10 +195,6 @@ server <- function(input, output, session) {
     st_read(paste0(selected_wd_reactive(), "/shp/PolygonForest.shp")) %>%
       rowid_to_column("id") %>%
       st_transform(input$epsg) -> fri_polygons
-
-    ################### CLIP
-    fri_polygons %<>% ################### CLIP
-      st_filter(subset_circle) ################### CLIP
 
     # Best models for imputation
     read.csv(paste0(selected_wd_reactive(), "/results/best_model.csv")) %>%
@@ -225,25 +216,28 @@ server <- function(input, output, session) {
     rast(paste0(selected_wd_reactive(), "/metrics/other/forest_harvest_1985_2020.tif")) -> forest_harvest_1985_2020
 
 
+    # 🟢 Create and set wd 🟢
+    segmentation_wd <- paste0(selected_wd_reactive(), "/segmentations/", input$name)
+    dir.create(segmentation_wd)
 
 
     # 🟢 Segmentation 🟢
     showNotification("Perform segmentation", type = "message", duration = 15, session = session)
 
-    eFRI_segmentation(metrics = metrics,
+    eFRI_segmentation(metrics = metrics[[input$segmentation_metrics]],
                       masks = masks,
                       thresh = input$grm_thresh,
                       spec = input$grm_spec,
                       spat = input$grm_spat,
                       method = "bs",
-                      output_path = selected_wd_reactive(),
-                      output_name = input$name,
+                      output_path = segmentation_wd,
+                      output_name = "segmentation",
                       otb_dir = otb_dir)
 
     # 🟢 Imputation 🟢
     showNotification("Peform imputation", type = "message", duration = 15, session = session)
 
-    eFRI_imputation(segmentation = st_read(paste0(selected_wd_reactive(), input$name)),
+    eFRI_imputation(segmentation = st_read(paste0(segmentation_wd, "/segmentation.shp")),
                     forest_polygon = fri_polygons,
                     metrics = metrics,
                     landcover = landcover,
