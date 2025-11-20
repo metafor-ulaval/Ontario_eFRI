@@ -6,6 +6,10 @@ library(lasR)
 library(lidR)
 library(lidRmetrics)
 library(future)
+library(eFRItools)
+
+
+
 
 
 # 🟡 Setwd, parameters and functions ----
@@ -13,6 +17,31 @@ setwd("F:/Ontario_eFRI/02_donnees_traitees")
 source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/OLD_Rmarkdown/functions/fractional_transect.R")
 source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/OLD_Rmarkdown/functions/fractional_plot.R")
 source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/OLD_Rmarkdown/functions/fractional_cover.R")
+
+
+
+
+
+# 🟡 Merge placettes ----
+# RMF
+map_dfr(1:5,
+    function(x){
+  st_read(paste0("./S", x ,"/placettes/01_corrige/placettes.shp"), quiet = T)
+    }
+) %>%
+  st_write("placettes_RMF.shp")
+
+# OVF
+map_dfr(6:10,
+        function(x){
+          st_read(paste0("./S", x ,"/placettes/01_corrige/placettes.shp"), quiet = T)
+        }
+) %>%
+  st_write("placettes_OVF.shp")
+
+
+
+
 
 # 🟡 Computing ----
 for(sub_sector in 1:10){
@@ -136,3 +165,39 @@ data %>%
 readRDS("data.rds") %>%
   dplyr::select(contains("drop_ground_cm")) %>%
   dplyr::select(contains("radius_1410_cm"))
+
+
+
+
+
+# 🟡 Extract topographic metrics ----
+map_dfr(c("RMF", "OVF"),
+        function(sector){
+          list.files(paste0("D:/00_Ontario_eFRI/", sector, "/metrics"), full.names = T) %>%
+            read_metrics() %>%
+            filter(name %in% c("aspect",
+                               "dem",
+                               "relative_topographic_position_100m",
+                               "relative_topographic_position_200m",
+                               "relative_topographic_position_400m",
+                               "relative_topographic_position_60m",
+                               "relative_topographic_position_800m",
+                               "sagawi",
+                               "slope",
+                               "twi")) %T>%
+            {pull(.,name) ->> metrics_names} %>% # Extract metrics names in the right order
+            pull(path) %>%
+            map(rast) %>%
+            rast -> metrics
+
+          names(metrics) <- metrics_names
+
+          st_read(paste0("D:/00_Ontario_eFRI/", sector, "/shp/placettes_", sector, ".shp")) %>%
+            st_zm() %>%
+            st_buffer(11.28) %>%
+            mutate_metrics(metrics, "mean") %>%
+            st_drop_geometry()
+        }) -> data_topo
+
+data_topo %>%
+  saveRDS("D:/00_Ontario_eFRI/data_topo.rds")

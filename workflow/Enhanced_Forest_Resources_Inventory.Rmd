@@ -47,9 +47,9 @@ segmentation_metrics <- c("z_p95", "z_cv", "z_above2", "sagawi", "fractional_cov
 
 selected_dendrometrics <- c("Vmerch_ha", "qmdbh", "dens", "lor", "ba_ha")
 
-best_models <- read.csv(paste0(wd, "/results/best_model.csv"))
+best_models <- read.csv("D:/00_Ontario_eFRI/RMF/results/best_model.csv")
 
-best_models %>% 
+best_models %>%
   pull(knn_vars) %>% 
   strsplit(",") %>% 
   unlist() %>% 
@@ -146,7 +146,8 @@ st_read(paste0(wd, "/shp/PolygonForest.shp")) %>%
   st_transform(epsg) -> fri_polygons
 
 # 5. Landcover
-rast(paste0(wd, "/metrics/other/landcover.tif")) -> landcover
+rast(paste0(wd, "/metrics/other/landcover.tif")) %>%
+      terra::project(epsg, method = "near") -> landcover
 
 landcover_codes <- c(`1` = "Clear_Open_Water",
                      `2` = "Turbid_Water",
@@ -183,43 +184,46 @@ levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
                                      class = unname(landcover_codes))
 
 # 6. Forest age in 2019
-rast(paste0(wd, "/metrics/other/forest_age_2019.tif")) -> forest_age_2019
+rast(paste0(wd, "/metrics/other/forest_age_2019.tif")) %>%
+      terra::project(epsg, method = "near") -> forest_age_2019
 
 # 7. Forest fire between 1985-2020
-rast(paste0(wd, "/metrics/other/forest_fire_1985_2020.tif")) -> forest_fire_1985_2020
+rast(paste0(wd, "/metrics/other/forest_fire_1985_2020.tif")) %>%
+      terra::project(epsg, method = "near") -> forest_fire_1985_2020
 
 # 8. Forest harvest between 1985-2020
-rast(paste0(wd, "/metrics/other/forest_harvest_1985_2020.tif")) -> forest_harvest_1985_2020
+rast(paste0(wd, "/metrics/other/forest_harvest_1985_2020.tif")) %>%
+      terra::project(epsg, method = "near") -> forest_harvest_1985_2020
 
 
 
 
 
-# CLIP ALL DATA FOR TESTING #
-ctg %<>% 
-  ms_clip(subset_area)
-
-metrics %<>% 
-  crop(subset_area)
-
-masks %<>% 
-  map(crop, subset_area)
-
-fri_polygons %<>% 
-  st_filter(subset_area) %>% 
-  ms_clip(subset_area)
-
-landcover %<>% 
-  crop(subset_area)
-
-forest_age_2019 %<>% 
-  crop(subset_area)
-
-forest_fire_1985_2020 %<>% 
-  crop(subset_area)
-
-forest_harvest_1985_2020 %<>% 
-  crop(subset_area)
+# # CLIP ALL DATA FOR TESTING #
+# ctg %<>% 
+#   ms_clip(subset_area)
+# 
+# metrics %<>% 
+#   crop(subset_area)
+# 
+# masks %<>% 
+#   map(crop, subset_area)
+# 
+# fri_polygons %<>% 
+#   st_filter(subset_area) %>% 
+#   ms_clip(subset_area)
+# 
+# landcover %<>% 
+#   crop(subset_area)
+# 
+# forest_age_2019 %<>% 
+#   crop(subset_area)
+# 
+# forest_fire_1985_2020 %<>% 
+#   crop(subset_area)
+# 
+# forest_harvest_1985_2020 %<>% 
+#   crop(subset_area)
 ```
 
 1. Index of LiDAR data in polygonal format. This layer allows the year of LiDAR data acquisition to be selected in order to adequately filter ecoforest polygons. The area in yellow will be used to display next data in order to properly see the details of the layers;
@@ -413,6 +417,7 @@ segmentation_results %>%
 
 ```{r Imputation, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 eFRI_imputation(segmentation = segmentation,
+                segmentation_id_field = "id",
                 forest_polygon = fri_polygons,
                 metrics = metrics,
                 landcover = landcover,
@@ -425,14 +430,18 @@ eFRI_imputation(segmentation = segmentation,
                 forest_type_field = "POLYTYPE",
                 target_var = best_models$target_var,
                 knn_var = best_models$knn_vars) -> segmentation_imputation
-```
+
+``` 
 
 ```{r eFRI attibute table, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 eFRI_attribute_table(segmentation = segmentation_imputation,
                      metrics = metrics,
+                     selected_dendrometrics = selected_dendrometrics,
                      landcover = landcover,
                      forest_fire = forest_fire_1985_2020,
                      forest_harvest = forest_harvest_1985_2020,
                      forest_age = forest_age_2019) -> segmentation_data
 
+segmentation_data %>% 
+  st_write(paste0(segmentation_wd, "/segmentation_data.gpkg"), layer = "segmentation_data")
 ```
