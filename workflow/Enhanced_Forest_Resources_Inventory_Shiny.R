@@ -80,32 +80,27 @@ ui <- fluidPage(
                         div(class = "sidebar-panel",
                             # Parameters
                             uiOutput("segmentation_metrics_list"), # Peut-être mettre un min et un max a cocher
-                            uiOutput("dendrometric_list"), # Peut-être mettre un min et un max a cocher
-                            checkboxGroupInput("masks",
-                                               "Choose the masks to peform segmentation :",
-                                               choices = c("Roads" = "roads",
-                                                           "Waterbodies" = "waterbodies",
-                                                           "Watercourses" = "watercourses"),
-                                               selected = c("roads", "waterbodies")),
+                            uiOutput("summary_metrics_list"), # Peut-être mettre un min et un max a cocher
+                            uiOutput("masks_list"),
                             strong("Choose generic region merging parameters :"),
                             numericInput("grm_thresh", "Threshold", 47),
-                            strong("Maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is"),
-                            "Small threshold → fine segmentation (many small regions).",
-                            "Large threshold → coarse segmentation (fewer, larger regions).",
+                            # strong("Maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is"),
+                            # "Small threshold → fine segmentation (many small regions).",
+                            # "Large threshold → coarse segmentation (fewer, larger regions).",
                             numericInput("grm_spec", "Weight of pectral homogeneity", 0.6),
-                            strong("Weight given to spectral similarity (pixel values, band means) when deciding whether regions should merge."),
-                            "If high → segmentation will mostly respect spectral values.",
-                            "If low → spectral similarity matters little, other criteria (shape) dominate.",
+                            # strong("Weight given to spectral similarity (pixel values, band means) when deciding whether regions should merge."),
+                            # "If high → segmentation will mostly respect spectral values.",
+                            # "If low → spectral similarity matters little, other criteria (shape) dominate.",
                             numericInput("grm_spat", "Weight of patial homogeneity", 0.6),
-                            strong("Weight given to shape similarity (compactness and smoothness) when deciding whether regions should merge."),
-                            "If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker.",
-                            "If low → region boundaries will mostly follow spectral homogeneity.",
+                            # strong("Weight given to shape similarity (compactness and smoothness) when deciding whether regions should merge."),
+                            # "If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker.",
+                            # "If low → region boundaries will mostly follow spectral homogeneity.",
                             # Action button to show plots and compute statistics
-                            textInput("epsg", "Choose a crs :", "EPSG:2958"),
                             shinyDirButton("wd", "Choose a working directory", "Please select a folder"),
                             verbatimTextOutput("selected_wd"),
                             textInput("name", "Choose output name :", ""),
-                            actionButton("run", "Compute enhanced forest resources inventory polygons")))
+                            actionButton("run", "Compute enhanced forest resources inventory polygons"),
+                            actionButton("add_segmentation", "Add enhanced forest resources inventory polygons to map")))
       )
     ),
 
@@ -116,10 +111,9 @@ ui <- fluidPage(
       # Utilisation de fluidRow et column pour ajuster la carte
       fluidRow(
         column(12,
-               numericInput("latitude", "Latitude", 46.78831),
-               numericInput("longitude", "Longitude", -71.31259),
-               sliderInput("distance", "Analysis radius (km)",
-                           min = 0, max = 200, value = 25),
+               numericInput("latitude", "Latitude", value = 46.78831),
+               numericInput("longitude", "Longitude", value = -71.31259),
+               numericInput("distance", "Analysis radius (km)", value = 25),
                leafletOutput("map", height = "600px")  # Carte de taille fixe
         )
       )
@@ -172,12 +166,12 @@ server <- function(input, output, session) {
   })
 
   # 🟠 Reactive analysis radius 🟠
-  cercle_reactive <- reactive({
+  extraction_circle_reactive <- reactive({
     req(input$longitude, input$latitude, input$distance)
     st_sfc(st_point(c(input$longitude, input$latitude)), crs = 4326) %>%
-      st_buffer(input$distance*1000) -> cercle
+      st_buffer(input$distance*1000) -> extraction_circle
 
-    cercle
+    extraction_circle
   })
 
   # 🟢 Map initialisation 🟢
@@ -187,28 +181,35 @@ server <- function(input, output, session) {
       addProviderTiles(providers$Esri.WorldImagery)
   })
 
-  # 🟠 Update ctg 🟠
+  # 🟠 Update ctg and extraction_circle position 🟠
   observe({
     req(ctg_area_reactive())
     leafletProxy("map") %>%
       set.view.auto(ctg_area_reactive()) %>%
       addPolygons(data = ctg_area_reactive())
+
+    ctg_area_reactive() %>%
+      st_transform(4326) %>%
+      st_centroid() %>%
+      st_coordinates() -> ctg_coordinates
+    updateNumericInput(session, "longitude", value = ctg_coordinates[1])
+    updateNumericInput(session, "latitude", value = ctg_coordinates[2])
   })
 
   # 🟠 Observer les coordonnées du clic sur la carte pour centrer l'affichage des parois 🟠
   observeEvent(input$map_click, {
     click <- input$map_click
-    updateNumericInput(session, "latitude", value = click$lat)
     updateNumericInput(session, "longitude", value = click$lng)
+    updateNumericInput(session, "latitude", value = click$lat)
   })
 
   # 🟠 Update circle 🟠
   observe({
-    req(cercle_reactive())
+    req(extraction_circle_reactive())
 
     leafletProxy("map") %>%
       clearGroup("recherche") %>%
-      set.view.auto(cercle_reactive()) %>%
+      set.view.auto(extraction_circle_reactive()) %>%
       addCircleMarkers(lng = input$longitude,
                        lat = input$latitude,
                        group = "recherche",
@@ -216,7 +217,7 @@ server <- function(input, output, session) {
                        radius = 0.5,
                        weight = 0.5,
                        fillOpacity = 1) %>%
-      addPolygons(data = cercle_reactive(),
+      addPolygons(data = extraction_circle_reactive(),
                   color = "turquoise",
                   weight = 2,
                   fillOpacity = 0,
@@ -236,37 +237,66 @@ server <- function(input, output, session) {
   # 🟣 Metric list 🟣
   output$segmentation_metrics_list <- renderUI({
     req(metrics_infos_reactive())
-    checkboxGroupInput(
+    selectizeInput(
       inputId = "segmentation_metrics",
       label = "Choose 3 to 8 metrics to peform segmentation :",
       choices = metrics_infos_reactive() %>%
-        dplyr::filter(type == "lidar",
-                      resolution == 20) %>%
+        dplyr::filter(resolution == 20) %>%
         dplyr::pull(name),
-      selected = c("z_p95", "z_cv", "z_above2", "sagawi", "fractional_cover_05_2")
+      selected = c("z_p95", "z_cv", "z_above2", "sagawi", "fractional_cover_05_2"),
+      multiple = TRUE,
+      width = "100%",
+      options = list(
+        plugins = list('remove_button'),
+        create = TRUE,
+        persist = TRUE,
+        maxItems = 8
+      )
     )
   })
 
-  # 🟣 Dendrometric list 🟣
-  output$dendrometric_list <- renderUI({
+  # 🟣 Summary metrics list 🟣
+  output$summary_metrics_list <- renderUI({
     req(metrics_infos_reactive())
-    checkboxGroupInput(
-      inputId = "selected_dendrometrics",
-      label = "Choose at least 3 dendrometric characteristics :",
+    selectizeInput(
+      inputId = "summary_metrics",
+      label = "Choose summary metrics :",
       choices = metrics_infos_reactive() %>%
-        dplyr::filter(type == "dendro",
-               resolution == 20) %>%
+        dplyr::filter(resolution == 20) %>%
         dplyr::pull(name),
-      selected = c("dens", "qmdbh", "Vmerch_ha" )
+      selected = c("dens", "qmdbh", "Vmerch_ha"),
+      multiple = TRUE,
+      width = "100%",
+      options = list(
+        'plugins' = list('remove_button'),
+        'create' = TRUE,
+        'persist' = TRUE
+      )
     )
+  })
+
+  # 🟣 Mask list 🟣
+  output$masks_list <- renderUI({
+    req(selected_wd_reactive())
+
+    possibles_masks <- c("roads.shp", "waterbodies.shp", "watercourses.shp")
+    shp_lists <- list.files(paste0(selected_wd_reactive(), "/shp"))
+    masks_available <- shp_lists[shp_lists %in% possibles_masks]
+    masks_available <- sub(".shp", "", masks_available)
+
+    checkboxGroupInput("masks",
+                       "Choose the masks to peform segmentation :",
+                       choices = setNames(masks_available, str_to_title(masks_available)),
+                       selected = c("roads", "waterbodies"))
   })
 
   # 🟠 Compute enhanced forest resources inventory polygons 🟠
   observeEvent(input$run, {
-    # 🟢 Read data 🟢
-    showNotification("Read data", type = "message", duration = 15, session = session)
+    # 🟢 Create and set wd 🟢
+    segmentation_wd <- paste0(selected_wd_reactive(), "/segmentations/", input$name)
+    dir.create(segmentation_wd)
 
-    # Best models for imputation
+    # 🟢 Best models for imputation 🟢
     read.csv("D:/00_Ontario_eFRI/RMF/results/best_model.csv") -> best_models
 
     best_models %>%
@@ -275,20 +305,78 @@ server <- function(input, output, session) {
       unlist() %>%
       unique() -> best_models_variables
 
-    # Catalog
-    st_read(paste0(selected_wd_reactive(), "/ctg/ctg.shp")) %>%
-      st_transform(input$epsg) -> ctg
+    # 🟢 Read catalog 🟢
+    showNotification("Read catalog", type = "message", duration = 15, session = session)
+    st_read(paste0(selected_wd_reactive(), "/ctg/ctg.shp")) -> ctg
 
+    # 🟢 Get epsg from catalog 🟢
+    epsg <- st_crs(ctg)
+
+    # 🟢 Extraction circle 🟢
+    extraction_circle_reactive() %>%
+      st_as_sf() %>%
+      st_transform(epsg$wkt) -> extraction_circle
+
+    extraction_circle %>%
+      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
+               layer = "extraction_circle",
+               quiet = T)
+
+    # 🟢 Save metadata 🟢
+    start <- Sys.time()
+    cat(c("Start time : ", as.character(start), "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    cat(c("Segmentation metrics : ", input$segmentation_metrics, "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    cat(c("Selected summary metrics : ", input$selected_summary metrics, "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    cat(c("Coordinates of extraction circle : ", paste0(input$longitude, ", ", input$latitude), "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    cat(c("Radius of extraction circle (km) : ", input$distance, "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    cat(c("EPSG : ", epsg$input, "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    cat(c("Segmentation parameters : ", paste0("thresh = ", input$grm_thresh, " / spec = ", input$grm_spec, " / spat = ", input$grm_spat), "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    cat(c("Segmentation masks : ", paste0(input$masks, collapse = ", "), "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+
+    # 🟢 Read data 🟢
     # Metrics
+    showNotification("Read metrics", type = "message", duration = 15, session = session)
     metrics_infos %>%
       filter(name %in% c(best_models_variables,
                          input$segmentation_metrics,
-                         input$selected_dendrometrics,
+                         input$summary_metrics,
                          "z_p95", "z_above2", "fractional_cover_05_2", "slope", "sagawi")) %T>%
       {pull(.,name) ->> metrics_names} %>% # Extract metrics names in the right order
       pull(path) %>%
       map(rast) %>%
-      map(project, input$epsg, method = "bilinear") %>%
+      map(project, epsg$wkt, method = "bilinear") %>%
       map(resample, .[[1]]) %>%
       rast -> metrics
 
@@ -296,18 +384,21 @@ server <- function(input, output, session) {
     names(metrics) <- metrics_names
 
     # Masks
+    showNotification("Read masks", type = "message", duration = 15, session = session)
     paste0(selected_wd_reactive(), "/shp/", input$masks, ".shp") %>%
       map(vect) %>%
-      map(project, input$epsg) -> masks
+      map(project, epsg$wkt) -> masks
 
     # Forest inventory polygons (fri)
+    showNotification("Read forest inventory polygons", type = "message", duration = 15, session = session)
     st_read(paste0(selected_wd_reactive(), "/shp/PolygonForest.shp")) %>%
       rowid_to_column("id") %>%
-      st_transform(input$epsg) -> fri_polygons
+      st_transform(epsg$wkt) -> fri_polygons
 
     # Landcover
+    showNotification("Read landcover", type = "message", duration = 15, session = session)
     rast(paste0(selected_wd_reactive(), "/metrics/other/landcover.tif")) %>%
-      terra::project(input$epsg, method = "near") -> landcover
+      terra::project(epsg$wkt, method = "near") -> landcover
 
     landcover_codes <- c(`1` = "Clear_Open_Water",
                          `2` = "Turbid_Water",
@@ -344,63 +435,58 @@ server <- function(input, output, session) {
                                     class = unname(landcover_codes))
 
     # Forest_Age_1985-2020
+    showNotification("Read forest age", type = "message", duration = 15, session = session)
     rast(paste0(selected_wd_reactive(), "/metrics/other/forest_age_2019.tif")) %>%
-      terra::project(input$epsg, method = "near") -> forest_age_2019
+      terra::project(epsg$wkt, method = "near") -> forest_age_2019
 
     # Forest_Fire_1985-2020
+    showNotification("Read forest fire", type = "message", duration = 15, session = session)
     rast(paste0(selected_wd_reactive(), "/metrics/other/forest_fire_1985_2020.tif")) %>%
-      terra::project(input$epsg, method = "near") -> forest_fire_1985_2020
+      terra::project(epsg$wkt, method = "near") -> forest_fire_1985_2020
 
     # Forest_Harvest_1985-2020
+    showNotification("Read forest harvest", type = "message", duration = 15, session = session)
     rast(paste0(selected_wd_reactive(), "/metrics/other/forest_harvest_1985_2020.tif")) %>%
-      terra::project(input$epsg, method = "near") -> forest_harvest_1985_2020
+      terra::project(epsg$wkt, method = "near") -> forest_harvest_1985_2020
 
 
-
-    # CLIP ALL DATA #
-    cercle_reactive() %>%
-      st_as_sf() %>%
-      st_transform(input$epsg) -> cercle_clip
-
+    # 🟢 Clip data 🟢
+    showNotification("Clip catalog", type = "message", duration = 15, session = session)
     ctg %<>%
-      ms_clip(cercle_clip)
+      st_filter(extraction_circle)
 
+    showNotification("Clip metrics", type = "message", duration = 15, session = session)
     metrics %<>%
-      crop(cercle_clip) %>%
-      mask(cercle_clip)
+      crop(extraction_circle) %>%
+      mask(extraction_circle)
 
+    showNotification("Clip masks", type = "message", duration = 15, session = session)
     masks %<>%
-      map(crop, cercle_clip)
+      map(crop, extraction_circle)
 
+    showNotification("Clip forest inventory polygons", type = "message", duration = 15, session = session)
     fri_polygons %<>%
-      st_filter(cercle_clip) %>%
-      ms_clip(cercle_clip)
+      st_filter(extraction_circle)
 
+    showNotification("Clip landcover", type = "message", duration = 15, session = session)
     landcover %<>%
-      crop(cercle_clip) %>%
-      mask(cercle_clip)
+      crop(extraction_circle) %>%
+      mask(extraction_circle)
 
+    showNotification("Clip forest age", type = "message", duration = 15, session = session)
     forest_age_2019 %<>%
-      crop(cercle_clip) %>%
-      mask(cercle_clip)
+      crop(extraction_circle) %>%
+      mask(extraction_circle)
 
+    showNotification("Clip forest fire", type = "message", duration = 15, session = session)
     forest_fire_1985_2020 %<>%
-      crop(cercle_clip) %>%
-      mask(cercle_clip)
+      crop(extraction_circle) %>%
+      mask(extraction_circle)
 
+    showNotification("Clip forest harvest", type = "message", duration = 15, session = session)
     forest_harvest_1985_2020 %<>%
-      crop(cercle_clip) %>%
-      mask(cercle_clip)
-
-
-    # 🟢 Create and set wd 🟢
-    segmentation_wd <- paste0(selected_wd_reactive(), "/segmentations/", input$name)
-    dir.create(segmentation_wd)
-
-    # 🟢 Save segmentation information 🟢
-    cercle_clip %>%
-      st_write(paste0(segmentation_wd, "/cercle_clip.shp"))
-
+      crop(extraction_circle) %>%
+      mask(extraction_circle)
 
 
     # 🟢 Segmentation 🟢
@@ -414,12 +500,17 @@ server <- function(input, output, session) {
                       method = "bs",
                       output_path = segmentation_wd,
                       output_name = "segmentation",
-                      otb_dir = otb_dir)
+                      otb_dir = otb_dir) -> segmentation
+
+    segmentation %>%
+      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
+               layer = "segmentation",
+               quiet = T)
 
     # 🟢 Imputation 🟢
     showNotification("Peform imputation", type = "message", duration = 15, session = session)
 
-    eFRI_imputation(segmentation = st_read(paste0(segmentation_wd, "/segmentation.shp")),
+    eFRI_imputation(segmentation = segmentation,
                     segmentation_id_field = "id",
                     forest_polygon = fri_polygons,
                     metrics = metrics,
@@ -434,21 +525,88 @@ server <- function(input, output, session) {
                     target_var = best_models$target_var,
                     knn_var = best_models$knn_vars) -> segmentation_imputed
 
+    segmentation_imputed %>%
+      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
+               layer = "segmentation_imputed",
+               quiet = T)
+
     # 🟢 Build attribute table 🟢
     showNotification("Build attribute table in segmented polygons", type = "message", duration = 15, session = session)
 
     eFRI_attribute_table(segmentation = segmentation_imputed,
                          metrics = metrics,
-                         selected_dendrometrics = input$selected_dendrometrics,
+                         summary_metrics = input$summary_metrics,
                          landcover = landcover,
                          forest_fire = forest_fire_1985_2020,
                          forest_harvest = forest_harvest_1985_2020,
                          forest_age = forest_age_2019) -> segmentation_data
 
     segmentation_data %>%
-      st_write(dsn = paste0(segmentation_wd, "/segmentation.gpkg"), layer = "segmentation_data")
+      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
+               layer = "segmentation_data",
+               quiet = T)
 
-    showNotification("Done !", type = "message", duration = 15, session = session)
+
+    # 🟢 Metadata 🟢
+    cat(c("Number of forest polygon created : ", nrow(segmentation_data), "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    end <- Sys.time()
+    cat(c("End time : ", as.character(end), "----------"),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    elapsed_time <- sub("Time difference of ", "", capture.output(difftime(end, start)))
+    cat(c("Elapsed time : ", elapsed_time),
+        file = paste0(segmentation_wd, "/metadata.txt"),
+        append = TRUE,
+        sep = "\n")
+
+    showNotification(paste0("Done after ", elapsed_time, "! A total of ", nrow(segmentation_data), " polygons created for segmentation named ", input$name, "."), type = "message", duration = NULL, session = session)
+  })
+
+  # 🟠 Add Segmentation to map 🟠
+  observeEvent(input$add_segmentation, {
+    segmentation_wd <- paste0(selected_wd_reactive(), "/segmentations/", input$name)
+    segmentation <- st_read(dsn = paste0(segmentation_wd, "/data.gpkg"),
+                            layer = "segmentation_data",
+                            quiet = T) %>%
+      st_transform(4326)
+
+    make_popup_generic <- function(x) {
+      # x = one row of attributes (data.frame)
+
+      # Format: "colname: value<br>"
+      paste0(
+        mapply(
+          function(name, value) paste0("<b>", name, ":</b> ", value, "<br>"),
+          names(x),
+          x,
+          USE.NAMES = FALSE
+        ),
+        collapse = ""
+      )
+    }
+
+    attrs <- sf::st_drop_geometry(segmentation)
+
+    popup_text <- vapply(
+      seq_len(nrow(attrs)),
+      FUN = function(i) make_popup_generic(attrs[i, ]),
+      FUN.VALUE = character(1)
+    )
+
+    leafletProxy("map") %>%
+      set.view.auto(segmentation) %>%
+      addPolygons(data = segmentation,
+                  fillOpacity = 0.05,
+                  color = "red",
+                  weight = 1,
+                  popup = popup_text)
+
   })
 }
 
