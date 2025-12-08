@@ -61,10 +61,10 @@ models <- list(model_A = c("z_p95", "z_above2", "z_cv"),
 
 
 # Parameters ----
-# wd <- "D:/00_Ontario_eFRI/RMF" # wd
-# epsg <- "EPSG:2958" # RMF
-wd <- "D:/00_Ontario_eFRI/OVF" # wd
-epsg <- "EPSG:2959" # OVF
+wd <- "D:/00_Ontario_eFRI/RMF" # wd
+epsg <- "EPSG:2958" # RMF
+#wd <- "D:/00_Ontario_eFRI/OVF" # wd
+#epsg <- "EPSG:2959" # OVF
 otb_dir <- "D:/00_Ontario_eFRI/logiciels/OTB-9.1.0-Win64/bin"
 Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
 Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
@@ -83,8 +83,8 @@ metrics_infos %>%
   {pull(.,name) ->> metrics_names} %>% # Extract metrics names in the right order
   pull(path) %>%
   map(rast) %>%
-  map(project, epsg, method = "bilinear") %>%
-  map(resample, .[[1]]) %>%
+  map(terra::project, epsg, method = "bilinear") %>%
+  map(terra::resample, .[[1]]) %>%
   rast -> metrics
 
 names(metrics) <- metrics_names # Assign metrics names
@@ -119,17 +119,22 @@ map(names(models),
     function(x){
       cat(paste0(x, "\n"))
       eFRI_segmentation(metrics = metrics[[models[[x]]]],
-                        masks = masks,
-                        thresh = 47,
-                        spec = 0.6,
-                        spat = 0.6,
+                        # masks = masks,
+                        masks = NULL,
+                        #thresh = 47,
+                        thresh = 70,
+                        #spec = 0.6,
+                        spec = 0.8,
+                        #spat = 0.6,
+                        spat = 0.4,
                         method = "bs",
-                        output_path = paste0(wd, "/segmentations/models_test"),
+                        clean_nodata = TRUE,
+                        output_path = paste0(wd, "/segmentations/models_test_no_masks_cleaned_threshold"),
                         output_name = x,
                         otb_dir = "D:/00_Ontario_eFRI/logiciels/OTB-9.1.0-Win64/bin") -> segmentation
 
       segmentation %>%
-        st_write(paste0(wd, "/segmentations/models_test/data.gpkg"),
+        st_write(paste0(wd, "/segmentations/models_test_no_masks_cleaned_threshold/data.gpkg"),
                  layer = x,
                  quiet = T)
     })

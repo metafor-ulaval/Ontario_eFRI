@@ -1,5 +1,6 @@
 # 🟡 Library ----
 library(tidyverse)
+library(magrittr)
 library(terra)
 library(sf)
 library(lasR)
@@ -14,44 +15,44 @@ library(eFRItools)
 
 # 🟡 Setwd, parameters and functions ----
 setwd("F:/Ontario_eFRI/02_donnees_traitees")
-source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/OLD_Rmarkdown/functions/fractional_transect.R")
-source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/OLD_Rmarkdown/functions/fractional_plot.R")
-source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/OLD_Rmarkdown/functions/fractional_cover.R")
+source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/functions_archives/other/fractional_transect.R")
+source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/functions_archives/other/fractional_plot.R")
+source("C:/Users/FRLES121/OneDrive - Université Laval/Documents/Ontario_eFRI/Scripts/Interne/functions_archives/other/fractional_cover.R")
 
 
 
 
 
-# 🟡 Merge placettes ----
-# RMF
-map_dfr(1:5,
-    function(x){
-  st_read(paste0("./S", x ,"/placettes/01_corrige/placettes.shp"), quiet = T)
-    }
-) %>%
-  st_write("placettes_RMF.shp")
-
-# OVF
-map_dfr(6:10,
-        function(x){
-          st_read(paste0("./S", x ,"/placettes/01_corrige/placettes.shp"), quiet = T)
-        }
-) %>%
-  st_write("placettes_OVF.shp")
-
-
-
-
-
+# # 🟡 Merge placettes ----
+# # RMF
+# map_dfr(1:5,
+#     function(x){
+#   st_read(paste0("./S", x ,"/placettes/01_corrige/placettes.shp"), quiet = T)
+#     }
+# ) %>%
+#   st_write("placettes_RMF.shp")
+#
+# # OVF
+# map_dfr(6:10,
+#         function(x){
+#           st_read(paste0("./S", x ,"/placettes/01_corrige/placettes.shp"), quiet = T)
+#         }
+# ) %>%
+#   st_write("placettes_OVF.shp")
+#
+#
+#
+#
+#
 # 🟡 Computing ----
-for(sub_sector in 1:10){
+for(sub_sector in 6:10){
   cat(paste0("Sub-sector : S", sub_sector, "\n"))
   # Read data
   # Catalog
   readLAScatalog(paste0("./S", sub_sector ,"/nuages/02_norm_decimated")) -> ctg_normalized
 
   # Placettes
-  st_read(paste0("./S", sub_sector ,"/placettes/01_corrige/placettes.shp"), quiet = T) -> placettes
+  st_read(paste0("./S", sub_sector ,"/placettes/01_corrige/placettes_improductives.shp"), quiet = T) -> placettes
 
   placette_data <- list()
 
@@ -76,7 +77,7 @@ for(sub_sector in 1:10){
                                                 zintervals = c(0, 0.15, 2, 5, 10, 20, 30),
                                                 pixel_size = 1,
                                                 vox_size = 1,
-                                                KeepReturns = c(1, 2, 3, 4)),
+                                                KeepReturns = c(1, 2, 3, 4, 5)),
                      geometry = .,
                      radius = radius_threshold) %>%
         st_as_sf() %>%
@@ -107,7 +108,7 @@ for(sub_sector in 1:10){
                                               zintervals = c(0, 0.15, 2, 5, 10, 20, 30),
                                               pixel_size = 1,
                                               vox_size = 1,
-                                              KeepReturns = c(1, 2, 3, 4)),
+                                              KeepReturns = c(1, 2, 3, 4, 5)),
                    geometry = .,
                    radius = radius_threshold) %>%
       st_as_sf() %>%
@@ -146,31 +147,38 @@ for(sub_sector in 1:10){
 
   placettes %>%
     bind_cols(placette_data) %>%
-    saveRDS(paste0("./S", sub_sector ,"/placettes/01_corrige/placettes_data.rds"))
+    saveRDS(paste0("./S", sub_sector ,"/placettes/01_corrige/placettes_data_improductives.rds"))
 }
 
 
 
 
 
-# Read test
-map(1:10,
-    ~{readRDS(paste0("./S", .x ,"/placettes/01_corrige/placettes_data.rds"))}) %>%
-  map(dplyr::select) %>% # Maybe remove geometry if it doesn't work
-  bind_rows() -> data
+# Combine data
+map_dfr(6:10,
+    ~{readRDS(paste0("./S", .x ,"/placettes/01_corrige/placettes_data_improductives.rds"))}) -> data
 
 data %>%
-  saveRDS("data.rds")
-
-readRDS("data.rds") %>%
-  dplyr::select(contains("drop_ground_cm")) %>%
-  dplyr::select(contains("radius_1410_cm"))
+  saveRDS("F:/Ontario_eFRI/02_donnees_traitees/placettes_data_improductives.rds")
 
 
 
 
-
+# # Read test
+# data %>%
+#   saveRDS("data.rds")
+#
+# readRDS("data.rds") %>%
+#   dplyr::select(contains("drop_ground_cm")) %>%
+#   dplyr::select(contains("radius_1410_cm"))
+#
+#
+#
+#
+#
 # 🟡 Extract topographic metrics ----
+sector <- "OVF"
+
 map_dfr(c("RMF", "OVF"),
         function(sector){
           list.files(paste0("D:/00_Ontario_eFRI/", sector, "/metrics"), full.names = T) %>%
@@ -192,7 +200,8 @@ map_dfr(c("RMF", "OVF"),
 
           names(metrics) <- metrics_names
 
-          st_read(paste0("D:/00_Ontario_eFRI/", sector, "/shp/placettes_", sector, ".shp")) %>%
+          #st_read(paste0("D:/00_Ontario_eFRI/", sector, "/shp/placettes_", sector, ".shp")) %>%
+           readRDS("D:/00_Ontario_eFRI/placettes_data_improductives.rds") %>%
             st_zm() %>%
             st_buffer(11.28) %>%
             mutate_metrics(metrics, "mean") %>%
@@ -200,4 +209,4 @@ map_dfr(c("RMF", "OVF"),
         }) -> data_topo
 
 data_topo %>%
-  saveRDS("D:/00_Ontario_eFRI/data_topo.rds")
+  saveRDS("D:/00_Ontario_eFRI/placettes_data_improductives_topo.rds")

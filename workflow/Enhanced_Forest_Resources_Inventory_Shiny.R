@@ -87,11 +87,11 @@ ui <- fluidPage(
                             # strong("Maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is"),
                             # "Small threshold → fine segmentation (many small regions).",
                             # "Large threshold → coarse segmentation (fewer, larger regions).",
-                            numericInput("grm_spec", "Weight of pectral homogeneity", 0.6),
+                            numericInput("grm_spec", "Weight of spectral homogeneity", 0.6),
                             # strong("Weight given to spectral similarity (pixel values, band means) when deciding whether regions should merge."),
                             # "If high → segmentation will mostly respect spectral values.",
                             # "If low → spectral similarity matters little, other criteria (shape) dominate.",
-                            numericInput("grm_spat", "Weight of patial homogeneity", 0.6),
+                            numericInput("grm_spat", "Weight of spatial homogeneity", 0.6),
                             # strong("Weight given to shape similarity (compactness and smoothness) when deciding whether regions should merge."),
                             # "If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker.",
                             # "If low → region boundaries will mostly follow spectral homogeneity.",
@@ -155,14 +155,30 @@ server <- function(input, output, session) {
   })
 
   # 🟠 Reactive ctg 🟠
-  ctg_area_reactive <- reactive({
+  metrics_area_reactive <- reactive({
+    # req(metrics_infos_reactive())
+    #
+    # metrics_infos_reactive() %>%
+    #   slice(1) %>%
+    #   pull(path) %>%
+    #   rast() -> raster_temp
+    #
+    # raster_temp[!is.na(raster_temp)] <- 1
+    #
+    # raster_temp -> raster_temp
+    #
+    # raster_temp %>%
+    #   as.polygons() %>%
+    #   st_as_sf() %>%
+    #   st_transform(4326) -> metrics_area
+
     req(selected_wd_reactive())
     st_read(paste0(selected_wd_reactive(), "/ctg/ctg.shp")) %>%
       st_buffer(1) %>%
       st_union() %>%
-      st_transform(4326) -> ctg_area
+      st_transform(4326) -> metrics_area
 
-    ctg_area
+    metrics_area
   })
 
   # 🟠 Reactive analysis radius 🟠
@@ -183,12 +199,15 @@ server <- function(input, output, session) {
 
   # 🟠 Update ctg and extraction_circle position 🟠
   observe({
-    req(ctg_area_reactive())
+    req(metrics_area_reactive())
     leafletProxy("map") %>%
-      set.view.auto(ctg_area_reactive()) %>%
-      addPolygons(data = ctg_area_reactive())
+      set.view.auto(metrics_area_reactive()) %>%
+      addPolygons(data = metrics_area_reactive(),
+                  color = "white",
+                  weight = 2,
+                  fillOpacity = 0)
 
-    ctg_area_reactive() %>%
+    metrics_area_reactive() %>%
       st_transform(4326) %>%
       st_centroid() %>%
       st_coordinates() -> ctg_coordinates
@@ -242,6 +261,7 @@ server <- function(input, output, session) {
       label = "Choose 3 to 8 metrics to peform segmentation :",
       choices = metrics_infos_reactive() %>%
         dplyr::filter(resolution == 20) %>%
+        dplyr::filter(type %in% c("lidar", "dendro", "sentinel2")) %>%
         dplyr::pull(name),
       selected = c("z_p95", "z_cv", "z_above2", "sagawi", "fractional_cover_05_2"),
       multiple = TRUE,
@@ -263,6 +283,7 @@ server <- function(input, output, session) {
       label = "Choose summary metrics :",
       choices = metrics_infos_reactive() %>%
         dplyr::filter(resolution == 20) %>%
+        dplyr::filter(type %in% c("lidar", "dendro", "sentinel2")) %>%
         dplyr::pull(name),
       selected = c("dens", "qmdbh", "Vmerch_ha"),
       multiple = TRUE,
@@ -334,7 +355,7 @@ server <- function(input, output, session) {
         append = TRUE,
         sep = "\n")
 
-    cat(c("Selected summary metrics : ", input$selected_summary metrics, "----------"),
+    cat(c("Selected summary metrics : ", input$summary_metrics, "----------"),
         file = paste0(segmentation_wd, "/metadata.txt"),
         append = TRUE,
         sep = "\n")
@@ -364,7 +385,6 @@ server <- function(input, output, session) {
         append = TRUE,
         sep = "\n")
 
-
     # 🟢 Read data 🟢
     # Metrics
     showNotification("Read metrics", type = "message", duration = 15, session = session)
@@ -372,8 +392,12 @@ server <- function(input, output, session) {
       filter(name %in% c(best_models_variables,
                          input$segmentation_metrics,
                          input$summary_metrics,
-                         "z_p95", "z_above2", "fractional_cover_05_2", "slope", "sagawi")) %T>%
-      {pull(.,name) ->> metrics_names} %>% # Extract metrics names in the right order
+                         "z_p95", "z_above2", "fractional_cover_05_2", "slope", "sagawi")) -> metrics_infos_selected
+
+    metrics_infos_selected %>%
+      pull(name) -> metrics_names
+
+    metrics_infos_selected %>%
       pull(path) %>%
       map(rast) %>%
       map(project, epsg$wkt, method = "bilinear") %>%
@@ -384,10 +408,15 @@ server <- function(input, output, session) {
     names(metrics) <- metrics_names
 
     # Masks
+    if(!is.null(input$masks)){
     showNotification("Read masks", type = "message", duration = 15, session = session)
     paste0(selected_wd_reactive(), "/shp/", input$masks, ".shp") %>%
       map(vect) %>%
       map(project, epsg$wkt) -> masks
+    } else {
+      showNotification("No masks selected", type = "message", duration = 15, session = session)
+      masks <- input$masks
+    }
 
     # Forest inventory polygons (fri)
     showNotification("Read forest inventory polygons", type = "message", duration = 15, session = session)
@@ -460,9 +489,11 @@ server <- function(input, output, session) {
       crop(extraction_circle) %>%
       mask(extraction_circle)
 
-    showNotification("Clip masks", type = "message", duration = 15, session = session)
-    masks %<>%
-      map(crop, extraction_circle)
+    if(!is.null(input$masks)){
+      showNotification("Clip masks", type = "message", duration = 15, session = session)
+      masks %<>%
+        map(crop, extraction_circle)
+    }
 
     showNotification("Clip forest inventory polygons", type = "message", duration = 15, session = session)
     fri_polygons %<>%
@@ -498,6 +529,7 @@ server <- function(input, output, session) {
                       spec = input$grm_spec,
                       spat = input$grm_spat,
                       method = "bs",
+                      clean_nodata = TRUE,
                       output_path = segmentation_wd,
                       output_name = "segmentation",
                       otb_dir = otb_dir) -> segmentation
