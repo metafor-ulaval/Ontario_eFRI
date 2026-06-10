@@ -4,14 +4,24 @@ output:
   pdf_document: default
   html_document:
     df_print: paged
-date: "2025-11-14"
+  word_document: default
+date: "2026-05-20"
 ---
 
 ```{r Setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+# Terminology
+# METRIC -> raster derived from ldiar data
+# Attribute/Variable ? -> column of forest polygon stand
+# Forest stand -> actual forest stand
+# Forest stand inventories -> old forest map
+# Automated segmented? forest stand -> efri forest map
+# softwood, hardwood and mixedwood
+
 ```
 
-```{r Read library, include=FALSE, message=FALSE, warning=FALSE}
+```{r Read library, echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(magrittr)
 library(terra)
@@ -25,25 +35,10 @@ library(pfif)
 library(eFRItools)
 library(knitr)
 library(basemapR)
+library(patchwork)
 ```
 
-# **1** Introduction {-#introduction}
-In recent years, many Canadian provinces have acquired airborne lidar data covering a large part of their territory. This technology makes it possible to redefine the description of forest attributes. Indeed, numerous initiatives have been carried out since the dissemination and democratization of lidar data and its derivative products.
-
-## **1.1** Objective {-#introduction_objective}
-The objective of this project is to automatically generate polygons that describe the forest. Both the delineation and description are done automatically through a series of steps that are described in the document. This project is a continuation of Ethan Berman's work at the University of British Columbia, which was conducted in 2023. Details are available on this page : https://bermane.github.io/ontario-inventory/index.html. The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available here: https://github.com/metafor-ulaval/eFRItools. The functions can be used for other purposes, such as automated forest stand segmentation and forest attribute characterization.
-
-## **1.2** Study area {-#introduction_studyarea}
-
-
-## **1.3** Step {-#introduction_steps}
-The steps for generating ecoforest polygons are as follows:
-*Segmentation based on lidar metrics
-*Extrapolation of forest composition variables using a k-nearest neighbor (kNN) imputation algorithm
-*Construction of the attribute table to obtain the following attributes:
-**LIST?
-
-```{r Parameters, include=FALSE, message=FALSE, warning=FALSE}
+```{r Parameters, echo=FALSE, message=FALSE, warning=FALSE}
 wd <- "D:/00_Ontario_eFRI/RMF" # wd
 name <- "efri_polygon"
 segmentation_wd <- paste0(wd, "/segmentations/", name)
@@ -54,7 +49,7 @@ Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
 Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
 Sys.setenv(GDAL_CACHEMAX = "65536") # 64 GO
 
-segmentation_metrics <- c("z_p95", "z_cv", "z_above2", "sagawi", "fractional_cover_05_2")
+segmentation_metrics <- c("z_p95", "z_cv", "z_above2")
 
 summary_metrics <- c("Vmerch_ha", "qmdbh", "dens", "lor", "ba_ha")
 
@@ -68,175 +63,330 @@ best_models %>%
 
 ```
 
-```{r Read metrics informations, include=FALSE, message=FALSE, warning=FALSE}
+```{r Read metrics informations, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
 list.files(paste0(wd, "/metrics"), full.names = TRUE) %>%
   read_metrics() -> metrics_infos
 ```
 
-```{r Read data, include=FALSE, message=FALSE, warning=FALSE}
-# 1. Catalog
-st_read(paste0(wd, "/ctg/ctg.shp")) %>% 
-  st_transform(epsg) -> ctg
-
-# Subset area in a 2 km radius circle in the centroid of area
-ctg %>% 
-  st_bbox() %>%
-  st_as_sfc() %>%
-  st_centroid() %>%
-  st_buffer(5000) %>%
-  st_bbox %>% 
-  st_as_sfc() %>% 
-  st_as_sf() -> subset_area
-
-# 2. Metrics
-metrics_infos %>%
-  filter(name %in% c(best_models_variables, 
-                     segmentation_metrics, 
-                     summary_metrics,
-                     "z_p95", "z_above2", "fractional_cover_05_2", "slope", "sagawi")) -> metrics_infos_selected
-
-metrics_infos_selected %>%
-  pull(name) -> metrics_names
-
-metrics_infos_selected %>%  
-  pull(path) %>% 
-  map(rast) %>% 
-  map(project, epsg, method = "bilinear") %>% 
-  map(resample, .[[1]]) %>% 
-  rast -> metrics
-
-names(metrics) <- metrics_names # Assign metrics names
+```{r Read data, echo=FALSE, message=FALSE, warning=FALSE}
+# # 1. Catalog
+# st_read(paste0(wd, "/ctg/ctg.shp"), quiet = T) %>%
+#   st_transform(epsg) -> ctg
+# 
+# # Subset area in a 2 km radius circle in the centroid of area
+# ctg %>%
+#   st_bbox() %>%
+#   st_as_sfc() %>%
+#   st_centroid() %>%
+#   st_buffer(2000) %>%
+#   st_bbox %>%
+#   st_as_sfc() %>%
+#   st_as_sf() -> subset_area
+# 
+# # 2. Metrics
+# metrics_infos %>%
+#   filter(name %in% c(best_models_variables,
+#                      segmentation_metrics,
+#                      summary_metrics,
+#                      "z_p95", "z_above2", "fractional_cover_05_2", "slope", "sagawi")) -> metrics_infos_selected
+# 
+# metrics_infos_selected %>%
+#   pull(name) -> metrics_names
+# 
+# metrics_infos_selected %>%
+#   pull(path) %>%
+#   map(rast) %>%
+#   map(project, epsg, method = "bilinear") %>%
+#   map(resample, .[[1]]) %>%
+#   rast -> metrics
+# 
+# names(metrics) <- metrics_names # Assign metrics names
 
 # 3. Masks
 list(vect(paste0(wd, "/shp/roads.shp")),
-     vect(paste0(wd, "/shp/waterbodies.shp"))) %>% 
+     vect(paste0(wd, "/shp/waterbodies.shp"))) %>%
   map(project, epsg) -> masks
 
-# 4. Ecoforest polygons (fri)
-st_read(paste0(wd, "/shp/PolygonForest.shp")) %>% 
-  rowid_to_column("id") %>% 
-  st_transform(epsg) -> fri_polygons
-
-# 5. Landcover
-rast(paste0(wd, "/metrics/other/landcover.tif")) %>%
-      terra::project(epsg, method = "near") -> landcover
-
-landcover_codes <- c(`1` = "Clear_Open_Water",
-                     `2` = "Turbid_Water",
-                     `3` = "Shoreline",
-                     `4` = "Mudflats",
-                     `5` = "Marsh",
-                     `6` = "Swamp",
-                     `7` = "Fen",
-                     `8` = "Bog",
-                     `10` = "Heath",
-                     `11` = "Sparse_Treed",
-                     `12` = "Treed_Upland",
-                     `13` = "Deciduous_Treed",
-                     `14` = "Mixed_Treed",
-                     `15` = "Coniferous_Treed",
-                     `16` = "Plantations_Treed_Cultivated",
-                     `17` = "Hedge_Rows",
-                     `18` = "Disturbance",
-                     `19` = "Open_Cliff_Talus",
-                     `20` = "Alvar",
-                     `21` = "Sand_Barren_Dune",
-                     `22` = "Open_Tallgrass_Prairie",
-                     `23` = "Tallgrass_Savannah",
-                     `24` = "Tallgrass_Woodland",
-                     `25` = "Sand_Gravel_Mine_Tailings_Extraction",
-                     `26` = "Bedrock",
-                     `27` = "Communit_Infrastructure",
-                     `28` = "Agriculture_Undifferentiated_Rural_Land_Use",
-                     `157` = "Other",
-                     `247` = "Cloud_Shadow")
-
-# Attach levels (lookup table)
-levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
-                                     class = unname(landcover_codes))
-
-# 6. Forest age in 2019
-rast(paste0(wd, "/metrics/other/forest_age_2019.tif")) %>%
-      terra::project(epsg, method = "near") -> forest_age_2019
-
-# 7. Forest fire between 1985-2020
-rast(paste0(wd, "/metrics/other/forest_fire_1985_2020.tif")) %>%
-      terra::project(epsg, method = "near") -> forest_fire_1985_2020
-
-# 8. Forest harvest between 1985-2020
-rast(paste0(wd, "/metrics/other/forest_harvest_1985_2020.tif")) %>%
-      terra::project(epsg, method = "near") -> forest_harvest_1985_2020
-
-
+# # 4. Ecoforest polygons (fri)
+# st_read(paste0(wd, "/shp/PolygonForest.shp"), quiet = T) %>%
+#   rowid_to_column("id") %>%
+#   st_transform(epsg) -> fri_polygons
+# 
+# # 5. Landcover
+# rast(paste0(wd, "/metrics/other/landcover.tif")) %>%
+#       terra::project(epsg, method = "near") -> landcover
+# 
+# landcover_codes <- c(`1` = "Clear_Open_Water",
+#                      `2` = "Turbid_Water",
+#                      `3` = "Shoreline",
+#                      `4` = "Mudflats",
+#                      `5` = "Marsh",
+#                      `6` = "Swamp",
+#                      `7` = "Fen",
+#                      `8` = "Bog",
+#                      `10` = "Heath",
+#                      `11` = "Sparse_Treed",
+#                      `12` = "Treed_Upland",
+#                      `13` = "Deciduous_Treed",
+#                      `14` = "Mixed_Treed",
+#                      `15` = "Coniferous_Treed",
+#                      `16` = "Plantations_Treed_Cultivated",
+#                      `17` = "Hedge_Rows",
+#                      `18` = "Disturbance",
+#                      `19` = "Open_Cliff_Talus",
+#                      `20` = "Alvar",
+#                      `21` = "Sand_Barren_Dune",
+#                      `22` = "Open_Tallgrass_Prairie",
+#                      `23` = "Tallgrass_Savannah",
+#                      `24` = "Tallgrass_Woodland",
+#                      `25` = "Sand_Gravel_Mine_Tailings_Extraction",
+#                      `26` = "Bedrock",
+#                      `27` = "Communit_Infrastructure",
+#                      `28` = "Agriculture_Undifferentiated_Rural_Land_Use",
+#                      `157` = "Other",
+#                      `247` = "Cloud_Shadow")
+# 
+# # Attach levels (lookup table)
+# levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
+#                                      class = unname(landcover_codes))
+# 
+# # 6. Forest age in 2019
+# rast(paste0(wd, "/metrics/other/forest_age_2019.tif")) %>%
+#       terra::project(epsg, method = "near") -> forest_age_2019
+# 
+# # 7. Forest fire between 1985-2020
+# rast(paste0(wd, "/metrics/other/forest_fire_1985_2020.tif")) %>%
+#       terra::project(epsg, method = "near") -> forest_fire_1985_2020
+# 
+# # 8. Forest harvest between 1985-2020
+# rast(paste0(wd, "/metrics/other/forest_harvest_1985_2020.tif")) %>%
+#       terra::project(epsg, method = "near") -> forest_harvest_1985_2020
 
 
 
-# CLIP ALL DATA FOR TESTING #
-ctg %<>%
-  st_filter(subset_area)
 
-metrics %<>%
-  crop(subset_area)
+
+# # CLIP ALL DATA FOR TESTING #
+# ctg %<>%
+#   st_filter(subset_area)
+# 
+# metrics %<>%
+#   crop(subset_area)
+# 
+# masks %<>%
+#   map(crop, subset_area)
+# 
+# fri_polygons %<>%
+#   st_filter(subset_area)
+# 
+# landcover %<>%
+#   crop(subset_area)
+# 
+# forest_age_2019 %<>%
+#   crop(subset_area)
+# 
+# forest_fire_1985_2020 %<>%
+#   crop(subset_area)
+# 
+# forest_harvest_1985_2020 %<>%
+#   crop(subset_area)
+# 
+# # SAVE ALL DATA FOR TESTING #
+# subset_area %>%
+#    saveRDS(paste0(wd, "/data_temp/subset_area.rds"))
+# 
+# ctg %>%
+#   saveRDS(paste0(wd, "/data_temp/ctg.rds"))
+# 
+# metrics %>%
+#   saveRDS(paste0(wd, "/data_temp/metrics.rds"))
+# 
+# fri_polygons %>%
+#   saveRDS(paste0(wd, "/data_temp/fri_polygons.rds"))
+# 
+# landcover %>%
+#   saveRDS(paste0(wd, "/data_temp/landcover.rds"))
+# 
+# forest_age_2019 %>%
+#   saveRDS(paste0(wd, "/data_temp/forest_age_2019.rds"))
+# 
+# forest_fire_1985_2020 %>%
+#   saveRDS(paste0(wd, "/data_temp/forest_fire_1985_2020.rds"))
+# 
+# forest_harvest_1985_2020 %>%
+#   saveRDS(paste0(wd, "/data_temp/forest_harvest_1985_2020.rds"))
+
+
+
+
+
+# READ ALL DATA FOR TESTING #
+subset_area <- readRDS(paste0(wd, "/data_temp/subset_area.rds")) 
 
 masks %<>%
   map(crop, subset_area)
 
-fri_polygons %<>%
-  st_filter(subset_area)
+ctg <- readRDS(paste0(wd, "/data_temp/ctg.rds"))
 
-landcover %<>%
-  crop(subset_area)
+metrics <- readRDS(paste0(wd, "/data_temp/metrics.rds"))
 
-forest_age_2019 %<>%
-  crop(subset_area)
+fri_polygons <- readRDS(paste0(wd, "/data_temp/fri_polygons.rds"))
 
-forest_fire_1985_2020 %<>%
-  crop(subset_area)
+landcover <- readRDS(paste0(wd, "/data_temp/landcover.rds"))
 
-forest_harvest_1985_2020 %<>%
-  crop(subset_area)
+forest_age_2019 <- readRDS(paste0(wd, "/data_temp/forest_age_2019.rds"))
+
+forest_fire_1985_2020 <- readRDS(paste0(wd, "/data_temp/forest_fire_1985_2020.rds"))
+
+forest_harvest_1985_2020 <- readRDS(paste0(wd, "/data_temp/forest_harvest_1985_2020.rds"))
 ```
+
+# **1** Introduction {-#introduction}
+In recent years, many Canadian provinces have acquired airborne lidar data covering a large part of their territory. This technology makes it possible to redefine the description of forest attributes. Indeed, numerous initiatives have been carried out since the dissemination and democratization of lidar data and its derivative products.
+
+## **1.1** Objective {-#introduction_objective}
+The objective of this project is to automatically generate polygons that describe the forest stand. Both the delineation and description are done automatically through a series of steps that are described in the document. This project is a continuation of Ethan Berman's work at the University of British Columbia, which was conducted in 2023. Details are available on this page : https://bermane.github.io/ontario-inventory/index.html. The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available here: https://github.com/metafor-ulaval/eFRItools. All the functions can be used for other purposes that concern automated forest stand segmentation and forest attribute characterization.
+
+## **1.2** Study area {-#introduction_studyarea}
+The study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous.
+
+```{r Introduction study area, echo=FALSE, message=FALSE, warning=FALSE}
+ctg %>%
+  st_geometry() %>%
+  st_buffer(10) %>%
+  st_union() %>%
+  st_buffer(-10) %>% 
+  st_transform(4326) -> area_clean
+
+area_clean %>% 
+  st_bbox() -> bbox
+
+ggplot() +
+  suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
+  geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) +
+  theme_bw()
+```
+
+## **1.3** Step {-#introduction_steps}
+The steps for generating ecoforest polygons are as follows:
+
+1. [Segmentation based on lidar metrics (section 2)](#segmentation)
+
+2. Extrapolation of forest composition variables using a k-nearest neighbor (kNN) imputation algorithm (section 3): 
+
+    * Leading species : LEADSP
+
+    * Second species : SECSP
+
+    * IThree functional group class : FUNCTIONAL_GROUP_3
+
+    * Five functional group class : FUNCTIONAL_GROUP_5
+
+3. Construction of the attribute table to obtain the following attributes, for each polygon forest stand (section 4):
+
+    * Source of data : SOURCE
+
+    * Year of produced data : YRSOURCE
+
+    * Area : AREA
+
+    * Perimeter : PERIMETER  
+
+    * Proportion forested : PROPFORESTED   
+
+    * Most frequent landcover type : POLYTYPE
+
+    * Most frequent landcover proportion : POLYTYPEPROP
+
+    * Forest age : AGE
+
+    * Year of last perturbation : YRDEP
+
+    * Type of last perturbation : DEPTYPE
+
+    * Proportion of last perturbation : DEPPROP
+
+    * Year of most widespread harvest : YRHARVEST
+
+    * Proportion of most widespread harvest : HARVESTPROP
+
+    * Year of most widespread forest fire : YRFIRE
+
+    * Proportion of most widespread forest fire : FIREPROP
+
+    * Merchantable volume per hectare : VMERCH_HA_MEDIAN
+
+    * Quadratic mean  diameter at breast height : QMDBH_MEDIAN
+
+    * Number of stems with DBH > 7.1 cm per ha : DENS_MEDIAN
+
+    * Average tree height weighted by basal area : LOR_MEDIAN
+
+    * Basal area,	tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN
+
+    * Height of forest stand based on median z_p95 : HEIGHT
+
+    * Canopy cover based on median z_above2 : CANOPY_COVER
+
+    * Forest density based on median fractional cover between 50 and 200 cm : DENSITY
+
+    * Median slope : SLOPE
+
+    * Soil moisture based on SAGA wetness index : MOISTURE
+
+\newpage
 
 # **2** Segmentation {-#segmentation}
 
 ## **2.1** Segmentation basics {-#segmentation_basics}
 The first step is to create polygon that will represent homogeneous forest stand. To perform this task, the Generic Region Merging tools from Orfeo ToolBox (OTB) is used. Three method can be used in this tools : Baatz & Schape, Eclidean Distance, and Full Lambda. For this work, the Baatz & Schape criterion method was used. This algorithm is the same used in the Multi-resolution Segmentation by the well known software eCognition and thus made it freely accessible. This algortihm works by merging iteratively small region together based on dissimilarity of spectral values. There is three parameters that control size and shape of resulting segments : threshold, weight of spectral homogeneity and weight of spatial homogeneity. Here is how these parameters influence segmentation:
-*The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :
-**Small threshold → fine segmentation (many small regions)
-**Large threshold → coarse segmentation (fewer, larger regions)
 
-*The weight of spectral homogeneity gives to spectral similarity (pixel values, band means) when deciding whether regions should merge :
-**If high → segmentation will mostly respect spectral values
-**If low → spectral similarity matters little, other criteria (shape) dominate
+* The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :
 
-*The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :
-**If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker
-**If low → region boundaries will mostly follow spectral homogeneity
+    * Small threshold → fine segmentation (many small regions)
 
+    * Large threshold → coarse segmentation (fewer, larger regions)
+
+* The weight of spectral homogeneity gives to spectral similarity (pixel values, band means) when deciding whether regions should merge :
+
+    * If high → segmentation will mostly respect spectral values
+
+    * If low → spectral similarity matters little, other criteria (shape) dominate
+
+* The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :
+
+    * If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker
+
+    * If low → region boundaries will mostly follow spectral homogeneity
+
+Segmentation parameters were calibratedby conducting a [sensitivity analysis](link here) for 5 differents models with contrasted input metrics [SHOW DIFFERENT MODELS ?] to produce polygon networks of comparable cartographic complexity, defined by polygon size distribution, shape complexity, and polygon density. These criteria were used to ensure that automated delineations remained operationally plausible and comparable to conventional stand maps.
 
 If you need more details about parameters, eCognition made this [video](https://www.youtube.com/watch?v=tt53hoRAw9Q) to explain parameter selection for their Multi-resolution Segmentation algorithm.
 
 ## **2.2** Segmentation inputs {-#segmentation_inputs}
+The inputs consist of lidar metrics computed from raw LiDAR data. LiDAR data have been acquired with a [INSERT ALL SPECS HERE]. Points density is 40 points/m².
+
 For this step, the following metrics are used for polygon segmentation :
-*z_p95 → Height of 95th percentiles of returns above 1.3 m
-*z_cv → Coefficient of variation of returns above 1.3 m
-*z_above2 → Canopy cover of first returns above 2 m
-*sagawi → Saga wetness index
-*fractional_cover_05_2 → Number of returns between 0.5 m and 2 m divided by all returns below 2 m
+* z_p95 → Height of 95th percentiles of returns above 1.3 m
+* z_cv → Coefficient of variation of returns above 1.3 m
+* z_above2 → Canopy cover of first returns above 2 m
 
 ```{r Show segmentation data 1, echo=FALSE, message=FALSE, warning=FALSE}
 for(metric in segmentation_metrics){
-  print(ggplot() +
+  assign(metric,
+         ggplot() +
           geom_spatraster(data = metrics[[metric]] %>% crop(subset_area)) +
           scale_fill_whitebox_c(palette = "muted") +
           theme_void() +
           labs(fill = metric))
 }
+
+z_p95 | z_cv | z_above2
 ```
 
-These metrics are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. The metrics used will reflect how the segmentation polygons are divided. Thus, if a spectral index such as NDVI is used, the polygons will tend to separate forest stands with contrasting spectral signatures from these indices. For effective segmentation, it is recommended to use metrics that provide different information. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.
+These metrics are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. The metrics used will reflect how the segmentation polygons are divided. Thus, if a spectral index such as NDVI is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.
 
-An additional data used in segmentation are masks where segmentation is therefore not performed. These are typically bodies of water and roads. 
+An additional data used in segmentation are masks where segmentation is therefore not performed. These are typically waterbodies and roads. 
 
 ```{r Show segmentation data 2, echo=FALSE, message=FALSE, warning=FALSE}
 ggplot() +
@@ -249,12 +399,14 @@ ggplot() +
   theme_void()
 ```
 
-```{r Segmentation, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Segmentation, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+# readRDS("D:/grm_parametrization/results/best_parameters_all.rds")
+
 eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
                   masks = masks,
-                  thresh = 47,
-                  spec = 0.6,
-                  spat = 0.6,
+                  thresh = 50,
+                  spec = 0.9,
+                  spat = 1,
                   method = "bs",
                   clean_nodata = TRUE,
                   output_path = segmentation_wd,
@@ -264,13 +416,26 @@ eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
 segmentation %>% 
   st_write(paste0(segmentation_wd, "/data.gpkg"), 
            layer = "segmentation",
-               quiet = T)
+           quiet = T)
 ```
 
 ## **2.3** Segmentation results {-#segmentation_results}
-The segmentation result therefore produces polygons representing forest stands according to the selected metrics. These polygons can therefore be expected to represent homogeneous forest stands.
+The segmentation result therefore produces polygons representing forest stands according to the selected metrics. These polygons can therefore be expected to represent homogeneous forest stands based on choosen metrics.
 
 ```{r Segmentation results, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
+           basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
+  geom_sf(data = fri_polygons %>% 
+            st_geometry() %>% 
+            st_as_sf %>% 
+            st_filter(subset_area) %>% 
+            ms_clip(subset_area) %>% 
+            st_transform(4326), 
+          color = "white", alpha = 0, size = 0.5) +  
+  labs(title = "Forest stand inventories") +
+  theme_void() -> segmentation_results_figure_1
+
 ggplot() +
   base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
            basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
@@ -280,13 +445,19 @@ ggplot() +
             st_filter(subset_area) %>% 
             ms_clip(subset_area) %>% 
             st_transform(4326), 
-          color = "black", alpha = 0, size = 0.5) +
-  theme_void()
+          color = "white", alpha = 0, size = 0.5) +
+  labs(title = "Automated segmented forest stand") +
+  theme_void() -> segmentation_results_figure_2
+
+segmentation_results_figure_1 | segmentation_results_figure_2
+
 ```
 
-The polygons produced by the segmentation can be now compared to forest inventory ressources polygons. Histograms are used to assess whether the distribution of the size and shape of the segmentation polygons are equivalent to those of the forest inventory ressources polygons. Area in hectare are use for size and shape index, which is determine by this formula : [perimeter/(2*sqrt(pi*area))] is use to assess shape.
+The automated segmented forest stand can be now compared to forest stand inventories. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the [sensitivity analysis](link here), the difference between distributions are supposed to be minimal and therefore the automated segmented forest stand should represent operationnaly plausible forest stand that mimic polygons of the forest stand inventorie.
 
-```{r Segmentation distribution results results, echo=FALSE, message=FALSE, warning=FALSE}
+Area in hectare are use for size and shape index, which is determine by this formula : [perimeter/(2*sqrt(pi*area))] is use to assess shape.
+
+```{r Segmentation distribution results, echo=FALSE, message=FALSE, warning=FALSE}
 bind_rows(fri_polygons %>% st_geometry() %>% st_as_sf() %>% mutate(type = "fri"),
           segmentation %>% st_geometry() %>% st_as_sf() %>% mutate(type = "grm")) %>% 
   mutate(area = st_area(.) %>% as.numeric(),
@@ -295,30 +466,67 @@ bind_rows(fri_polygons %>% st_geometry() %>% st_as_sf() %>% mutate(type = "fri")
          perimeter_area_ratio = perimeter/area,
          shape_index = perimeter/(2*sqrt(pi*area))) -> segmentation_results
 
-segmentation_results %>% 
+segmentation_results %>%
   ggplot() +
-  geom_histogram(aes(x = shape_index,
-                     y = stat(count / sum(count))*100,
-                     color = type),
-                 binwidth = 0.1,
-                 fill="white", 
-                 alpha=0.5, 
-                 position="identity") +
-  coord_cartesian(xlim = c(0, 10))
+  # geom_histogram(aes(x = area_ha,
+  #                    y = after_stat(density),
+  #                    color = type),
+  #                bins = 100,
+  #                alpha = 0.3) +
+  geom_density(aes(x = area_ha,
+                   color = type),
+               linewidth = 1, 
+               show.legend = FALSE) +
+  scale_color_manual(values = c("#0B4D00", "#D81B60")) +
+  labs(x = "Polygon area (ha)",
+       y = "Density") +
+  theme_bw() -> segmentation_results_density_1
 
-segmentation_results %>% 
+segmentation_results %>%
   ggplot() +
-  geom_histogram(aes(area_ha,
-                     y = stat(count / sum(count))*100, 
-                     color = type),
-                 binwidth = 1,
-                 fill="white", 
-                 alpha=0.5, 
-                 position="identity") +
-  coord_cartesian(xlim = c(0, 30))
+  # geom_histogram(aes(x = shape_index,
+  #                    y = after_stat(density),
+  #                    color = type),
+  #                bins = 100,
+  #                alpha = 0.3) +
+  geom_density(aes(x = shape_index,
+                   color = type),
+               linewidth = 1) +
+  scale_color_manual(values = c("#0B4D00", "#D81B60"),
+                     labels = c("Forest stand inventories", "Automated segmented forest stand")) +
+  labs(x = "Shape index",
+       y = "Density",
+       color = "Stand type") +
+  theme_bw() +
+  theme(legend.position = "bottom")-> segmentation_results_density_2
+
+segmentation_results_density_1 / segmentation_results_density_2
 ```
+\newpage
 
-```{r Imputation, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+# **3** Imputation {-#imputation}
+
+## **3.1** Imputation basics {-#imputation_basics}
+Some attributes can't be directly extracted from a raster layer containing the information. For example, there is still no layer describing tree species across Ontario. For this tasks, k-nearest neighbor (kNN) imputation can be used to infer what would be some attributes (REF). This widely used method use similarity between variables from two different datasets. In order to fill a missing data, the algorithm identifies the k most similar observations based on distance of common variables. The missing values are then estimated using the corresponding values from these neighbors, often by taking their mean (for numerical variables) or mode (for categorical variables).
+
+To identify the most suitable variables for kNN imputation, a performance analysis was conducted using all possible combinations of five uncorrelated variables. This analysis evaluated, for each combination, how accurately the imputed values matched the observed values of the forest polygon inventory. Therefore, the optimal combination of metrics depends on the specific variable being imputed :
+
+* Imputed leading species : dem, rumple_index, z_kurt, z_p95, B6
+
+* Imputed second species : dem, rumple_index, sagawi, z_p95, NDVI
+
+* Imputed three functional group class : dem, relative_topographic_position_100m, rumple_index, z_p95, B6
+
+* Imputed five functional group class : dem, rumple_index, slope, z_p95, B6
+
+In addition, for each of these 4 variables, the X and Y coordinates of polygon centroid have been used for the imputation.
+
+```{r Imputation, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+fri_polygons_species_prop <- mutate_species_prop(fri_polygons["SPCOMP"], "SPCOMP")
+fri_polygons_species_order <- mutate_species_order(fri_polygons_species_prop, "SPCOMP")
+fri_polygons_forest_type <- mutate_forest_type(fri_polygons_species_order)
+fri_polygons_functional_group <- mutate_functional_group(fri_polygons_forest_type)
+
 eFRI_imputation(segmentation = segmentation,
                 segmentation_id_field = "id",
                 forest_polygon = fri_polygons,
@@ -337,13 +545,122 @@ eFRI_imputation(segmentation = segmentation,
 segmentation_imputation %>% 
   st_write(paste0(segmentation_wd, "/data.gpkg"), 
            layer = "segmentation_imputation",
-               quiet = T)
+           quiet = T)
 ``` 
 
-```{r eFRI attibute table, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+## **3.1** Imputation results {-#imputation_results}
+The table below shows the accuracy of each of the imputed variables :
+
+```{r Imputation results 1, echo=FALSE, message=FALSE, warning=FALSE}
+best_models %>% 
+  mutate(accuracy = round(accuracy*100, 2))  %>% 
+  dplyr::select("Target variable" = "target_var",
+                "Used metrics" = "knn_vars",
+                "Accuracy (%)" = "accuracy") -> best_models_clean
+
+knitr::kable(best_models_clean)
+``` 
+
+The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated segmentation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial gorup class shown below.
+
+```{r Imputation results 2, echo=FALSE, message=FALSE, warning=FALSE}
+fri_polygons_functional_group %>% 
+  ms_clip(subset_area) %>% 
+  mutate(type = "Forest polygon") -> imputation_data_1
+
+segmentation_imputation %>% 
+  mutate(type = "Automated segmentation") -> imputation_data_2
+
+bind_rows(imputation_data_1,
+          imputation_data_2) -> imputation_data
+
+ggplot() +
+  geom_sf(data = imputation_data, aes(fill = FUNCTIONAL_GROUP_3)) + 
+  facet_wrap(~type) +
+  labs(fill = "Three functional group class") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+``` 
+
+\newpage
+
+# **4** Attribute table {-#attribute_table}
+The last and more important step is to build attribute table with all pertinent attributes that a forest inventory have. Some of the attributes are derived from external layer. The following layers were use :
+*Landcover
+This layer come from Ontario Land Cover Compilation Version 2.0. This landcover layer was made from numerous Landsat-7 ETM and Landsat-5 TM satellite images acquired between 1999 and 2011. A mix of supervised and unsupervised classification was use to produce the 27 land cover type.
+
+```{r eFRI attibute table, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  geom_spatraster(data = landcover) +
+  scale_fill_whitebox_c(palette = "muted") +
+  theme_void() +
+  labs(fill = "Landcover type")
+```
+
+The following layers are part of the National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada and are produced by Canadian Forest Service. Only three layer were used to produce attribute table of segmented polygons :
+*Forest age in 2019
+https://opendata.nfis.org/mapserver/nfis-change_eng.html
+
+*Forest fires from 1985 to 2020
+
+*Forest harvests from 1985 to 2020
+
+
+Here are listed the extracted attributes : 
+* Source of data : SOURCE
+
+* Year of produced data : YRSOURCE
+
+* Area : AREA
+
+* Perimeter : PERIMETER  
+
+* Proportion forested : PROPFORESTED   
+
+* Most frequent landcover type : POLYTYPE
+
+* Most frequent landcover proportion : POLYTYPEPROP
+
+* Forest age : AGE
+
+* Year of last perturbation : YRDEP
+
+* Type of last perturbation : DEPTYPE
+
+* Proportion of last perturbation : DEPPROP
+
+* Year of most widespread harvest : YRHARVEST
+
+* Proportion of most widespread harvest : HARVESTPROP
+
+* Year of most widespread forest fire : YRFIRE
+
+* Proportion of most widespread forest fire : FIREPROP
+
+* Merchantable volume per hectare : VMERCH_HA_MEDIAN
+
+* Quadratic mean diameter at breast height : QMDBH_MEDIAN
+
+* Number of stems with DBH > 7.1 cm per ha : DENS_MEDIAN
+
+* Average tree height weighted by basal area : LOR_MEDIAN
+
+* Basal area,	tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN
+
+* Height of forest stand based on median z_p95 : HEIGHT
+
+* Canopy cover based on median z_above2 : CANOPY_COVER
+
+* Forest density based on median fractional cover between 50 and 200 cm : DENSITY
+
+* Median slope : SLOPE
+
+* Soil moisture based on SAGA wetness index : MOISTURE
+
+```{r eFRI attibute table, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
 eFRI_attribute_table(segmentation = segmentation_imputation,
                      metrics = metrics,
-                     summary_metrics = summary_metrics,
+                     summary_metrics = paste0(summary_metrics, "_median"),
                      landcover = landcover,
                      forest_fire = forest_fire_1985_2020,
                      forest_harvest = forest_harvest_1985_2020,
@@ -352,5 +669,59 @@ eFRI_attribute_table(segmentation = segmentation_imputation,
 segmentation_data %>% 
   st_write(paste0(segmentation_wd, "/data.gpkg"), 
            layer = "segmentation_data",
-               quiet = T)
+           quiet = T)
 ```
+
+## **4.1** Attribute table results {-#attribute_table_results}
+The next figures show what can look like some of theses attibutes.
+
+```{r eFRI attibute table 1, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  geom_sf(data = segmentation_data, aes(fill = AGE)) + 
+  labs(fill = "Forest age") +
+  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+  
+ggplot() +
+  geom_sf(data = segmentation_data, aes(fill = YRDEP)) + 
+  labs(fill = "Year of last perturbation") +
+  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+ggplot() +
+  geom_sf(data = segmentation_data, aes(fill = VMERCH_HA_MEDIAN)) + 
+  labs(fill = "Merchantable volume per hectare") +
+  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+ggplot() +
+  geom_sf(data = segmentation_data, aes(fill = QMDBH_MEDIAN)) + 
+  labs(fill = "Quadratic mean diameter at breast height") +
+  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+ggplot() +
+  geom_sf(data = segmentation_data, aes(fill = HEIGHT)) + 
+  labs(fill = "Height of forest stand based on median z_p95") +
+  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+ggplot() +
+  geom_sf(data = segmentation_data, aes(fill = SLOPE)) + 
+  labs(fill = "Median slope") +
+  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+ggplot() +
+  geom_sf(data = segmentation_data, aes(fill = MOISTURE)) + 
+  labs(fill = "Soil moisture based on SAGA wetness index") +
+  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+``` 

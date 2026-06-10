@@ -567,7 +567,7 @@ server <- function(input, output, session) {
 
     eFRI_attribute_table(segmentation = segmentation_imputed,
                          metrics = metrics,
-                         summary_metrics = input$summary_metrics,
+                         summary_metrics = paste0(input$summary_metrics, "_median"),
                          landcover = landcover,
                          forest_fire = forest_fire_1985_2020,
                          forest_harvest = forest_harvest_1985_2020,
