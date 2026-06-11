@@ -838,7 +838,7 @@ for(s in sites){
         "/ rmse :", results_rf_best_model$rmse,
         "/ mae :", results_rf_best_model$mae,
         "/ variables used :", results_rf_best_model$variables_used, "\n")
-    cat("best model params :",
+    cat("\nbest model params :",
         " r2 :", results_rf_best_model$r2,
         "/ rmse :", results_rf_best_model$rmse,
         "/ mae :", results_rf_best_model$mae,
