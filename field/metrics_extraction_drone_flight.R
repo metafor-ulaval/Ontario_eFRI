@@ -8,7 +8,7 @@ library(lidRmetrics)
 library(future)
 library(RSAGA)
 library(whitebox)
-RSAGA::rsaga.env(path = "C:/Logiciels/saga-8.3.0_x64/saga-8.3.0_x64") -> env_saga
+RSAGA::rsaga.env(path = "C:/Logiciels/saga-9.12.5_msw") -> env_saga
 
 
 
@@ -107,7 +107,7 @@ for(sub_sector in paste0("S", 1:10)){
   read <- reader()
 
   dem_1m <- lasR::dtm(1,
-                      ofile = "./dem_temp_1m.tif")
+                      ofile = "./dem.tif")
 
   # Apply pipe
   lasR::exec(read + dem_1m,
@@ -115,192 +115,105 @@ for(sub_sector in paste0("S", 1:10)){
              progress = TRUE,
              ncores = nested(ncores = ceiling((ncores()-4)/4L), ncores2 = 4L))
 
-  # Rewrite dem
-  rast("./dem_temp_1m.tif") %>%
-    writeRaster("./dem_1m.tif")
-
-  file.remove("./dem_temp_1m.tif")
 }
 
 
 
 
 
-# 🟡 DEM buffered ----
-for(sub_sector in paste0("S", 1:10)){
+# 🟡 Other topo ----
+x <- "D:/00_Ontario_eFRI/random_forest/metriques/S6"
 
-  # Message
-  cat(paste0("Computing dem buffered for sector : ", sub_sector, "\n"))
+list.files("D:/00_Ontario_eFRI/random_forest/metriques", full.names = T) %>%
+  map(function(x){
 
-  # Setwd
-  setwd(paste0("D:/dossier_remise_fin_contrat_PY/ontario/metriques/", sub_sector, "/metrics"))
+    # Dem
+    rast(paste0(x, "/metrics/temp/dem.tif")) %>% terra::focal(w = 21, fun = "mean") -> dem
+    names(dem) <- "dem"
+    dem %>% writeRaster(paste0(x, "/metrics/dem.tif"))
 
-  rast("./dem_1m.tif") -> dem
-  dem %>%
-    terra::focal(w = 21,
-                 fun = "mean",
-                 na.policy = "omit",
-                 na.rm = TRUE,
-                 expand = TRUE) -> dem_buffered
+    # Slope
+    rast(paste0(x, "/metrics/temp/dem.tif")) %>% terrain(v = "slope", unit = "degrees") -> slope
 
-  names(dem_buffered) <- "dem_buffered"
+    names(slope) <- "slope"
+    slope %>% writeRaster(paste0(x, "/metrics/temp/slope.tif"))
 
-  dem_buffered %>%
-    writeRaster("./dem_buffered.tif")
+    slope %>% terra::focal(w = 21, fun = "mean") -> slope
+    names(slope) <- "slope"
+    slope %>% writeRaster(paste0(x, "/metrics/slope.tif"))
 
-}
+    # Aspect
+    rast(paste0(x, "/metrics/temp/dem.tif")) %>% terrain(v = "aspect", unit = "degrees") -> aspect
 
+    names(aspect) <- "aspect"
+    aspect %>% writeRaster(paste0(x, "/metrics/temp/aspect.tif"))
 
+    sin(aspect*pi/180) -> eastness
+    names(eastness) <- "eastness"
+    eastness %>% writeRaster(paste0(x, "/metrics/temp/eastness.tif"))
 
+    eastness %>% terra::focal(w = 21, fun = "mean") -> eastness
+    names(eastness) <- "eastness"
+    eastness %>% writeRaster(paste0(x, "/metrics/eastness.tif"))
 
+    cos(aspect*pi/180) -> northness
+    names(northness) <- "northness"
+    northness %>% writeRaster(paste0(x, "/metrics/temp/northness.tif"))
 
+    northness %>% terra::focal(w = 21, fun = "mean") -> northness
+    names(northness) <- "northness"
+    northness %>% writeRaster(paste0(x, "/metrics/northness.tif"))
 
+    # Breach depression
+    whitebox::wbt_breach_depressions_least_cost(dem = paste0(x, "/metrics/temp/dem.tif"),
+                                                output = paste0(x, "/metrics/temp/dem_breach_lc.tif"),
+                                                dist = 50,
+                                                flat_increment = 0.0001,
+                                                fill = FALSE)
 
-# 🟡 Slope ----
-for(sub_sector in paste0("S", 1:10)){
+    whitebox::wbt_breach_depressions(dem = paste0(x, "/metrics/temp/dem_breach_lc.tif"),
+                                     output =  paste0(x, "/metrics/temp/dem_breach_f.tif"),
+                                     flat_increment = 0.0001,
+                                     fill_pits = TRUE)
 
-  # Message
-  cat(paste0("Computing slope for sector : ", sub_sector, "\n"))
+    # TWI
+    whitebox::wbt_fd8_flow_accumulation(dem = paste0(x, "/metrics/temp/dem_breach_f.tif"),
+                                        output = paste0(x, "/metrics/temp/facc_d8.tif"))
 
-  # Setwd
-  setwd(paste0("D:/dossier_remise_fin_contrat_PY/ontario/metriques/", sub_sector, "/metrics"))
+    whitebox::wbt_slope(dem = paste0(x, "/metrics/temp/dem_breach_f.tif"),
+                        output = paste0(x, "/metrics/temp/slope_wbt.tif"))
 
-  rast("./dem_1m.tif") -> dem
-  dem %>%
-    terrain(v = "slope",
-            unit = "radians") %>%
-    tan() %>%
-    {.*100} -> slope
+    whitebox::wbt_wetness_index(sca = paste0(x, "/metrics/temp/facc_d8.tif"),
+                                slope = paste0(x, "/metrics/temp/slope_wbt.tif"),
+                                output = paste0(x, "/metrics/temp/twi.tif"))
 
-  slope %>%
-    writeRaster("./slope.tif")
-
-}
-
-
-
-
-
-# 🟡 Slope buffered ----
-for(sub_sector in paste0("S", 1:10)){
-
-  # Message
-  cat(paste0("Computing slope buffered for sector : ", sub_sector, "\n"))
-
-  # Setwd
-  setwd(paste0("D:/dossier_remise_fin_contrat_PY/ontario/metriques/", sub_sector, "/metrics"))
-
-  rast("./slope.tif") -> slope
-  slope %>%
-    terra::focal(w = 21,
-                 fun = "mean",
-                 na.policy = "omit",
-                 na.rm = TRUE,
-                 expand = TRUE) -> slope_buffered
-
-  names(slope_buffered) <- "slope_buffered"
-
-  slope_buffered %>%
-    writeRaster("./slope_buffered.tif")
-
-}
-
-
-
-
-
-
-
-# 🟡 Merge DEM ----
-for(sub_sector in paste0("S", 1:10)){
-
-  # Message
-  cat(paste0("Merging DEM for sector : ", sub_sector, "\n"))
-
-  # Setwd
-  setwd(paste0("F:/Ontario_eFRI/02_donnees_traitees/", sub_sector, "/metrics"))
-
-  rast("./dem_1m.tif") -> dem_1m
-
-  rast("./dem_large_1m.tif") -> dem_large_1m
-
-  dem_large_1m %>%
-    crop(dem_1m) %>%
-    mask(dem_1m) -> dem_large_1m_crop
-
-  global((dem_large_1m_crop - dem_1m),
-         "mean",
-         na.rm = TRUE) %>%
-    pull(mean) -> mean
-
-  dem_1m + mean -> dem_1m_corrected
-
-  project(dem_1m_corrected, dem_large_1m) -> dem_1m_corrected
-
-  cover(dem_1m_corrected, dem_large_1m) %>%
-    writeRaster("./dem_large_merged_1m.tif")
-
-}
-
-
-
-
-
-
-# 🟡 SAGAWI ----
-# sub_sector <- "S1"
-# dem <- "dem_1m.tif"
-
-for(sub_sector in paste0("S", 6)){
-
-  # Message
-  cat(paste0("Computing SAGAWI for sector : ", sub_sector, "\n"))
-
-  for(dem in c("dem_1m.tif",
-               "dem_large_1m.tif",
-               "dem_large_merged_1m.tif")){
-
-    cat(paste0("Dem used : ", dem, "\n"))
-
-    # Setwd
-    setwd(paste0("F:/Ontario_eFRI/02_donnees_traitees/", sub_sector, "/metrics"))
+    rast(paste0(x, "/metrics/temp/twi.tif")) %>% terra::focal(w = 21, fun = "mean") -> twi
+    names(twi) <- "twi"
+    twi %>% writeRaster(paste0(x, "/metrics/twi.tif"))
 
     # SAGAWI
-    wbt_feature_preserving_smoothing(dem = dem,
-                                     output = "./dem_smoothed_1m.tif")
-
-    wbt_breach_depressions_least_cost(dem = "./dem_smoothed_1m.tif",
-                                      output = "./dem_breach_lc_1m.tif",
-                                      dist = 50,
-                                      flat_increment = 0.0001,
-                                      fill = FALSE)
-
-    wbt_breach_depressions(dem = "./dem_breach_lc_1m.tif",
-                           output = "./dem_breach_f_1m.tif",
-                           flat_increment = 0.0001,
-                           fill_pits = TRUE)
-
-    sagawi_temp_output <- gsub("dem", dem, replacement = "sagawi_temp")
-
-    RSAGA::rsaga.wetness.index(in.dem = "./dem_breach_f_1m.tif",
-                               out.wetness.index = sagawi_temp_output,
+    RSAGA::rsaga.wetness.index(in.dem = paste0(x, "/metrics/temp/dem_breach_f.tif"),
+                               out.wetness.index = paste0(x, "/metrics/temp/sagawi.tif"),
                                suction = 10,
                                area.type = "absolute",
                                slope.type = "local",
                                env = env_saga)
 
-    rast(sagawi_temp_output) -> sagawi_temp
+    rast(paste0(x, "/metrics/temp/sagawi.tif")) %>% terra::focal(w = 21, fun = "mean") -> sagawi
+    names(sagawi) <- "sagawi"
+    sagawi %>% writeRaster(paste0(x, "/metrics/sagawi.tif"))
 
-    crs(sagawi_temp) <- paste0("epsg:", crs(rast(dem), describe = TRUE)$code)
+    # Relative topographic position
+    weiss_topographic_position_index(dem = rast(paste0(x, "/metrics/temp/dem_breach_f.tif")),
+                                     inner_radius = 25,
+                                     outer_radius = 50,
+                                     round = FALSE) -> tpi
 
-    sagawi_output <- gsub("dem", dem, replacement = "sagawi")
+    names(tpi) <- "tpi"
+    tpi %>% writeRaster(paste0(x, "/metrics/temp/tpi.tif"))
 
-    sagawi_temp %>%
-      writeRaster(sagawi_output)
+    tpi %>% terra::focal(w = 21, fun = "mean") -> tpi
+    names(tpi) <- "tpi"
+    tpi %>% writeRaster(paste0(x, "/metrics/tpi.tif"))
 
-    file.remove("./dem_smoothed_1m.tif",
-                "./dem_breach_lc_1m.tif",
-                "./dem_breach_f_1m.tif",
-                sagawi_temp_output)
-  }
-}
+  })

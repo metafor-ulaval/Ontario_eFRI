@@ -35,6 +35,7 @@
 
 # Librarie, functions and parameters ----
 library(tidyverse)
+library(tidyterra)
 library(randomForest)
 library(plotly)
 library(CAST)
@@ -42,6 +43,7 @@ library(caret)
 library(doParallel)
 library(optRF)
 library(pheatmap)
+library(sf)
 library(terra)
 library(vip)
 
@@ -49,10 +51,10 @@ filter_lidar_parameters <- function(data,
                                     radius = "1128",
                                     zmin = "NA"){
   data %>%
-    select(Name, contains(paste0("_radius_", radius, "_cm"))) %>%
-    rename_with(.fn = ~ gsub(paste0("_radius_", radius, "_cm"), "", .)) %>%
-    select(Name, contains(paste0("_zmin_", zmin, "_cm"))) %>%
-    rename_with(.fn = ~ gsub(paste0("_zmin_", zmin, "_cm"), "", .)) -> data_filtered
+    dplyr::select(Name, contains(paste0("_radius_", radius, "_cm"))) %>%
+    dplyr::rename_with(.fn = ~ gsub(paste0("_radius_", radius, "_cm"), "", .)) %>%
+    dplyr::select(Name, contains(paste0("_zmin_", zmin, "_cm"))) %>%
+    dplyr::rename_with(.fn = ~ gsub(paste0("_zmin_", zmin, "_cm"), "", .)) -> data_filtered
 
   return(data_filtered)
 }
@@ -60,8 +62,8 @@ filter_lidar_parameters <- function(data,
 filter_ufc_parameters <- function(data,
                                   radius = "1128"){
   data %>%
-    select(Name, contains(paste0("_radius_", radius))) %>%
-    rename_with(.fn = ~ gsub(paste0("_radius_", radius), "", .)) -> data_filtered
+    dplyr::select(Name, contains(paste0("_radius_", radius))) %>%
+    dplyr::rename_with(.fn = ~ gsub(paste0("_radius_", radius), "", .)) -> data_filtered
 
   return(data_filtered)
 }
@@ -69,10 +71,10 @@ filter_ufc_parameters <- function(data,
 correct_placettes_names <- function(data){
 
   data %>%
-    mutate(Name = gsub("_centre", "", Name)) %>% # enleve l'appelation centre
-    mutate(Name = gsub("X", "", Name)) %>% # enleve les X dans les noms de parcelles qui indiquent que la parcelle a due etre deplacee
-    filter(!grepl('FC', Name)) %>% # enleve la parcelle FC
-    mutate(Name = case_when(Name == 'S10_52' ~ 'S10_5', .default = Name)) -> data_corrected # corrige un nom de parcelle
+    dplyr::mutate(Name = gsub("_centre", "", Name)) %>% # enleve l'appelation centre
+    dplyr::mutate(Name = gsub("X", "", Name)) %>% # enleve les X dans les noms de parcelles qui indiquent que la parcelle a due etre deplacee
+    dplyr::filter(!grepl('FC', Name)) %>% # enleve la parcelle FC
+    dplyr::mutate(Name = case_when(Name == 'S10_52' ~ 'S10_5', .default = Name)) -> data_corrected # corrige un nom de parcelle
 
   return(data_corrected)
 }
@@ -80,12 +82,12 @@ correct_placettes_names <- function(data){
 rename_pz <- function(data){
 
   data %>%
-    rename("pz_0-0.15" = "pz_0.0.15",
-           "pz_0.15-2" = "pz_0.15.2",
-           "pz_2-5" = "pz_2.5",
-           "pz_5-10" = "pz_5.10",
-           "pz_10-20" = "pz_10.20",
-           "pz_20-30" = "pz_20.30") -> data_renamed
+    dplyr::rename("pz_0-0.15" = "pz_0.0.15",
+                  "pz_0.15-2" = "pz_0.15.2",
+                  "pz_2-5" = "pz_2.5",
+                  "pz_5-10" = "pz_5.10",
+                  "pz_10-20" = "pz_10.20",
+                  "pz_20-30" = "pz_20.30") -> data_renamed
 
   return(data_renamed)
 
@@ -93,7 +95,7 @@ rename_pz <- function(data){
 
 # Les plus complexes qui ont ete mise de cotes pour faciliter le calcul des metriques
 selected_var <- c("zcv",
-                  "zskew",
+                  # "zskew", # Retire a cause du pattern carre
                   "zq1",
                   "zq5",
                   "zq10",
@@ -113,47 +115,45 @@ selected_var <- c("zcv",
                   "zq80",
                   "zq85",
                   "zq90",
-                  "zq95",
-                  "zq99",
+                  # "zq95", # Retire a cause du pattern carre
+                  # "zq99", # Retire a cause du pattern carre
                   "pzabovemean",
                   "pzabove2",
                   "pzabove5",
-                  "zpcum1",
-                  "zpcum2",
-                  "zpcum3",
-                  "zpcum4",
-                  "zpcum5",
-                  "zpcum6",
-                  "zpcum7",
-                  "zpcum8",
-                  "zpcum9",
-                  "pz_below_0",
+                  # "zpcum1", # Retire a cause du pattern carre
+                  # "zpcum2", # Retire a cause du pattern carre
+                  # "zpcum3", # Retire a cause du pattern carre
+                  # "zpcum4", # Retire a cause du pattern carre
+                  # "zpcum5", # Retire a cause du pattern carre
+                  # "zpcum6", # Retire a cause du pattern carre
+                  # "zpcum7", # Retire a cause du pattern carre
+                  # "zpcum8", # Retire a cause du pattern carre
+                  # "zpcum9", # Retire a cause du pattern carre
+                  # "pz_below_0", # Retire a cause du pattern carre
                   "pz_0-0.15",
                   "pz_0.15-2",
                   "pz_2-5",
                   "pz_5-10",
                   "pz_10-20",
-                  "pz_20-30",
+                  # "pz_20-30", # Retire a cause du pattern carre
                   # "pz_above_30", # pz_above_30 elimine car ne contient que des 0 pour RMF
                   "ziqr",
-                  "zMADmean",
+                  # "zMADmean", # Retire a cause du pattern carre
                   "zMADmedian",
                   "CRR",
+                  # "rumple", # pas genere en buffered
                   # "zentropy", # force d'enlever zentropy car valeur manquante pour une des parcelles improductives de OVF
-                  "ufc_circle_1m_to_2m",
-                  "ufc_circle_2m_to_3m",
-                  "ufc_circle_3m_to_4m",
-                  "ufc_circle_1m_to_4m",
-                  "aspect",
+                  # "ufc_circle_1m_to_2m", # pas genere en buffered
+                  # "ufc_circle_2m_to_3m", # pas genere en buffered
+                  # "ufc_circle_3m_to_4m", # pas genere en buffered
+                  # "ufc_circle_1m_to_4m", # pas genere en buffered
                   "dem",
-                  "relative_topographic_position_60m",
-                  "relative_topographic_position_100m",
-                  "relative_topographic_position_200m",
-                  "relative_topographic_position_400m",
-                  "relative_topographic_position_800m",
-                  "sagawi",
                   "slope",
-                  "twi")
+                  "eastness",
+                  "northness",
+                  "tpi",
+                  "twi",
+                  "sagawi")
 
 # Random forest parameters
 # Hyperparameter tuning grid
@@ -180,25 +180,15 @@ setwd("D:/00_Ontario_eFRI/random_forest")
 
 # Importation et préparation des données ----
 # Donnees topo
-readRDS("./base_data/placettes_data_improductives_topo.rds") %>%
-  select(Name,
-         aspect,
-         dem,
-         relative_topographic_position_100m,
-         relative_topographic_position_200m,
-         relative_topographic_position_400m,
-         relative_topographic_position_800m,
-         relative_topographic_position_60m,
-         sagawi,
-         slope,
-         twi) -> imp_topo
-
 readRDS("./base_data/placettes_data_topo.rds") %>%
+  dplyr::select(-sector) %>%
   correct_placettes_names() %>%
-  bind_rows(imp_topo) -> topo
+  rename_with(~ sub("_mean$", "", .)) -> topo
+
 
 # Metriques lidar ufc
-readRDS("./base_data/placettes_data_improductives_topo.rds") %>%
+readRDS("./base_data/placettes_data_improductives.rds") %>%
+  st_drop_geometry() %>%
   filter_ufc_parameters() %>%
   dplyr::select(Name, contains("ufc")) -> imp_ufc
 
@@ -210,7 +200,8 @@ readRDS("./base_data/placettes_data.rds") %>%
 
 
 # Metriques lidar set3
-readRDS("./base_data/placettes_data_improductives_topo.rds") %>%
+readRDS("./base_data/placettes_data_improductives.rds") %>%
+  st_drop_geometry() %>%
   filter_lidar_parameters() %>%
   separate_wider_delim(Name, delim = "_", names = c("Bloc", "Plot"), cols_remove = FALSE) -> imp_lidar
 
@@ -225,8 +216,7 @@ lidar %>%
   full_join(ufc, by = "Name") %>%
   full_join(topo, by = "Name") -> data
 
-rm(imp_topo,
-   topo,
+rm(topo,
    imp_ufc,
    ufc,
    imp_lidar,
@@ -333,7 +323,7 @@ read.csv("./base_data/dendro_ontario.csv", sep = ';') %>%
 #
 #
 
-# # Test nombre optimal d'arbres pour ovf et la dens----
+# # Test nombre optimal d'arbres pour ovf et la dens PY----
 # # Parametres
 # # Création d'une colonne ID
 # data %>%
@@ -537,8 +527,8 @@ read.csv("./base_data/dendro_ontario.csv", sep = ';') %>%
 #
 
 # Selection des variables pour les modeles random forest par iteration FL ----
-s <- "RMF"
-v <- "st"
+# s <- "OVF"
+# v <- "st"
 
 for(s in sites){
 
@@ -600,13 +590,13 @@ for(s in sites){
                             ymax = ymax),
               data = cluster_rectangles,
               inherit.aes = FALSE,
-              color = "black", fill = NA, size = 1.5) +
+              color = "black", fill = NA, linewidth = 1.5) +
     # # old selection method
     # geom_tile(data = corr_matrix_long %>% filter(Variable1 %in% selected_var_filtered & Variable2 %in% selected_var_filtered),
     #           mapping =  aes(Variable2, Variable1), color = "black", size = 2) + # Select filtered variables and display them with black rectangles
     geom_text(aes(label = round(Correlation, 2)),
               color = "black", size = 3) +
-    geom_rect(size=1, fill=NA, colour="black",
+    geom_rect(linewidth=1, fill=NA, colour="black",
               aes(xmin=0.5, xmax=0.5, ymin=0.5, ymax=0.5)) +
     scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
                          limit = c(-1, 1), name = "Correlation") +
@@ -668,7 +658,7 @@ for(s in sites){
                   method = "pearson") %>%
                 as_tibble() %>%
                 mutate(name = colnames(.)) %>%
-                dplyr::select(val = v,
+                dplyr::select(val = all_of(v),
                               name) %>%
                 filter(name != v) %>%
                 mutate(val = abs(val)) %>%
@@ -686,7 +676,7 @@ for(s in sites){
       geom_tile(color = "white") +
       geom_text(aes(label = round(Correlation, 2)),
                 color = "black", size = 3) +
-      geom_rect(size=1, fill=NA, colour="black",
+      geom_rect(linewidth=1, fill=NA, colour="black",
                 aes(xmin=0.5, xmax=0.5, ymin=0.5, ymax=0.5)) +
       scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
                            limit = c(-1, 1), name = "Correlation") +
@@ -700,18 +690,6 @@ for(s in sites){
            height=12,
            dpi=300)
 
-    cat("all variables (cluster) :\n", paste0(cluster %>% mutate(label = paste0(var, " (", cluster, ")")) %>% pull(label), collapse = " - "), "\n\n",
-        file = paste0("./results/FL/", model_name, "_log.txt"),
-        append = TRUE)
-
-    cat("filtered variables :\n", paste0(selected_var_filtered, collapse = " - "), "\n\n",
-        file = paste0("./results/FL/", model_name, "_log.txt"),
-        append = TRUE)
-
-    cat("modelling method : random forest\nnumber of k-fold : 5\nmethod : repeatedcv\nrepeats : 10\nntree : 7000\nmetric : RMSE\nvariable importance method : permutation\nvariable importance wrapper prediction method : raw\nvariable importance metric : RMSE\nvariable importance nsim : 2\nseed : 1\n\n",
-        file = paste0("./results/FL/", model_name, "_log.txt"),
-        append = TRUE)
-
     # Creation des k-fold
     indices_rmf <- CreateSpacetimeFolds(rf_data,
                                         spacevar = "Bloc",
@@ -719,8 +697,8 @@ for(s in sites){
                                         seed = 1)
 
     # Configuration de trainControl
-    ctrl <- trainControl(method = "repeatedcv", # a valider
-                         repeats = 10, # a valider
+    ctrl <- trainControl(method = "repeatedcv",
+                         repeats = 10,
                          index = indices_rmf$index,
                          savePredictions = "final",
                          summaryFunction = defaultSummary)
@@ -728,12 +706,35 @@ for(s in sites){
     remaining_vars <- selected_var_filtered
     results_rf <- list()
 
+    # Find the optimal number of trees
+    set.seed(1)
+    opt_importance(y = rf_data[,v],
+                   X = rf_data[,remaining_vars],
+                   num.trees_values = c(250, 500, 750, 1000, 2000, 5000, 10000)) -> opt_ntrees_results
+    opt_ntrees_results$recommendation -> opt_ntrees
+
+    cat("all variables (cluster) :\n", paste0(cluster %>% mutate(label = paste0(var, " (", cluster, ")")) %>% pull(label), collapse = " - "), "\n\n",
+        file = paste0("./results/FL/", model_name, "_log.txt"),
+        append = TRUE)
+
+    cat("correlation threshold for clustering and filtering based on pearson correlation :", threshold_corr, "\n\n",
+        file = paste0("./results/FL/", model_name, "_log.txt"),
+        append = TRUE)
+
+    cat("filtered variables :\n", paste0(selected_var_filtered, collapse = " - "), "\n\n",
+        file = paste0("./results/FL/", model_name, "_log.txt"),
+        append = TRUE)
+
+    cat(paste0("modelling method : random forest\nnumber of k-fold : 5\nmethod : repeatedcv\nrepeats : 10\nntree : ", opt_ntrees, "\nmetric : RMSE\nvariable importance method : permutation\nvariable importance wrapper prediction method : raw\nvariable importance metric : RMSE\nvariable importance nsim : 10\nseed : 1\n\n"),
+        file = paste0("./results/FL/", model_name, "_log.txt"),
+        append = TRUE)
+
     cl <- makeCluster(detectCores() - 1)
     registerDoParallel(cl)
 
     set.seed(1)
 
-    while(length(remaining_vars) >= 2){
+    while(length(remaining_vars) >= 3){
 
       set.seed(1)
       rf_model <- train(x = rf_data[,remaining_vars],
@@ -742,7 +743,7 @@ for(s in sites){
                         trControl = ctrl,
                         tuneGrid = tuneGrid_rf,
                         metric = "RMSE",
-                        ntree = 7000, # ?????????????????????
+                        ntree = opt_ntrees,
                         importance = TRUE)
 
       set.seed(1)
@@ -751,10 +752,10 @@ for(s in sites){
               train = rf_data[,c(remaining_vars, v)],
               target = v,
               metric = "rmse",
-              #metric = "mae", # avoir si c'est mieux
+              #metric = "mae", # a voir si c'est mieux
               pred_wrapper = pred_wrapper,
               smaller_is_better = FALSE,
-              nsim = 2) -> variable_importance
+              nsim = 10) -> variable_importance
 
       # Version variable removed
       variable_importance %>%
@@ -799,6 +800,9 @@ for(s in sites){
     stopCluster(cl)
 
     results_rf %>%
+      saveRDS(paste0("./results/FL/", model_name, "_results_all.rds"))
+
+    results_rf %>%
       map_dfr(function(x){
 
         tibble(model = list(x$model),
@@ -810,26 +814,47 @@ for(s in sites){
 
       }) -> results_rf_simplify
 
-    scale_factor <- max(results_rf_simplify$r2) / max(results_rf_simplify$rmse)
+    results_rf_simplify %>%
+      saveRDS(paste0("./results/FL/", model_name, "_results_simplify.rds"))
+
+    scale_factor_rmse <- max(results_rf_simplify$r2) / max(results_rf_simplify$rmse)
 
     ggplot(data = results_rf_simplify,
            aes(x = n_variables_used)) +
       geom_line(aes(y = r2), color = "green2") +
-      geom_line(aes(y = rmse * scale_factor), color = "red") +
+      geom_line(aes(y = rmse * scale_factor_rmse), color = "red") +
       scale_x_reverse() +
       scale_y_continuous(name = "R2 (green)",
-                         sec.axis = sec_axis(~ . / scale_factor, name = "RMSE (red)")) +
-      labs(x = "N variable") -> plot_performance
+                         sec.axis = sec_axis(~ . / scale_factor_rmse, name = "RMSE (red)")) +
+      labs(x = "N variable") -> plot_performance_rmse
 
-    ggsave(paste0("./results/FL/", model_name, "_plot_performance.jpg"),
-           plot = plot_performance,
+    ggsave(paste0("./results/FL/", model_name, "_plot_performance_rmse.jpg"),
+           plot = plot_performance_rmse,
+           width = 10,
+           height = 5,
+           dpi = 300,
+           units = "in")
+
+    scale_factor_mae <- max(results_rf_simplify$r2) / max(results_rf_simplify$mae)
+
+    ggplot(data = results_rf_simplify,
+           aes(x = n_variables_used)) +
+      geom_line(aes(y = r2), color = "green2") +
+      geom_line(aes(y = mae * scale_factor_mae), color = "blue2") +
+      scale_x_reverse() +
+      scale_y_continuous(name = "R2 (green)",
+                         sec.axis = sec_axis(~ . / scale_factor_mae, name = "MAE (blue)")) +
+      labs(x = "N variable") -> plot_performance_mae
+
+    ggsave(paste0("./results/FL/", model_name, "_plot_performance_mae.jpg"),
+           plot = plot_performance_mae,
            width = 10,
            height = 5,
            dpi = 300,
            units = "in")
 
     results_rf_simplify %>%
-      #arrange(desc(r2)) %>%
+      #arrange(desc(r2)) %>% # a voir si c'est mieux
       arrange(rmse) %>%
       slice(1) -> results_rf_best_model
 
@@ -867,97 +892,106 @@ for(s in sites){
 
 
 
-# Validation des modèles ----
-for(p in seq_len(nrow(params))){
+# Creation d'une table finale de resultats ----
+list.files("./results/FL", pattern = "results_simplify.rds", full.names = T) %>%
+  map_dfr(function(x){
 
-  param <- params[p,]
-  model_name <- paste0(param$site, "_", param$variable)
+    modele_info <- tools::file_path_sans_ext(basename(x)) %>% str_remove("_results_simplify")
+    dendrometric <- substr(modele_info, 5, nchar(modele_info))
+    forest <- substr(modele_info, 1, 3)
 
-  readRDS(paste0("./results/FL/model_", model_name, ".rds")) -> final_model_FL
-
-  readRDS(paste0("D:/00_Ontario_eFRI/random_forest/dossier_remise_fin_contrat_PY/modeles/final_mod_", param$variable, "_", param$site, ".rds")) -> final_model_PY
-
-  cat("modele :", model_name, "\n",
-      "/ var FL :", paste0(final_model_FL[["xNames"]], collapse = " - "), "\n",
-      "/ var PY :", paste0(final_model_PY[["xNames"]], collapse = " - "), "\n")
-}
-
-
+    readRDS(x) %>%
+      dplyr::select(-model) %>%
+      arrange(rmse) %>%
+      slice(1) %>%
+      mutate(forest = forest,
+             dendrometric = dendrometric)
+  }) %>%
+  write.csv("./results/FL/results_final.csv")
 
 
+
+
+
+
+# # Comparaison des modèles PY vs. FL ----
+# for(p in seq_len(nrow(params))){
+#
+#   param <- params[p,]
+#   model_name <- paste0(param$site, "_", param$variable)
+#
+#   readRDS(paste0("./results/FL/model_", model_name, ".rds")) -> final_model_FL
+#
+#   readRDS(paste0("D:/00_Ontario_eFRI/random_forest/dossier_remise_fin_contrat_PY/modeles/final_mod_", param$variable, "_", param$site, ".rds")) -> final_model_PY
+#
+#   cat("modele :", model_name, "\n",
+#       "/ var FL :", paste0(final_model_FL[["xNames"]], collapse = " - "), "\n",
+#       "/ var PY :", paste0(final_model_PY[["xNames"]], collapse = " - "), "\n")
+# }
+#
+#
+#
+#
 
 # Application des modeles ----
-modeles <- list.files("D:/dossier_remise_fin_contrat_PY/ontario/modeles", full.names = T)
+modeles <- list.files("./results/FL/", pattern = "model", full.names = T)
 
 dfa <- sf::st_read("D:/00_Ontario_eFRI/data/drone_flight_areas/drone_flight_areas.shp")
 
 # Apply models
 # m <- modeles[1]
+
 for(m in modeles){
 
-  modele_info <- tools::file_path_sans_ext(basename(m))
-  modele_info <- stringr::str_remove(modele_info, "final_mod_")
-  modele_info <- stringr::str_split(modele_info, "_")[[1]]
-  dendrometric <- modele_info[[1]]
-  forest <- toupper(modele_info[[2]])
-
-  sectors <- dfa[dfa$forest == forest, ]$sector
-
   modele <- readRDS(m)
+
+  modele_info <- tools::file_path_sans_ext(basename(m)) %>% str_remove("_model")
+  dendrometric <- substr(modele_info, 5, nchar(modele_info))
+  forest <- substr(modele_info, 1, 3)
+  sectors <- dfa[dfa$forest == forest, ]$sector
   metric_names <- modele[["xNames"]]
-  metric_names <- gsub("^zq", "z_p", metric_names)
-  metric_names <- gsub("\\.", "-", metric_names)
-  metric_names <- paste0(metric_names, ".tif")
-  metric_names <- gsub("dem.tif", "dem_buffered.tif", metric_names)
-  metric_names <- gsub("slope.tif", "slope_buffered.tif", metric_names)
-  metric_names <- gsub("0-15", "0.15", metric_names)
-  metric_names <- gsub("pzabovemean", "z_abovemean", metric_names)
 
   # s <- sectors[1]
+
   for(s in sectors){
 
     cat(dendrometric, forest, s, "\n")
 
-    files <- list.files(paste0("D:/dossier_remise_fin_contrat_PY/ontario/metriques/", s, "/metrics"),
-                        pattern = "\\.tif$",
-                        full.names = T)
+    paste0("D:/00_Ontario_eFRI/random_forest/metriques/", s, "/metrics/", metric_names, ".tif") %>%
+      map(rast) %>%
+      map(resample, .[[1]]) %>%
+      rast() -> metrics
 
-    files <- files[stringr::str_detect(files, paste(metric_names, collapse = "|"))]
+    names(metrics) <- metric_names
 
-    if(length(files) == length(metric_names)){
+    metrics %>%
+      terra::predict(modele, na.rm = TRUE) -> prediction
 
-      metrics <- purrr::map(files, terra::rast)
-      metrics <- purrr::map(metrics, function(x) {terra::resample(x, metrics[[1]])})
-      metrics <- terra::rast(metrics)
+    names(prediction) <- dendrometric
 
-      metric_names_raster <- names(metrics)
-      metric_names_raster <- gsub("z_p", "zq", metric_names_raster)
-      metric_names_raster <- gsub("-", ".", metric_names_raster)
-      metric_names_raster <- gsub("dem_buffered", "dem", metric_names_raster)
-      metric_names_raster <- gsub("slope_buffered", "slope", metric_names_raster)
-      metric_names_raster <- gsub("z_abovemean", "pzabovemean", metric_names_raster)
-      names(metrics) <- metric_names_raster
+    ggplot() +
+      geom_spatraster(data = prediction) +
+      labs(title = paste0(forest, " / ", s),
+           fill = dendrometric) +
+      tidyterra::scale_fill_whitebox_c(palette = "bl_yl_rd") -> prediction_plot
 
-      prediction <- terra::predict(metricsABA[c("z_below_0")], modele, na.rm = TRUE)
-      prediction <- terra::predict(metrics[c("z_below_0")], modele, na.rm = TRUE)
+    ggsave(paste0("./results/FL/", forest, "_", dendrometric, "_", s, "_prediction_plot.jpg"),
+           plot = prediction_plot,
+           width=12,
+           height=12,
+           dpi=300)
 
-      terra::writeRaster(prediction, paste0("D:/dossier_remise_fin_contrat_PY/ontario/predictions/2026_05_14/", dendrometric, "_", forest, "_", s, ".tif"))
-
-    } else {
-
-      cat("Not all metrics are available\n")
-
-    }
+    prediction %>%
+      terra::writeRaster(paste0("./results/FL/", forest, "_", dendrometric, "_", s, "_prediction.tif"))
 
   }
 
   # Merge models
-  predictions_files <- list.files("D:/dossier_remise_fin_contrat_PY/ontario/predictions/2026_05_14", pattern = "\\.tif$", full.names = TRUE)
-  predictions_files <- stringr::str_subset(predictions_files, dendrometric)
-  predictions_files <- stringr::str_subset(predictions_files, forest)
-  predictions <- purrr::map(predictions_files, terra::rast)
-  predictions <- sprc(predictions)
-  predictions <- terra::merge(predictions)
-  terra::writeRaster(predictions, paste0("D:/dossier_remise_fin_contrat_PY/ontario/predictions/2026_05_14/", dendrometric, "_", forest, ".tif"))
+  list.files("./results/FL/", pattern = "\\.tif$", full.names = TRUE) %>%
+    str_subset(paste0(forest, "_", dendrometric)) %>%
+    map(rast) %>%
+    sprc() %>%
+    terra::merge() %>%
+    writeRaster(paste0("./results/FL/", forest, "_", dendrometric, "_prediction.tif"))
 
 }
