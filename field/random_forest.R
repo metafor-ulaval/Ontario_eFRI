@@ -229,9 +229,10 @@ read.csv("./base_data/dendro_ontario.csv", sep = ';') %>%
                 st = Surface_terr_ha_Marchandes_Vivante,
                 dhpq = DHQ_cm_Marchandes_Vivante,
                 vmb) %>%
-  filter(Name != "S7_4") %>% #enlève une ligne avec un nom de parcelle probablement erroné (sans match dans les metriques)
   mutate(vmb_ha = vmb * 25) %>%
   full_join(data, by = "Name") %>%
+  filter(Name != "S7_4") %>% # enlève une ligne avec un nom de parcelle probablement errone (sans match dans les metriques)
+  filter(Name != "S5_3") %>% # enlève une parcelle ou les donnes lidar sont erronees
   mutate(Site = case_when(Bloc %in% paste0("S", 1:5) ~ "RMF",
                           Bloc %in% paste0("S", 6:10) ~ "OVF")) -> data
 
@@ -604,7 +605,7 @@ for(s in sites){
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     labs(title = "Reordered Correlation Matrix (Hierarchical Clustering)", x = "", y = "") -> correlation_matrix
 
-  ggsave(paste0("./results/FL/", s, "_correlation_matrix.jpg"),
+  ggsave(paste0("./results/", s, "_correlation_matrix.jpg"),
          plot = correlation_matrix,
          width = 20,
          height = 20,
@@ -625,7 +626,7 @@ for(s in sites){
   #   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   #   labs(title = "Reordered Correlation Matrix (Hierarchical Clustering)", x = "", y = "")
   #
-  # ggsave(paste0("./results/FL/", s, "_correlation_matrix_trim.jpg"),
+  # ggsave(paste0("./results/", s, "_correlation_matrix_trim.jpg"),
   #        width=12,
   #        height=12,
   #        dpi=300)
@@ -637,7 +638,7 @@ for(s in sites){
     cat("\ncompute random forest for model :", model_name, "\n")
 
     cat("model :", model_name, "\n\n",
-        file = paste0("./results/FL/", model_name, "_log.txt"),
+        file = paste0("./results/", model_name, "_log.txt"),
         append = TRUE)
 
     # Select site
@@ -684,7 +685,7 @@ for(s in sites){
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       labs(title = "Reordered Correlation Matrix (Hierarchical Clustering)", x = "", y = "") -> correlation_matrix_trimmed
 
-    ggsave(paste0("./results/FL/", model_name, "_correlation_matrix.jpg"),
+    ggsave(paste0("./results/", model_name, "_correlation_matrix.jpg"),
            plot = correlation_matrix_trimmed,
            width=12,
            height=12,
@@ -714,19 +715,19 @@ for(s in sites){
     opt_ntrees_results$recommendation -> opt_ntrees
 
     cat("all variables (cluster) :\n", paste0(cluster %>% mutate(label = paste0(var, " (", cluster, ")")) %>% pull(label), collapse = " - "), "\n\n",
-        file = paste0("./results/FL/", model_name, "_log.txt"),
+        file = paste0("./results/", model_name, "_log.txt"),
         append = TRUE)
 
     cat("correlation threshold for clustering and filtering based on pearson correlation :", threshold_corr, "\n\n",
-        file = paste0("./results/FL/", model_name, "_log.txt"),
+        file = paste0("./results/", model_name, "_log.txt"),
         append = TRUE)
 
     cat("filtered variables :\n", paste0(selected_var_filtered, collapse = " - "), "\n\n",
-        file = paste0("./results/FL/", model_name, "_log.txt"),
+        file = paste0("./results/", model_name, "_log.txt"),
         append = TRUE)
 
     cat(paste0("modelling method : random forest\nnumber of k-fold : 5\nmethod : repeatedcv\nrepeats : 10\nntree : ", opt_ntrees, "\nmetric : RMSE\nvariable importance method : permutation\nvariable importance wrapper prediction method : raw\nvariable importance metric : RMSE\nvariable importance nsim : 10\nseed : 1\n\n"),
-        file = paste0("./results/FL/", model_name, "_log.txt"),
+        file = paste0("./results/", model_name, "_log.txt"),
         append = TRUE)
 
     cl <- makeCluster(detectCores() - 1)
@@ -768,12 +769,18 @@ for(s in sites){
       rf_model$results %>%
         filter(mtry == mtry_selected) -> rf_model_final_results
 
+      rf_data %>%
+        mutate(pred = predict(rf_model, .),
+               error = pred - !!sym(v)) %>%
+        pull(error) -> errors
+
       list(model = rf_model,
            mtry = mtry_selected,
            rmse = rf_model_final_results$RMSE,
            mae = rf_model_final_results$MAE,
            rsquared = rf_model_final_results$Rsquared,
            r2 = tail(rf_model$finalModel$rsq, 1) * 100,
+           bias = mean(errors),
            variables_used = remaining_vars,
            variable_importance = variable_importance,
            variable_removed = variable_removed) %>%
@@ -784,13 +791,15 @@ for(s in sites){
           "/ r2 :", tail(rf_model$finalModel$rsq, 1) * 100,
           "/ rmse :", rf_model_final_results$RMSE,
           "/ mae :", rf_model_final_results$MAE,
+          "/ bias :", mean(errors),
           "/ variable removed :", variable_removed, "\n")
       cat("number of variable used :", length(remaining_vars),
           "/ r2 :", tail(rf_model$finalModel$rsq, 1) * 100,
           "/ rmse :", rf_model_final_results$RMSE,
           "/ mae :", rf_model_final_results$MAE,
+          "/ bias :", mean(errors),
           "/ variable removed :", variable_removed, "\n",
-          file = paste0("./results/FL/", model_name, "_log.txt"),
+          file = paste0("./results/", model_name, "_log.txt"),
           append = TRUE)
 
       remaining_vars <- setdiff(remaining_vars, variable_removed)
@@ -800,7 +809,7 @@ for(s in sites){
     stopCluster(cl)
 
     results_rf %>%
-      saveRDS(paste0("./results/FL/", model_name, "_results_all.rds"))
+      saveRDS(paste0("./results/", model_name, "_results_all.rds"))
 
     results_rf %>%
       map_dfr(function(x){
@@ -809,13 +818,14 @@ for(s in sites){
                r2 = x$r2,
                rmse = x$rmse,
                mae = x$mae,
+               bias = x$bias,
                n_variables_used = length(x$variables_used),
                variables_used = paste0(unlist(x$variables_used), collapse = " - "))
 
       }) -> results_rf_simplify
 
     results_rf_simplify %>%
-      saveRDS(paste0("./results/FL/", model_name, "_results_simplify.rds"))
+      saveRDS(paste0("./results/", model_name, "_results_simplify.rds"))
 
     scale_factor_rmse <- max(results_rf_simplify$r2) / max(results_rf_simplify$rmse)
 
@@ -828,7 +838,7 @@ for(s in sites){
                          sec.axis = sec_axis(~ . / scale_factor_rmse, name = "RMSE (red)")) +
       labs(x = "N variable") -> plot_performance_rmse
 
-    ggsave(paste0("./results/FL/", model_name, "_plot_performance_rmse.jpg"),
+    ggsave(paste0("./results/", model_name, "_plot_performance_rmse.jpg"),
            plot = plot_performance_rmse,
            width = 10,
            height = 5,
@@ -846,7 +856,7 @@ for(s in sites){
                          sec.axis = sec_axis(~ . / scale_factor_mae, name = "MAE (blue)")) +
       labs(x = "N variable") -> plot_performance_mae
 
-    ggsave(paste0("./results/FL/", model_name, "_plot_performance_mae.jpg"),
+    ggsave(paste0("./results/", model_name, "_plot_performance_mae.jpg"),
            plot = plot_performance_mae,
            width = 10,
            height = 5,
@@ -862,27 +872,29 @@ for(s in sites){
         " r2 :", results_rf_best_model$r2,
         "/ rmse :", results_rf_best_model$rmse,
         "/ mae :", results_rf_best_model$mae,
+        "/ bias :", results_rf_best_model$bias,
         "/ variables used :", results_rf_best_model$variables_used, "\n")
     cat("\nbest model params :",
         " r2 :", results_rf_best_model$r2,
         "/ rmse :", results_rf_best_model$rmse,
         "/ mae :", results_rf_best_model$mae,
+        "/ bias :", results_rf_best_model$bias,
         "/ variables used :", results_rf_best_model$variables_used, "\n\n",
-        file = paste0("./results/FL/", model_name, "_log.txt"),
+        file = paste0("./results/", model_name, "_log.txt"),
         append = TRUE)
 
     cat("save performance table\n")
 
     results_rf_best_model %>%
       dplyr::select(-model) %>%
-      write.csv(paste0("./results/FL/", model_name, "_performance.csv"), row.names = FALSE)
+      write.csv(paste0("./results/", model_name, "_performance.csv"), row.names = FALSE)
 
     cat("save model\n")
 
     results_rf_best_model %>%
       pull(model) %>%
       {.[[1]]$finalModel} %>%
-      saveRDS(paste0("./results/FL/", model_name, "_model.rds"))
+      saveRDS(paste0("./results/", model_name, "_model.rds"))
 
   }
 
@@ -907,7 +919,7 @@ list.files("./results/FL", pattern = "results_simplify.rds", full.names = T) %>%
       mutate(forest = forest,
              dendrometric = dendrometric)
   }) %>%
-  write.csv("./results/FL/results_final.csv")
+  write.csv("./results/results_final.csv")
 
 
 
@@ -920,7 +932,7 @@ list.files("./results/FL", pattern = "results_simplify.rds", full.names = T) %>%
 #   param <- params[p,]
 #   model_name <- paste0(param$site, "_", param$variable)
 #
-#   readRDS(paste0("./results/FL/model_", model_name, ".rds")) -> final_model_FL
+#   readRDS(paste0("./results/model_", model_name, ".rds")) -> final_model_FL
 #
 #   readRDS(paste0("D:/00_Ontario_eFRI/random_forest/dossier_remise_fin_contrat_PY/modeles/final_mod_", param$variable, "_", param$site, ".rds")) -> final_model_PY
 #
@@ -934,7 +946,7 @@ list.files("./results/FL", pattern = "results_simplify.rds", full.names = T) %>%
 #
 
 # Application des modeles ----
-modeles <- list.files("./results/FL/", pattern = "model", full.names = T)
+modeles <- list.files("./results/", pattern = "model", full.names = T)
 
 dfa <- sf::st_read("D:/00_Ontario_eFRI/data/drone_flight_areas/drone_flight_areas.shp")
 
@@ -975,23 +987,23 @@ for(m in modeles){
            fill = dendrometric) +
       tidyterra::scale_fill_whitebox_c(palette = "bl_yl_rd") -> prediction_plot
 
-    ggsave(paste0("./results/FL/", forest, "_", dendrometric, "_", s, "_prediction_plot.jpg"),
+    ggsave(paste0("./results/", forest, "_", dendrometric, "_", s, "_prediction_plot.jpg"),
            plot = prediction_plot,
            width=12,
            height=12,
            dpi=300)
 
     prediction %>%
-      terra::writeRaster(paste0("./results/FL/", forest, "_", dendrometric, "_", s, "_prediction.tif"))
+      terra::writeRaster(paste0("./results/", forest, "_", dendrometric, "_", s, "_prediction.tif"))
 
   }
 
   # Merge models
-  list.files("./results/FL/", pattern = "\\.tif$", full.names = TRUE) %>%
+  list.files("./results/", pattern = "\\.tif$", full.names = TRUE) %>%
     str_subset(paste0(forest, "_", dendrometric)) %>%
     map(rast) %>%
     sprc() %>%
     terra::merge() %>%
-    writeRaster(paste0("./results/FL/", forest, "_", dendrometric, "_prediction.tif"))
+    writeRaster(paste0("./results/", forest, "_", dendrometric, "_prediction.tif"))
 
 }
