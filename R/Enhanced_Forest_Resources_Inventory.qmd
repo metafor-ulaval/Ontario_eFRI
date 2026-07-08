@@ -8,7 +8,9 @@ output:
 date: "2026-05-20"
 ---
 
-```{r Setup, include=FALSE}
+```{r}
+#| label = "Setup",
+#| include = FALSE
 knitr::opts_chunk$set(echo = TRUE)
 
 # Terminology
@@ -21,7 +23,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
-```{r Read library, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Read library",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 library(tidyverse)
 library(magrittr)
 library(terra)
@@ -38,7 +44,11 @@ library(basemapR)
 library(patchwork)
 ```
 
-```{r Parameters, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Parameters",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 wd <- "D:/00_Ontario_eFRI/RMF" # wd
 name <- "efri_polygon"
 segmentation_wd <- paste0(wd, "/segmentations/", name)
@@ -63,12 +73,21 @@ best_models %>%
 
 ```
 
-```{r Read metrics informations, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Read metrics informations",
+#| echo = FALSE,
+#| include = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 list.files(paste0(wd, "/metrics"), full.names = TRUE) %>%
   read_metrics() -> metrics_infos
 ```
 
-```{r Read data, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Read data",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 # # 1. Catalog
 # st_read(paste0(wd, "/ctg/ctg.shp"), quiet = T) %>%
 #   st_transform(epsg) -> ctg
@@ -250,7 +269,11 @@ The objective of this project is to automatically generate polygons that describ
 ## **1.2** Study area {-#introduction_studyarea}
 The study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous.
 
-```{r Introduction study area, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Introduction study area",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 ctg %>%
   st_geometry() %>%
   st_buffer(10) %>%
@@ -371,7 +394,11 @@ For this step, the following metrics are used for polygon segmentation :
 * z_cv → Coefficient of variation of returns above 1.3 m
 * z_above2 → Canopy cover of first returns above 2 m
 
-```{r Show segmentation data 1, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Show segmentation data 1",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 for(metric in segmentation_metrics){
   assign(metric,
          ggplot() +
@@ -388,7 +415,11 @@ These metrics are only one example of what can be used, but it is important to n
 
 An additional data used in segmentation are masks where segmentation is therefore not performed. These are typically waterbodies and roads. 
 
-```{r Show segmentation data 2, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Show segmentation data 2",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 ggplot() +
   base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
            basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
@@ -399,7 +430,12 @@ ggplot() +
   theme_void()
 ```
 
-```{r Segmentation, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Segmentation",
+#| echo = FALSE,
+#| include = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 # readRDS("D:/grm_parametrization/results/best_parameters_all.rds")
 
 eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
@@ -422,7 +458,11 @@ segmentation %>%
 ## **2.3** Segmentation results {-#segmentation_results}
 The segmentation result therefore produces polygons representing forest stands according to the selected metrics. These polygons can therefore be expected to represent homogeneous forest stands based on choosen metrics.
 
-```{r Segmentation results, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Segmentation results",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 ggplot() +
   base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
            basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
@@ -457,7 +497,11 @@ The automated segmented forest stand can be now compared to forest stand invento
 
 Area in hectare are use for size and shape index, which is determine by this formula : [perimeter/(2*sqrt(pi*area))] is use to assess shape.
 
-```{r Segmentation distribution results, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Segmentation distribution results",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 bind_rows(fri_polygons %>% st_geometry() %>% st_as_sf() %>% mutate(type = "fri"),
           segmentation %>% st_geometry() %>% st_as_sf() %>% mutate(type = "grm")) %>% 
   mutate(area = st_area(.) %>% as.numeric(),
@@ -521,7 +565,12 @@ To identify the most suitable variables for kNN imputation, a performance analys
 
 In addition, for each of these 4 variables, the X and Y coordinates of polygon centroid have been used for the imputation.
 
-```{r Imputation, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Imputation",
+#| echo = FALSE,
+#| include = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 fri_polygons_species_prop <- mutate_species_prop(fri_polygons["SPCOMP"], "SPCOMP")
 fri_polygons_species_order <- mutate_species_order(fri_polygons_species_prop, "SPCOMP")
 fri_polygons_forest_type <- mutate_forest_type(fri_polygons_species_order)
@@ -551,7 +600,11 @@ segmentation_imputation %>%
 ## **3.1** Imputation results {-#imputation_results}
 The table below shows the accuracy of each of the imputed variables :
 
-```{r Imputation results 1, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Imputation results 1",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 best_models %>% 
   mutate(accuracy = round(accuracy*100, 2))  %>% 
   dplyr::select("Target variable" = "target_var",
@@ -563,7 +616,11 @@ knitr::kable(best_models_clean)
 
 The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated segmentation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial gorup class shown below.
 
-```{r Imputation results 2, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "Imputation results 2",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 fri_polygons_functional_group %>% 
   ms_clip(subset_area) %>% 
   mutate(type = "Forest polygon") -> imputation_data_1
@@ -589,7 +646,12 @@ The last and more important step is to build attribute table with all pertinent 
 *Landcover
 This layer come from Ontario Land Cover Compilation Version 2.0. This landcover layer was made from numerous Landsat-7 ETM and Landsat-5 TM satellite images acquired between 1999 and 2011. A mix of supervised and unsupervised classification was use to produce the 27 land cover type.
 
-```{r eFRI attibute table, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "eFRI attibute table",
+#| echo = FALSE,
+#| include = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 ggplot() +
   geom_spatraster(data = landcover) +
   scale_fill_whitebox_c(palette = "muted") +
@@ -657,7 +719,12 @@ Here are listed the extracted attributes :
 
 * Soil moisture based on SAGA wetness index : MOISTURE
 
-```{r eFRI attibute table, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "eFRI attibute table",
+#| echo = FALSE,
+#| include = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 eFRI_attribute_table(segmentation = segmentation_imputation,
                      metrics = metrics,
                      summary_metrics = paste0(summary_metrics, "_median"),
@@ -675,7 +742,11 @@ segmentation_data %>%
 ## **4.1** Attribute table results {-#attribute_table_results}
 The next figures show what can look like some of theses attibutes.
 
-```{r eFRI attibute table 1, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
+#| label = "eFRI attibute table 1",
+#| echo = FALSE,
+#| message = FALSE,
+#| warning = FALSE
 ggplot() +
   geom_sf(data = segmentation_data, aes(fill = AGE)) + 
   labs(fill = "Forest age") +
