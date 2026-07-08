@@ -5,11 +5,16 @@ date: "2026-04-23"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
+```{r}
+#| label = "setup",
+#| include = FALSE
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r libraries, echo=FALSE, include=FALSE}
+```{r}
+#| label = "libraries",
+#| echo = FALSE,
+#| include = FALSE
 library(tidyverse)
 library(tidyterra)
 library(future.apply)
@@ -30,7 +35,10 @@ library(patchwork)
 library(scatterplot3d)
 ```
 
-```{r function, echo=FALSE, include=FALSE}
+```{r}
+#| label = "function",
+#| echo = FALSE,
+#| include = FALSE
 sample_farthest_point <- function(nb,
                                   res,
                                   sampling_area,
@@ -104,7 +112,11 @@ smape <- function(actual, predicted) {
 
 This document shows the step to find the optimals parameters of the Generic Region Merging (GRM) algorithm of the Orfeo ToolBox to automatically delineate operationally plausible forest stand. Photo-interpreted forest stands of the same area are the reference data. The optimization is performed on the Symmetric mean absolute percentage error (SMAPE) of polygon density, the overlapping kernel density of the polygon stand area and the overlapping kernel density of the polygon stand shape index. Best parameters were computed for two specific forest and five differents models, but performance metrics can be averaged to find best paramaters that suit the prefered scale.
 
-```{r base data, eval=FALSE, echo=FALSE, include=FALSE}
+```{r}
+#| label = "base data",
+#| eval = FALSE,
+#| echo = FALSE,
+#| include = FALSE
 m <- c("z_p95", "z_above2", "z_cv", "z_skew", "sagawi", "B6", "B8", "B11")
 inner_radius <- sqrt(10000^2*2)/2
 
@@ -208,7 +220,9 @@ for(f in c("RMF", "OVF")){
 
 The two evaluated forest are located in the province of Ontario, in Canada. The first one is Romeo Malette Forest and are located in the middle of the province and is more conniferous. The second one is Ottawa Valley Forest and is located more south and that's why there is more deciduous forest. In each forest, ten smaller square area of 5 km x 5 km have been used to perform subsequent analysis. 
 
-```{r show base data 1, echo=FALSE}
+```{r}
+#| label = "show base data 1",
+#| echo = FALSE
 for(f in c("RMF", "OVF")){
   st_read("D:/00_Ontario_eFRI/OVF/shp/PolygonForest.shp", quiet = T) -> polygon_forest
   
@@ -244,7 +258,9 @@ RMF / OVF
 \newpage
 To position theses area, only actual forest stand (POLYTYPE == "FOR") have been retain. 
 
-```{r show base data 2, echo=FALSE}
+```{r}
+#| label = "show base data 2",
+#| echo = FALSE
 st_read("D:/00_Ontario_eFRI/OVF/shp/PolygonForest.shp", quiet = T) -> polygon_forest
 
 st_read("D:/00_Ontario_eFRI/OVF/ctg/ctg.shp", quiet = T) %>%
@@ -285,7 +301,9 @@ ggplot() +
 \newpage
 A positive buffer of 500 m and then a negative one of 500 m again enable to merge close forest stand. 
 
-```{r show base data 3, echo=FALSE}
+```{r}
+#| label = "show base data 3",
+#| echo = FALSE
 polygon_forest_temp %>% 
   st_buffer(500) %>%
   st_union() %>%
@@ -301,7 +319,9 @@ ggplot() +
 \newpage
 A final inner buffer of approximately 7000 m was use to produce final polygon that allowed to place the center of each area. 
 
-```{r show base data 4, echo=FALSE}
+```{r}
+#| label = "show base data 4",
+#| echo = FALSE
 inner_radius <- sqrt(10000^2*2)/2
 
 polygon_forest_temp %>%
@@ -318,7 +338,9 @@ ggplot() +
 \newpage
 The first area was placed randomly and then the 9 next one were iteratively placed as far as possible of the last placed one. The next figure shows the last placed area in red and the distance raster that enable to fin the farthest position.
 
-```{r show base data 5, echo=FALSE}
+```{r}
+#| label = "show base data 5",
+#| echo = FALSE
 sample_farthest_point(nb = 10,
                       res = 100,
                       sampling_area = polygon_forest_temp,
@@ -372,7 +394,9 @@ suppressMessages(ggplot() +
 \newpage
 For every area, only actual forest stand (POLYTYPE == "FOR") were used to perform segmentation.
 
-```{r show base data 6, echo=FALSE}
+```{r}
+#| label = "show base data 6",
+#| echo = FALSE
 sampling_square %>% 
   slice(9) -> sampling_square_temp
 
@@ -406,7 +430,9 @@ Five differents sets of metrics were used to perform segmentation :
 
 The metrics used are shown in the follow figure.
 
-```{r show base data 7, echo=FALSE}
+```{r}
+#| label = "show base data 7",
+#| echo = FALSE
 terra::rast("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/metrics_OVF.tif") -> metrics
 
 metrics %>%
@@ -456,7 +482,11 @@ Finally, the parameters tested are the following ones :
 
 Thus, a total of 1000 paramaters combinaisons was tested.
 
-```{r segmentation, eval=FALSE, echo=FALSE, include=FALSE}
+```{r}
+#| label = "segmentation",
+#| eval = FALSE,
+#| echo = FALSE,
+#| include = FALSE
 plan(multisession, workers = round(ncores()*0.25))
 
 forest <- c("RMF", "OVF")
@@ -607,7 +637,9 @@ future_lapply(seq_len(nrow(params)), function(p){
 
 The next figure shows a example of a segmentation in the Ottawa Valley Forest for the model_A (z_p95 + z_above2 + z_cv) with mid parameters (threshold of 50, spectral homogeneity of 0.5 and spatial homogeneity of 0.5). There is also a example of a segmnetation that was smoothed to get a better shape index of each polygon forest stand.
 
-```{r show segmentation 1, echo=FALSE}
+```{r}
+#| label = "show segmentation 1",
+#| echo = FALSE
 polygon_forest %>%
   mutate(area = as.numeric(sf::st_area(.)),
          perimeter = as.numeric(sf::st_perimeter(.)),
@@ -703,7 +735,9 @@ The three performance metrics are the following ones :
 
 The assumption behind this analysis is that the automated segmented polygon stand should have the same distribution of polygon area and shape than the reference ecoforestery polygon stand and therefore be operationally plausible forest stand.
 
-```{r show segmentation 2, echo=FALSE}
+```{r}
+#| label = "show segmentation 2",
+#| echo = FALSE
 dens_polygon_forest <- nrow(polygon_forest_temp)/as.numeric(sum(st_area(polygon_forest_temp))/1000000)
 dens_segmentation <- nrow(segmentation)/as.numeric(sum(st_area(segmentation))/1000000)
 smape_dens <- smape(dens_polygon_forest, dens_segmentation)
@@ -764,7 +798,11 @@ ggplot() +
 p_area_raster / p_shape_raster
 ```
 
-```{r results, eval=FALSE, echo=FALSE, include=FALSE}
+```{r}
+#| label = "results",
+#| eval = FALSE,
+#| echo = FALSE,
+#| include = FALSE
 forest <- c("RMF", "OVF")
 thresh <- seq(10, 100, 10)
 spec <- seq(0.1, 1, 0.1)
@@ -1200,7 +1238,11 @@ results %>%
   saveRDS("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/results.rds")
 ```
 
-```{r figures and tables, eval=FALSE, echo=FALSE, include=FALSE}
+```{r}
+#| label = "figures and tables",
+#| eval = FALSE,
+#| echo = FALSE,
+#| include = FALSE
 # Parameters
 dens_threshold <- 0.1
 weight_area <- 1/2
@@ -1393,7 +1435,9 @@ best_parameters_all %>%
 
 The results presented here are, as mentionned before, in the Ottawa Valley Forest for the model_A (z_p95 + z_above2 + z_cv). All the follow process can be made for every forest and every combinaison of metrics. The threshold of the SMAPE is 0.1 which represent more of less 10 % of polygon density variation. All sets of parameters that gave SMAPE lower than -0.1 and higher than 0.1 have been removed. 
 
-```{r show figures and tables 1, echo=FALSE}
+```{r}
+#| label = "show figures and tables 1",
+#| echo = FALSE
 # Parameters
 dens_threshold <- 0.1
 weight_area <- 1/2
@@ -1441,7 +1485,9 @@ s3d <- scatterplot3d(
 \newpage
 After this step, the optimal parameters was choosen as the one that maximized both the overlap of the areas and the shape index.
 
-```{r show figures and tables 2, echo=FALSE}
+```{r}
+#| label = "show figures and tables 2",
+#| echo = FALSE
 # Color scaling
 pal <- colorRampPalette(c("#882235", "#117733"))
 col_scaled <- pal(100)[cut(results_temp$area_score, breaks = 100)]
@@ -1487,7 +1533,9 @@ s3d_shape <- scatterplot3d(
 The final score was computed as follow :
 - final_score = (0.5 x (1-overlap_area)) + (0.5 x (1-overlap_shape_index))
 - the best parameters set was choosen as the lowest final score among all combinaison that had a SMAPE of polygon density of more of less 0.1.
-```{r show figures and tables 3, echo=FALSE}
+```{r}
+#| label = "show figures and tables 3",
+#| echo = FALSE
 results_temp %>%
   arrange(final_score) %>%
   slice(1) %>%
