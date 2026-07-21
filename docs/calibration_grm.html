@@ -2,14 +2,14 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.37">
+<meta name="generator" content="quarto-1.9.38">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Francis Lessard">
 <meta name="dcterms.date" content="2026-04-23">
 
-<title>Optimal Generic Region Merging parameters</title>
+<title>Optimal Generic Region Merging parameters – Ontario eFRI</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -28,25 +28,106 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="calibration_grm_files/libs/clipboard/clipboard.min.js"></script>
-<script src="calibration_grm_files/libs/quarto-html/quarto.js" type="module"></script>
-<script src="calibration_grm_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="calibration_grm_files/libs/quarto-html/popper.min.js"></script>
-<script src="calibration_grm_files/libs/quarto-html/tippy.umd.min.js"></script>
-<script src="calibration_grm_files/libs/quarto-html/anchor.min.js"></script>
-<link href="calibration_grm_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="calibration_grm_files/libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="calibration_grm_files/libs/bootstrap/bootstrap.min.js"></script>
-<link href="calibration_grm_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="calibration_grm_files/libs/bootstrap/bootstrap-efbb37e9afcc02144ebbc7afd12a776f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-a0f9fd0d421825b736dc1bbcbcba2219.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
 
 
 </head>
 
-<body class="fullcontent quarto-light">
+<body class="nav-fixed quarto-light">
 
-<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
-
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Ontario eFRI</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="./index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link active" href="./calibration_grm.html" aria-current="page"> 
+<span class="menu-text">Calibration</span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#sampling-area" id="toc-sampling-area" class="nav-link" data-scroll-target="#sampling-area">Sampling area</a></li>
+  <li><a href="#segmentation" id="toc-segmentation" class="nav-link" data-scroll-target="#segmentation">Segmentation</a></li>
+  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#analysis" id="toc-analysis" class="nav-link" data-scroll-target="#analysis">Analysis</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
@@ -92,7 +173,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%201-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 1-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -103,7 +184,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%202-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 2-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -114,7 +195,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%203-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 3-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -125,7 +206,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%204-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 4-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -136,7 +217,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%205-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 5-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -147,7 +228,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%206-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 6-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -169,56 +250,56 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%207-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 7-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%207-2.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 7-2.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%207-3.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 7-3.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%207-4.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 7-4.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%207-5.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 7-5.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%207-6.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 7-6.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%207-7.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 7-7.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20base%20data%207-8.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show base data 7-8.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -256,7 +337,7 @@ sub-geometries for which they may not be constant</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20segmentation%201-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show segmentation 1-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -284,7 +365,7 @@ sub-geometries for which they may not be constant</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20segmentation%202-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show segmentation 2-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -298,7 +379,7 @@ sub-geometries for which they may not be constant</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20figures%20and%20tables%201-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show figures and tables 1-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -309,14 +390,14 @@ sub-geometries for which they may not be constant</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20figures%20and%20tables%202-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show figures and tables 2-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20figures%20and%20tables%202-2.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show figures and tables 2-2.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -327,7 +408,7 @@ sub-geometries for which they may not be constant</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="calibration_grm_files/figure-html/show%20figures%20and%20tables%203-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show figures and tables 3-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -336,10 +417,11 @@ sub-geometries for which they may not be constant</code></pre>
 </section>
 <section id="references" class="level2">
 <h2 class="anchored" data-anchor-id="references">References</h2>
+
+
 </section>
 
-</main>
-<!-- /main column -->
+</main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     const icon = "";

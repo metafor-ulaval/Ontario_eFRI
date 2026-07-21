@@ -49,9 +49,10 @@ library(patchwork)
 #| echo = FALSE,
 #| message = FALSE,
 #| warning = FALSE
-wd <- "D:/00_Ontario_eFRI/RMF" # wd
-name <- "efri_polygon"
-segmentation_wd <- paste0(wd, "/segmentations/", name)
+wd <- "D:/00_Ontario_eFRI" # wd
+sector <- "RMF"
+name <- "efri_polygon_test"
+segmentation_wd <- paste0(wd, "/05_segmentation/", sector, "/", name)
 dir.create(segmentation_wd)
 epsg <- "EPSG:2958" # RMF
 otb_dir <- "D:/00_Ontario_eFRI/logiciels/OTB-9.1.0-Win64/bin"
@@ -63,7 +64,7 @@ segmentation_metrics <- c("z_p95", "z_cv", "z_above2")
 
 summary_metrics <- c("Vmerch_ha", "qmdbh", "dens", "lor", "ba_ha")
 
-best_models <- read.csv("D:/00_Ontario_eFRI/RMF/results/best_model.csv")
+best_models <- read.csv(paste0(wd , "/07_analysis/imputation/best_model.csv"))
 
 best_models %>%
   pull(knn_vars) %>% 
@@ -79,7 +80,7 @@ best_models %>%
 #| include = FALSE,
 #| message = FALSE,
 #| warning = FALSE
-list.files(paste0(wd, "/metrics"), full.names = TRUE) %>%
+list.files(paste0(wd, "/04_metrics/", sector), full.names = TRUE) %>%
   read_metrics() -> metrics_infos
 ```
 
@@ -122,8 +123,8 @@ list.files(paste0(wd, "/metrics"), full.names = TRUE) %>%
 # names(metrics) <- metrics_names # Assign metrics names
 
 # 3. Masks
-list(vect(paste0(wd, "/shp/roads.shp")),
-     vect(paste0(wd, "/shp/waterbodies.shp"))) %>%
+list(vect(paste0(wd, "/03_shp_data/", sector, "/roads.shp")),
+     vect(paste0(wd, "/03_shp_data/", sector, "/waterbodies.shp"))) %>%
   map(project, epsg) -> masks
 
 # # 4. Ecoforest polygons (fri)
@@ -212,52 +213,52 @@ list(vect(paste0(wd, "/shp/roads.shp")),
 # 
 # # SAVE ALL DATA FOR TESTING #
 # subset_area %>%
-#    saveRDS(paste0(wd, "/data_temp/subset_area.rds"))
+#    saveRDS(paste0(wd, "/08_temp/RMF_data_temp/subset_area.rds"))
 # 
 # ctg %>%
-#   saveRDS(paste0(wd, "/data_temp/ctg.rds"))
+#   saveRDS(paste0(wd, "/08_temp/RMF_data_temp/ctg.rds"))
 # 
 # metrics %>%
-#   saveRDS(paste0(wd, "/data_temp/metrics.rds"))
+#   saveRDS(paste0(wd, "/08_temp/RMF_data_temp/metrics.rds"))
 # 
 # fri_polygons %>%
-#   saveRDS(paste0(wd, "/data_temp/fri_polygons.rds"))
+#   saveRDS(paste0(wd, "/08_temp/RMF_data_temp/fri_polygons.rds"))
 # 
 # landcover %>%
-#   saveRDS(paste0(wd, "/data_temp/landcover.rds"))
+#   saveRDS(paste0(wd, "/08_temp/RMF_data_temp/landcover.rds"))
 # 
 # forest_age_2019 %>%
-#   saveRDS(paste0(wd, "/data_temp/forest_age_2019.rds"))
+#   saveRDS(paste0(wd, "/08_temp/RMF_data_temp/forest_age_2019.rds"))
 # 
 # forest_fire_1985_2020 %>%
-#   saveRDS(paste0(wd, "/data_temp/forest_fire_1985_2020.rds"))
+#   saveRDS(paste0(wd, "/08_temp/RMF_data_temp/forest_fire_1985_2020.rds"))
 # 
 # forest_harvest_1985_2020 %>%
-#   saveRDS(paste0(wd, "/data_temp/forest_harvest_1985_2020.rds"))
+#   saveRDS(paste0(wd, "/08_temp/RMF_data_temp/forest_harvest_1985_2020.rds"))
 
 
 
 
 
 # READ ALL DATA FOR TESTING #
-subset_area <- readRDS(paste0(wd, "/data_temp/subset_area.rds")) 
+subset_area <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/subset_area.rds")) 
 
 masks %<>%
   map(crop, subset_area)
 
-ctg <- readRDS(paste0(wd, "/data_temp/ctg.rds"))
+ctg <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/ctg.rds"))
 
-metrics <- readRDS(paste0(wd, "/data_temp/metrics.rds"))
+metrics <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/metrics.rds"))
 
-fri_polygons <- readRDS(paste0(wd, "/data_temp/fri_polygons.rds"))
+fri_polygons <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/fri_polygons.rds"))
 
-landcover <- readRDS(paste0(wd, "/data_temp/landcover.rds"))
+landcover <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/landcover.rds"))
 
-forest_age_2019 <- readRDS(paste0(wd, "/data_temp/forest_age_2019.rds"))
+forest_age_2019 <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/forest_age_2019.rds"))
 
-forest_fire_1985_2020 <- readRDS(paste0(wd, "/data_temp/forest_fire_1985_2020.rds"))
+forest_fire_1985_2020 <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/forest_fire_1985_2020.rds"))
 
-forest_harvest_1985_2020 <- readRDS(paste0(wd, "/data_temp/forest_harvest_1985_2020.rds"))
+forest_harvest_1985_2020 <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/forest_harvest_1985_2020.rds"))
 ```
 
 # **1** Introduction {-#introduction}
@@ -447,7 +448,7 @@ eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
                   clean_nodata = TRUE,
                   output_path = segmentation_wd,
                   output_name = "segmentation",
-                  otb_dir = "D:/00_Ontario_eFRI/logiciels/OTB-9.1.0-Win64/bin") -> segmentation
+                  otb_dir = "D:/00_Ontario_eFRI/00_logiciels/OTB-9.1.0-Win64/bin") -> segmentation
 
 segmentation %>% 
   st_write(paste0(segmentation_wd, "/data.gpkg"), 
@@ -459,7 +460,7 @@ segmentation %>%
 The segmentation result therefore produces polygons representing forest stands according to the selected metrics. These polygons can therefore be expected to represent homogeneous forest stands based on choosen metrics.
 
 ```{r}
-#| label = "Segmentation results",
+#| label = "Segmentation results 1",
 #| echo = FALSE,
 #| message = FALSE,
 #| warning = FALSE
@@ -498,7 +499,7 @@ The automated segmented forest stand can be now compared to forest stand invento
 Area in hectare are use for size and shape index, which is determine by this formula : [perimeter/(2*sqrt(pi*area))] is use to assess shape.
 
 ```{r}
-#| label = "Segmentation distribution results",
+#| label = "Segmentation results 2",
 #| echo = FALSE,
 #| message = FALSE,
 #| warning = FALSE
@@ -647,14 +648,13 @@ The last and more important step is to build attribute table with all pertinent 
 This layer come from Ontario Land Cover Compilation Version 2.0. This landcover layer was made from numerous Landsat-7 ETM and Landsat-5 TM satellite images acquired between 1999 and 2011. A mix of supervised and unsupervised classification was use to produce the 27 land cover type.
 
 ```{r}
-#| label = "eFRI attibute table",
+#| label = "Show eFRI attibute table data 1",
 #| echo = FALSE,
-#| include = FALSE,
 #| message = FALSE,
 #| warning = FALSE
 ggplot() +
   geom_spatraster(data = landcover) +
-  scale_fill_whitebox_c(palette = "muted") +
+  scale_fill_whitebox_d(palette = "muted") +
   theme_void() +
   labs(fill = "Landcover type")
 ```
@@ -743,7 +743,7 @@ segmentation_data %>%
 The next figures show what can look like some of theses attibutes.
 
 ```{r}
-#| label = "eFRI attibute table 1",
+#| label = "eFRI attibute table results 1",
 #| echo = FALSE,
 #| message = FALSE,
 #| warning = FALSE

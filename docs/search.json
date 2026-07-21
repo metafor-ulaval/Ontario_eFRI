@@ -1,0 +1,128 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "",
+    "text": "In recent years, many Canadian provinces have acquired airborne lidar data covering a large part of their territory. This technology makes it possible to redefine the description of forest attributes. Indeed, numerous initiatives have been carried out since the dissemination and democratization of lidar data and its derivative products.\n\n\nThe objective of this project is to automatically generate polygons that describe the forest stand. Both the delineation and description are done automatically through a series of steps that are described in the document. This project is a continuation of Ethan Berman’s work at the University of British Columbia, which was conducted in 2023. Details are available on this page : https://bermane.github.io/ontario-inventory/index.html. The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available here: https://github.com/metafor-ulaval/eFRItools. All the functions can be used for other purposes that concern automated forest stand segmentation and forest attribute characterization.\n\n\n\nThe study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous.\n\n\n\n\n\n\n\n\n\n\n\n\nThe steps for generating ecoforest polygons are as follows:\n\nSegmentation based on lidar metrics (section 2)\nExtrapolation of forest composition variables using a k-nearest neighbor (kNN) imputation algorithm (section 3):\n\nLeading species : LEADSP\nSecond species : SECSP\nIThree functional group class : FUNCTIONAL_GROUP_3\nFive functional group class : FUNCTIONAL_GROUP_5\n\nConstruction of the attribute table to obtain the following attributes, for each polygon forest stand (section 4):\n\nSource of data : SOURCE\nYear of produced data : YRSOURCE\nArea : AREA\nPerimeter : PERIMETER\nProportion forested : PROPFORESTED\nMost frequent landcover type : POLYTYPE\nMost frequent landcover proportion : POLYTYPEPROP\nForest age : AGE\nYear of last perturbation : YRDEP\nType of last perturbation : DEPTYPE\nProportion of last perturbation : DEPPROP\nYear of most widespread harvest : YRHARVEST\nProportion of most widespread harvest : HARVESTPROP\nYear of most widespread forest fire : YRFIRE\nProportion of most widespread forest fire : FIREPROP\nMerchantable volume per hectare : VMERCH_HA_MEDIAN\nQuadratic mean diameter at breast height : QMDBH_MEDIAN\nNumber of stems with DBH &gt; 7.1 cm per ha : DENS_MEDIAN\nAverage tree height weighted by basal area : LOR_MEDIAN\nBasal area, tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN\nHeight of forest stand based on median z_p95 : HEIGHT\nCanopy cover based on median z_above2 : CANOPY_COVER\nForest density based on median fractional cover between 50 and 200 cm : DENSITY\nMedian slope : SLOPE\nSoil moisture based on SAGA wetness index : MOISTURE"
+  },
+  {
+    "objectID": "index.html#introduction_objective",
+    "href": "index.html#introduction_objective",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "",
+    "text": "The objective of this project is to automatically generate polygons that describe the forest stand. Both the delineation and description are done automatically through a series of steps that are described in the document. This project is a continuation of Ethan Berman’s work at the University of British Columbia, which was conducted in 2023. Details are available on this page : https://bermane.github.io/ontario-inventory/index.html. The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available here: https://github.com/metafor-ulaval/eFRItools. All the functions can be used for other purposes that concern automated forest stand segmentation and forest attribute characterization."
+  },
+  {
+    "objectID": "index.html#introduction_studyarea",
+    "href": "index.html#introduction_studyarea",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "",
+    "text": "The study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous."
+  },
+  {
+    "objectID": "index.html#introduction_steps",
+    "href": "index.html#introduction_steps",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "",
+    "text": "The steps for generating ecoforest polygons are as follows:\n\nSegmentation based on lidar metrics (section 2)\nExtrapolation of forest composition variables using a k-nearest neighbor (kNN) imputation algorithm (section 3):\n\nLeading species : LEADSP\nSecond species : SECSP\nIThree functional group class : FUNCTIONAL_GROUP_3\nFive functional group class : FUNCTIONAL_GROUP_5\n\nConstruction of the attribute table to obtain the following attributes, for each polygon forest stand (section 4):\n\nSource of data : SOURCE\nYear of produced data : YRSOURCE\nArea : AREA\nPerimeter : PERIMETER\nProportion forested : PROPFORESTED\nMost frequent landcover type : POLYTYPE\nMost frequent landcover proportion : POLYTYPEPROP\nForest age : AGE\nYear of last perturbation : YRDEP\nType of last perturbation : DEPTYPE\nProportion of last perturbation : DEPPROP\nYear of most widespread harvest : YRHARVEST\nProportion of most widespread harvest : HARVESTPROP\nYear of most widespread forest fire : YRFIRE\nProportion of most widespread forest fire : FIREPROP\nMerchantable volume per hectare : VMERCH_HA_MEDIAN\nQuadratic mean diameter at breast height : QMDBH_MEDIAN\nNumber of stems with DBH &gt; 7.1 cm per ha : DENS_MEDIAN\nAverage tree height weighted by basal area : LOR_MEDIAN\nBasal area, tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN\nHeight of forest stand based on median z_p95 : HEIGHT\nCanopy cover based on median z_above2 : CANOPY_COVER\nForest density based on median fractional cover between 50 and 200 cm : DENSITY\nMedian slope : SLOPE\nSoil moisture based on SAGA wetness index : MOISTURE"
+  },
+  {
+    "objectID": "index.html#segmentation_basics",
+    "href": "index.html#segmentation_basics",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "2.1 Segmentation basics",
+    "text": "2.1 Segmentation basics\nThe first step is to create polygon that will represent homogeneous forest stand. To perform this task, the Generic Region Merging tools from Orfeo ToolBox (OTB) is used. Three method can be used in this tools : Baatz & Schape, Eclidean Distance, and Full Lambda. For this work, the Baatz & Schape criterion method was used. This algorithm is the same used in the Multi-resolution Segmentation by the well known software eCognition and thus made it freely accessible. This algortihm works by merging iteratively small region together based on dissimilarity of spectral values. There is three parameters that control size and shape of resulting segments : threshold, weight of spectral homogeneity and weight of spatial homogeneity. Here is how these parameters influence segmentation:\n\nThe threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :\n\nSmall threshold → fine segmentation (many small regions)\nLarge threshold → coarse segmentation (fewer, larger regions)\n\nThe weight of spectral homogeneity gives to spectral similarity (pixel values, band means) when deciding whether regions should merge :\n\nIf high → segmentation will mostly respect spectral values\nIf low → spectral similarity matters little, other criteria (shape) dominate\n\nThe weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :\n\nIf high → the algorithm favors compact, smooth regions even if spectral similarity is weaker\nIf low → region boundaries will mostly follow spectral homogeneity\n\n\nSegmentation parameters were calibratedby conducting a sensitivity analysis for 5 differents models with contrasted input metrics [SHOW DIFFERENT MODELS ?] to produce polygon networks of comparable cartographic complexity, defined by polygon size distribution, shape complexity, and polygon density. These criteria were used to ensure that automated delineations remained operationally plausible and comparable to conventional stand maps.\nIf you need more details about parameters, eCognition made this video to explain parameter selection for their Multi-resolution Segmentation algorithm."
+  },
+  {
+    "objectID": "index.html#segmentation_inputs",
+    "href": "index.html#segmentation_inputs",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "2.2 Segmentation inputs",
+    "text": "2.2 Segmentation inputs\nThe inputs consist of lidar metrics computed from raw LiDAR data. LiDAR data have been acquired with a [INSERT ALL SPECS HERE]. Points density is 40 points/m².\nFor this step, the following metrics are used for polygon segmentation : * z_p95 → Height of 95th percentiles of returns above 1.3 m * z_cv → Coefficient of variation of returns above 1.3 m * z_above2 → Canopy cover of first returns above 2 m\n\n\n\n\n\n\n\n\n\nThese metrics are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. The metrics used will reflect how the segmentation polygons are divided. Thus, if a spectral index such as NDVI is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.\nAn additional data used in segmentation are masks where segmentation is therefore not performed. These are typically waterbodies and roads."
+  },
+  {
+    "objectID": "index.html#segmentation_results",
+    "href": "index.html#segmentation_results",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "2.3 Segmentation results",
+    "text": "2.3 Segmentation results\nThe segmentation result therefore produces polygons representing forest stands according to the selected metrics. These polygons can therefore be expected to represent homogeneous forest stands based on choosen metrics.\n\n\n\n\n\n\n\n\n\nThe automated segmented forest stand can be now compared to forest stand inventories. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the sensitivity analysis, the difference between distributions are supposed to be minimal and therefore the automated segmented forest stand should represent operationnaly plausible forest stand that mimic polygons of the forest stand inventorie.\nArea in hectare are use for size and shape index, which is determine by this formula : [perimeter/(2sqrt(piarea))] is use to assess shape."
+  },
+  {
+    "objectID": "index.html#imputation_basics",
+    "href": "index.html#imputation_basics",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "3.1 Imputation basics",
+    "text": "3.1 Imputation basics\nSome attributes can’t be directly extracted from a raster layer containing the information. For example, there is still no layer describing tree species across Ontario. For this tasks, k-nearest neighbor (kNN) imputation can be used to infer what would be some attributes (REF). This widely used method use similarity between variables from two different datasets. In order to fill a missing data, the algorithm identifies the k most similar observations based on distance of common variables. The missing values are then estimated using the corresponding values from these neighbors, often by taking their mean (for numerical variables) or mode (for categorical variables).\nTo identify the most suitable variables for kNN imputation, a performance analysis was conducted using all possible combinations of five uncorrelated variables. This analysis evaluated, for each combination, how accurately the imputed values matched the observed values of the forest polygon inventory. Therefore, the optimal combination of metrics depends on the specific variable being imputed :\n\nImputed leading species : dem, rumple_index, z_kurt, z_p95, B6\nImputed second species : dem, rumple_index, sagawi, z_p95, NDVI\nImputed three functional group class : dem, relative_topographic_position_100m, rumple_index, z_p95, B6\nImputed five functional group class : dem, rumple_index, slope, z_p95, B6\n\nIn addition, for each of these 4 variables, the X and Y coordinates of polygon centroid have been used for the imputation."
+  },
+  {
+    "objectID": "index.html#imputation_results",
+    "href": "index.html#imputation_results",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "3.1 Imputation results",
+    "text": "3.1 Imputation results\nThe table below shows the accuracy of each of the imputed variables :\n\n\n\n\n\n\n\n\n\n\nTarget variable\nUsed metrics\nAccuracy (%)\n\n\n\n\nFUNCTIONAL_GROUP_3\ndem,relative_topographic_position_100m,rumple_index,z_p95,B6,X,Y\n73.65\n\n\nFUNCTIONAL_GROUP_5\ndem,rumple_index,slope,z_p95,B6,X,Y\n62.30\n\n\nSP_NO_1\ndem,rumple_index,z_kurt,z_p95,B6,X,Y\n65.87\n\n\nSP_NO_2\ndem,rumple_index,sagawi,z_p95,NDVI,X,Y\n36.63\n\n\n\n\n\nThe map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated segmentation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial gorup class shown below."
+  },
+  {
+    "objectID": "index.html#attribute_table_results",
+    "href": "index.html#attribute_table_results",
+    "title": "Enhanced Forest Resources Inventory",
+    "section": "4.1 Attribute table results",
+    "text": "4.1 Attribute table results\nThe next figures show what can look like some of theses attibutes."
+  },
+  {
+    "objectID": "calibration_grm.html",
+    "href": "calibration_grm.html",
+    "title": "Optimal Generic Region Merging parameters",
+    "section": "",
+    "text": "This document shows the step to find the optimals parameters of the Generic Region Merging (GRM) algorithm of the Orfeo ToolBox to automatically delineate operationally plausible forest stand. Photo-interpreted forest stands of the same area are the reference data. The optimization is performed on the Symmetric mean absolute percentage error (SMAPE) of polygon density, the overlapping kernel density of the polygon stand area and the overlapping kernel density of the polygon stand shape index. Best parameters were computed for two specific forest and five differents models, but performance metrics can be averaged to find best paramaters that suit the prefered scale."
+  },
+  {
+    "objectID": "calibration_grm.html#introduction",
+    "href": "calibration_grm.html#introduction",
+    "title": "Optimal Generic Region Merging parameters",
+    "section": "",
+    "text": "This document shows the step to find the optimals parameters of the Generic Region Merging (GRM) algorithm of the Orfeo ToolBox to automatically delineate operationally plausible forest stand. Photo-interpreted forest stands of the same area are the reference data. The optimization is performed on the Symmetric mean absolute percentage error (SMAPE) of polygon density, the overlapping kernel density of the polygon stand area and the overlapping kernel density of the polygon stand shape index. Best parameters were computed for two specific forest and five differents models, but performance metrics can be averaged to find best paramaters that suit the prefered scale."
+  },
+  {
+    "objectID": "calibration_grm.html#sampling-area",
+    "href": "calibration_grm.html#sampling-area",
+    "title": "Optimal Generic Region Merging parameters",
+    "section": "Sampling area",
+    "text": "Sampling area\nThe two evaluated forest are located in the province of Ontario, in Canada. The first one is Romeo Malette Forest and are located in the middle of the province and is more conniferous. The second one is Ottawa Valley Forest and is located more south and that’s why there is more deciduous forest. In each forest, ten smaller square area of 5 km x 5 km have been used to perform subsequent analysis.\n\n\n\n\n\n\n\n\n\n\nTo position theses area, only actual forest stand (POLYTYPE == “FOR”) have been retain.\n\n\n\n\n\n\n\n\n\n\nA positive buffer of 500 m and then a negative one of 500 m again enable to merge close forest stand.\n\n\n\n\n\n\n\n\n\n\nA final inner buffer of approximately 7000 m was use to produce final polygon that allowed to place the center of each area.\n\n\n\n\n\n\n\n\n\n\nThe first area was placed randomly and then the 9 next one were iteratively placed as far as possible of the last placed one. The next figure shows the last placed area in red and the distance raster that enable to fin the farthest position.\n\n\n\n\n\n\n\n\n\n\nFor every area, only actual forest stand (POLYTYPE == “FOR”) were used to perform segmentation."
+  },
+  {
+    "objectID": "calibration_grm.html#segmentation",
+    "href": "calibration_grm.html#segmentation",
+    "title": "Optimal Generic Region Merging parameters",
+    "section": "Segmentation",
+    "text": "Segmentation\nFive differents sets of metrics were used to perform segmentation :\n\nmodel_A : z_p95 + z_above2 + z_cv\nmodel_B : z_p95 + z_above2 + z_skew\nmodel_D : z_p95 + z_above2 + sagawi\nmodel_F : z_p95 + z_above2 + B6\nmodel_G : B6 + B8 + B11\n\nThe metrics used are shown in the follow figure."
+  },
+  {
+    "objectID": "calibration_grm.html#parameters",
+    "href": "calibration_grm.html#parameters",
+    "title": "Optimal Generic Region Merging parameters",
+    "section": "Parameters",
+    "text": "Parameters\nFinally, the parameters tested are the following ones : 1. The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is : - Small threshold → fine segmentation (many small regions) - Large threshold → coarse segmentation (fewer, larger regions) - This parameter was tested with values ranging from 10 to 100 in increments of 10\n\nThe weight of spectral homogeneity gives to spectral similarity (pixel values, band means) when deciding whether regions should merge :\n\n\nIf high → segmentation will mostly respect spectral values\nIf low → spectral similarity matters little, other criteria (shape) dominate\nThis parameter was tested with values ranging from 0.1 to 1 in increments of 0.1\n\n\nThe weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :\n\n\nIf high → the algorithm favors compact, smooth regions even if spectral similarity is weaker\nIf low → region boundaries will mostly follow spectral homogeneity\nThis parameter was tested with values ranging from 0.1 to 1 in increments of 0.1\n\nThus, a total of 1000 paramaters combinaisons was tested.\nThe next figure shows a example of a segmentation in the Ottawa Valley Forest for the model_A (z_p95 + z_above2 + z_cv) with mid parameters (threshold of 50, spectral homogeneity of 0.5 and spatial homogeneity of 0.5). There is also a example of a segmnetation that was smoothed to get a better shape index of each polygon forest stand.\n\n\nWarning in st_cast.sf(., \"POLYGON\"): repeating attributes for all\nsub-geometries for which they may not be constant\nWarning in st_cast.sf(., \"POLYGON\"): repeating attributes for all\nsub-geometries for which they may not be constant"
+  },
+  {
+    "objectID": "calibration_grm.html#analysis",
+    "href": "calibration_grm.html#analysis",
+    "title": "Optimal Generic Region Merging parameters",
+    "section": "Analysis",
+    "text": "Analysis\nThe three performance metrics are the following ones : 1. Symmetric mean absolute percentage error (SMAPE) of polygon density - The value is positive when the segmentation have a higher density than the ecoforestry polygon and negative when the segmentation have a lower density - In the example above, the SMAPE of the density is 0.17 as the ecoforestry have a density of 7.25 polygon/km² (1465 polygons) and the segmentation a density of 8.59 polygon/km² (1650 polygons)\n\nOverlapping kernel density of the polygon stand area (left figure)\n\n\nThis performance metric represent how the distribution of the segmentation polygon stand area suit well the distribution of the ecoforestry polygon area\n\n\nOverlapping kernel density of the polygon stand shape index (right figure)\n\n\nThe same way as the last performance metric, this performance metric represent how the distribution of the segmentation polygon stand shape index suit well the distribution of the ecoforestry polygon shape index\nThe shape index was computed with smoothed polygon to avoid overestimating the perimeter of polygons\n\nThe assumption behind this analysis is that the automated segmented polygon stand should have the same distribution of polygon area and shape than the reference ecoforestery polygon stand and therefore be operationally plausible forest stand."
+  },
+  {
+    "objectID": "calibration_grm.html#results",
+    "href": "calibration_grm.html#results",
+    "title": "Optimal Generic Region Merging parameters",
+    "section": "Results",
+    "text": "Results\nThe results presented here are, as mentionned before, in the Ottawa Valley Forest for the model_A (z_p95 + z_above2 + z_cv). All the follow process can be made for every forest and every combinaison of metrics. The threshold of the SMAPE is 0.1 which represent more of less 10 % of polygon density variation. All sets of parameters that gave SMAPE lower than -0.1 and higher than 0.1 have been removed.\n\n\n\n\n\n\n\n\n\n\nAfter this step, the optimal parameters was choosen as the one that maximized both the overlap of the areas and the shape index.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThe final score was computed as follow : - final_score = (0.5 x (1-overlap_area)) + (0.5 x (1-overlap_shape_index)) - the best parameters set was choosen as the lowest final score among all combinaison that had a SMAPE of polygon density of more of less 0.1."
+  },
+  {
+    "objectID": "calibration_grm.html#references",
+    "href": "calibration_grm.html#references",
+    "title": "Optimal Generic Region Merging parameters",
+    "section": "References",
+    "text": "References"
+  }
+]

@@ -1,0 +1,18 @@
+project:
+  type: website
+  output-dir: docs
+  execute-dir: file
+
+website:
+  title: "Ontario eFRI"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: calibration_grm.qmd
+        text: Calibration
+
+format:
+  html:
+    theme: cosmo
+    toc: true

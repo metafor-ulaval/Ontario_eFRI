@@ -122,9 +122,9 @@ inner_radius <- sqrt(10000^2*2)/2
 
 for(f in c("RMF", "OVF")){
 
-  st_read(paste0("D:/00_Ontario_eFRI/", f, "/shp/PolygonForest.shp"), quiet = T) -> polygon_forest
+  st_read(paste0("D:/00_Ontario_eFRI/03_shp_data/", f, "/PolygonForest.shp"), quiet = T) -> polygon_forest
 
-  st_read(paste0("D:/00_Ontario_eFRI/", f, "/ctg/ctg.shp"), quiet = T) %>%
+  st_read(paste0("D:/00_Ontario_eFRI/03_shp_data/", f, "/ctg.shp"), quiet = T) %>%
     st_transform(st_crs(polygon_forest)) -> ctg
 
   ctg %>%
@@ -165,14 +165,14 @@ for(f in c("RMF", "OVF")){
 
   sampling_square %>%
     st_transform(st_crs(polygon_forest)) %>%
-    st_write(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/sampling_square_", f, ".shp"))
+    st_write(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_", f, ".shp"))
 
   polygon_forest %>%
     st_intersection(sampling_square) %>%
     rowid_to_column("id") -> polygon_forest
 
   polygon_forest %>%
-    st_write(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/polygon_forest_", f,".shp"))
+    st_write(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_", f,".shp"))
 
   polygon_forest %>%
     sf::st_cast("MULTIPOLYGON") %>%
@@ -186,7 +186,7 @@ for(f in c("RMF", "OVF")){
     st_cast("POLYGON") %>%
     st_as_sf() -> polygon_forest_NON_FOR
 
-  list.files(paste0("D:/00_Ontario_eFRI/", f, "/metrics"), full.names = TRUE) %>%
+  list.files(paste0("D:/00_Ontario_eFRI/04_metrics/", f), full.names = TRUE) %>%
     read_metrics() %>%
     filter(name %in% m) %T>%
     {pull(.,name) ->> metrics_names} %>% # Extract metrics names in the right order
@@ -204,13 +204,13 @@ for(f in c("RMF", "OVF")){
 
   # Save objects
   metrics %>%
-    writeRaster(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/metrics_", f,".tif"))
+    writeRaster(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_", f,".tif"))
 
   polygon_forest_FOR %>%
-    st_write(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/polygon_forest_FOR_", f,".shp"))
+    st_write(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_", f,".shp"))
 
   polygon_forest_NON_FOR %>%
-    st_write(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/masks_", f,".shp"))
+    st_write(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/masks_", f,".shp"))
 
 }
 ```
@@ -224,9 +224,9 @@ The two evaluated forest are located in the province of Ontario, in Canada. The 
 #| label = "show base data 1",
 #| echo = FALSE
 for(f in c("RMF", "OVF")){
-  st_read("D:/00_Ontario_eFRI/OVF/shp/PolygonForest.shp", quiet = T) -> polygon_forest
+  st_read(paste0("D:/00_Ontario_eFRI/03_shp_data/", f, "/PolygonForest.shp"), quiet = T) -> polygon_forest
   
-  st_read(paste0("D:/00_Ontario_eFRI/", f, "/ctg/ctg.shp"), quiet = T) %>%
+  st_read(paste0("D:/00_Ontario_eFRI/03_shp_data/", f, "/ctg.shp"), quiet = T) %>%
     st_transform(st_crs(polygon_forest)) -> ctg
 
   ctg %>%
@@ -239,7 +239,7 @@ for(f in c("RMF", "OVF")){
   area_clean %>% 
     st_bbox() -> bbox
   
-  st_read(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/sampling_square_", f, ".shp"),
+  st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_", f, ".shp"),
           quiet = T) %>% 
     st_transform(4326) -> sampling_square
   
@@ -261,9 +261,9 @@ To position theses area, only actual forest stand (POLYTYPE == "FOR") have been 
 ```{r}
 #| label = "show base data 2",
 #| echo = FALSE
-st_read("D:/00_Ontario_eFRI/OVF/shp/PolygonForest.shp", quiet = T) -> polygon_forest
+st_read("D:/00_Ontario_eFRI/03_shp_data/OVF/PolygonForest.shp", quiet = T) -> polygon_forest
 
-st_read("D:/00_Ontario_eFRI/OVF/ctg/ctg.shp", quiet = T) %>%
+st_read("D:/00_Ontario_eFRI/03_shp_data/OVF/ctg.shp", quiet = T) %>%
   st_transform(st_crs(polygon_forest)) -> ctg
 
 ctg %>%
@@ -404,7 +404,7 @@ sampling_square_temp %>%
   st_transform(4326) %>% 
   st_bbox() -> bbox
 
-sf::st_read("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/polygon_forest_FOR_OVF.shp", quiet = T) %>% 
+sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_OVF.shp", quiet = T) %>% 
   dplyr::select() %>%
   sf::st_cast("POLYGON") -> polygon_forest
 
@@ -433,7 +433,7 @@ The metrics used are shown in the follow figure.
 ```{r}
 #| label = "show base data 7",
 #| echo = FALSE
-terra::rast("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/metrics_OVF.tif") -> metrics
+terra::rast("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_OVF.tif") -> metrics
 
 metrics %>%
   terra::crop(sampling_square_temp %>% st_transform(st_crs(metrics))) %>%
@@ -552,12 +552,12 @@ future_lapply(seq_len(nrow(params)), function(p){
                         "_spec", param$spec*100,
                         "_spat", param$spat*100)
 
-  st_read(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/sampling_square_", param$forest, ".shp"),
+  st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_", param$forest, ".shp"),
           quiet = T) -> sampling_square
 
-  rast(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/metrics_", param$forest,".tif")) -> metrics
+  rast(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_", param$forest,".tif")) -> metrics
 
-  st_read(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/masks_", param$forest,".shp"),
+  st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/masks_", param$forest,".shp"),
           quiet = T) -> masks
 
   map_dfr(seq_len(nrow(sampling_square)),
@@ -648,7 +648,7 @@ polygon_forest %>%
   filter_if(is.numeric, is.finite) -> polygon_forest_temp
 
 suppressMessages(
-  st_read("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/OVF/model_A/segmentation_thresh50_spec50_spat50.shp",
+  st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/OVF/model_A/segmentation_thresh50_spec50_spat50.shp",
         quiet = T) %>% 
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%
@@ -659,7 +659,7 @@ suppressMessages(
          shape_index = perimeter / sqrt(pi * area)) %>%
   filter_if(is.numeric, is.finite)) -> segmentation 
 
-suppressMessages(st_read("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/OVF/model_A/segmentation_thresh50_spec50_spat50_smoothed.shp",
+suppressMessages(st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/OVF/model_A/segmentation_thresh50_spec50_spat50_smoothed.shp",
         quiet = T) %>% 
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%
@@ -826,7 +826,7 @@ params <- merge(expand.grid(forest = forest,
 
 # Remove done files
 params %>%
-  mutate(done = file.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", forest, "/", model_name, "/tables/results_thresh", thresh, "_spec", spec*100, "_spat", spat*100, ".rds"))) %>%
+  mutate(done = file.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", forest, "/", model_name, "/tables/results_thresh", thresh, "_spec", spec*100, "_spat", spat*100, ".rds"))) %>%
   filter(!done) -> params
 
 # p <- 1
@@ -863,20 +863,20 @@ for(batch in indices){
 
       cat("Forest :", param$forest, "/ Model :", param$model_name, "/ Threshold :", param$thresh, "/ Spec :", param$spec, "/ Spat :", param$spat, "\n")
 
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest))){
-        dir.create(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest))
+      if(!dir.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest))){
+        dir.create(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest))
       }
 
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name))){
-        dir.create(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name))
+      if(!dir.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name))){
+        dir.create(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name))
       }
 
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_nam, "/tables"))){
-        dir.create(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/tables"))
+      if(!dir.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_nam, "/tables"))){
+        dir.create(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/tables"))
       }
 
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures"))){
-        dir.create(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures"))
+      if(!dir.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures"))){
+        dir.create(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures"))
       }
 
       if(!dir.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/maps"))){
@@ -887,9 +887,9 @@ for(batch in indices){
                             "_spec", param$spec*100,
                             "_spat", param$spat*100)
 
-      terra::rast(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/metrics_", param$forest, ".tif")) -> metrics
+      terra::rast(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_", param$forest, ".tif")) -> metrics
 
-      sf::st_read(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/base_data/polygon_forest_FOR_", param$forest, ".shp"), quiet = T) %>%
+      sf::st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_", param$forest, ".shp"), quiet = T) %>%
         dplyr::select() %>%
         sf::st_cast("MULTIPOLYGON") %>%
         sf::st_cast("POLYGON") %>%
@@ -899,7 +899,7 @@ for(batch in indices){
                shape_index = perimeter / sqrt(pi * area)) %>%
         filter_if(is.numeric, is.finite) -> polygon_forest
 
-      sf::st_read(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name, "/segmentation", output_name, ".shp"), quiet = T) %>%
+      sf::st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name, "/segmentation", output_name, ".shp"), quiet = T) %>%
         sf::st_cast("MULTIPOLYGON") %>%
         sf::st_cast("POLYGON") %>%
         mutate(area = as.numeric(st_area(.)),
@@ -908,7 +908,7 @@ for(batch in indices){
                shape_index = perimeter / sqrt(pi * area)) %>%
         filter_if(is.numeric, is.finite) -> segmentation
 
-      sf::st_read(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name, "/segmentation", output_name, "_smoothed.shp"), quiet = T) %>%
+      sf::st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name, "/segmentation", output_name, "_smoothed.shp"), quiet = T) %>%
         sf::st_make_valid() %>%
         sf::st_cast("MULTIPOLYGON") %>%
         sf::st_cast("POLYGON") %>%
@@ -990,7 +990,7 @@ for(batch in indices){
 
       p_area_poly / p_area_raster -> p_area
 
-      ggsave(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures/area", output_name, ".jpg"),
+      ggsave(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures/area", output_name, ".jpg"),
              plot = p_area,
              width = 15,
              height = 10,
@@ -1107,7 +1107,7 @@ for(batch in indices){
 
       p_shape_poly / p_shape_raster -> p_shape
 
-      ggsave(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures/shape", output_name, ".jpg"),
+      ggsave(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures/shape", output_name, ".jpg"),
              plot = p_shape,
              width = 15,
              height = 10,
@@ -1133,7 +1133,7 @@ for(batch in indices){
         geom_sf(data = segmentation_smoothed %>% st_filter(clip_area) %>% rmapshaper::ms_clip(clip_area) %>% sf::st_transform(4326), color = "#1E88E5", fill = NA, lwd = 1) +
         theme_bw() -> p_map
 
-      ggsave(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/maps/map", output_name, ".jpg"),
+      ggsave(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/maps/map", output_name, ".jpg"),
              plot = p_map,
              width = 10,
              height = 10,
@@ -1187,7 +1187,7 @@ for(batch in indices){
                     rename_with(~ paste0("quantile_segmentation_", seq(0, 100, 10)))) -> results
 
       results %>%
-        saveRDS(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/tables/results", output_name, ".rds"))
+        saveRDS(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/tables/results", output_name, ".rds"))
 
       terra::tmpFiles(remove = TRUE)
       rm(metrics,
@@ -1206,7 +1206,7 @@ for(batch in indices){
     }, error = function(e) {
 
       cat(c("Error at index ", p, " : ", conditionMessage(e), "----------"),
-          file = paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/log_error/log_error_", param$forest, "_", param$model_name, "_thresh", param$thresh, "_spec", param$spec*100, "_spat", param$spat*100, ".txt"),
+          file = paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/log_error/log_error_", param$forest, "_", param$model_name, "_thresh", param$thresh, "_spec", param$spec*100, "_spat", param$spat*100, ".txt"),
           append = TRUE,
           sep = "\n")
 
@@ -1217,7 +1217,7 @@ for(batch in indices){
 
 }
 
-list.files("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results", full.names = TRUE) %>%
+list.files("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results", full.names = TRUE) %>%
   map(list.files, full.names = TRUE) %>%
   unlist() %>%
   map(list.files, full.names = TRUE, pattern = "tables") %>%
@@ -1235,7 +1235,7 @@ results %>%
   select(forest, model_name, everything()) -> results
 
 results %>%
-  saveRDS("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/results.rds")
+  saveRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/results.rds")
 ```
 
 ```{r}
@@ -1249,7 +1249,7 @@ weight_area <- 1/2
 weight_shape <- 1/2
 
 # Read data
-readRDS("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/results.rds") %>%
+readRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/results.rds") %>%
   mutate(area_score = overlap_area_raster,
          shape_score = overlap_shape_smoothed_raster) %>%
   mutate(final_score = (weight_area*(1-area_score)) + (weight_shape*(1-shape_score))) %>%
@@ -1427,7 +1427,7 @@ bind_rows(best_parameters_by_forest_model,
           best_parameters) -> best_parameters_all
 
 best_parameters_all %>%
-  saveRDS("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/best_parameters_all.rds")
+  saveRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/best_parameters_all.rds")
 ```
 
 \newpage
@@ -1444,7 +1444,7 @@ weight_area <- 1/2
 weight_shape <- 1/2
 
 # Read data
-readRDS("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/results.rds") %>%
+readRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/results.rds") %>%
   rename(dens_smape = dens_sspe) %>% 
   mutate(area_score = overlap_area_raster,
          shape_score = overlap_shape_smoothed_raster) %>%
