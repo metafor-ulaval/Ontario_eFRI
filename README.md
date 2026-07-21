@@ -1,2 +1,1 @@
-# Ontario_eFRI
-Enhanced Forest Resources Inventory for Ontario management units
+https://metafor-ulaval.github.io/Ontario_eFRI/
