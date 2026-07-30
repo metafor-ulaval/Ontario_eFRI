@@ -9,8 +9,9 @@ date: "2026-05-20"
 ---
 
 ```{r}
-#| label = "Setup",
-#| include = FALSE
+#| label: setup
+#| include: FALSE
+
 knitr::opts_chunk$set(echo = TRUE)
 
 # Terminology
@@ -24,10 +25,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-#| label = "Read library",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: read-library
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 library(tidyverse)
 library(magrittr)
 library(terra)
@@ -45,10 +47,11 @@ library(patchwork)
 ```
 
 ```{r}
-#| label = "Parameters",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: parameters
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 wd <- "D:/00_Ontario_eFRI" # wd
 sector <- "RMF"
 name <- "efri_polygon_test"
@@ -75,34 +78,36 @@ best_models %>%
 ```
 
 ```{r}
-#| label = "Read metrics informations",
-#| echo = FALSE,
-#| include = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: read-metrics-informations
+#| echo: FALSE
+#| include: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 list.files(paste0(wd, "/04_metrics/", sector), full.names = TRUE) %>%
   read_metrics() -> metrics_infos
 ```
 
 ```{r}
-#| label = "Read data",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
-# # 1. Catalog
-# st_read(paste0(wd, "/ctg/ctg.shp"), quiet = T) %>%
-#   st_transform(epsg) -> ctg
-# 
-# # Subset area in a 2 km radius circle in the centroid of area
-# ctg %>%
-#   st_bbox() %>%
-#   st_as_sfc() %>%
-#   st_centroid() %>%
-#   st_buffer(2000) %>%
-#   st_bbox %>%
-#   st_as_sfc() %>%
-#   st_as_sf() -> subset_area
-# 
+#| label: read-data
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+# 1. Catalog
+st_read(paste0(wd, "/03_shp_data/", sector, "/ctg.shp"), quiet = T) %>%
+  st_transform(epsg) -> ctg
+
+# Subset area in a 2.5 km radius circle in the centroid of area
+ctg %>%
+  st_bbox() %>%
+  st_as_sfc() %>%
+  st_centroid() %>%
+  st_buffer(2000) %>%
+  st_bbox %>%
+  st_as_sfc() %>%
+  st_as_sf() -> subset_area
+
 # # 2. Metrics
 # metrics_infos %>%
 #   filter(name %in% c(best_models_variables,
@@ -265,16 +270,41 @@ forest_harvest_1985_2020 <- readRDS(paste0(wd, "/08_temp/RMF_data_temp/forest_ha
 In recent years, many Canadian provinces have acquired airborne lidar data covering a large part of their territory. This technology makes it possible to redefine the description of forest attributes. Indeed, numerous initiatives have been carried out since the dissemination and democratization of lidar data and its derivative products.
 
 ## **1.1** Objective {-#introduction_objective}
-The objective of this project is to automatically generate polygons that describe the forest stand. Both the delineation and description are done automatically through a series of steps that are described in the document. This project is a continuation of Ethan Berman's work at the University of British Columbia, which was conducted in 2023. Details are available on this page : https://bermane.github.io/ontario-inventory/index.html. The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available here: https://github.com/metafor-ulaval/eFRItools. All the functions can be used for other purposes that concern automated forest stand segmentation and forest attribute characterization.
+The objective of this project is to automatically generate polygons that describe the forest stand. Both the delineation and description are done automatically through a series of steps that are described in the document. This project is a continuation of Ethan Berman's work at the University of British Columbia, which was conducted in 2023. Details are available on this [page](https://bermane.github.io/ontario-inventory/index.html). The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available [here](https://github.com/metafor-ulaval/eFRItools). All the functions can be used for other purposes that concern automated forest stand segmentation and forest attribute characterization.
 
 ## **1.2** Study area {-#introduction_studyarea}
-The study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous.
+The study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous. 
 
 ```{r}
-#| label = "Introduction study area",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: introduction-study-area
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+ctg %>%
+  st_geometry() %>%
+  st_buffer(10) %>%
+  st_union() %>%
+  st_buffer(-10) %>% 
+  st_transform(4326) -> area_clean
+
+area_clean %>% 
+  st_bbox() -> bbox
+
+ggplot() +
+  suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
+  geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) +
+  theme_bw()
+```
+
+For all the following figures, a restricted area of 5x5 km have been selected for easier visualization of input and results.
+
+```{r}
+#| label: study-area-subset
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 ctg %>%
   st_geometry() %>%
   st_buffer(10) %>%
@@ -292,21 +322,21 @@ ggplot() +
 ```
 
 ## **1.3** Step {-#introduction_steps}
-The steps for generating ecoforest polygons are as follows:
+The steps for generating enhanced forest resources inventory are as follows:
 
-1. [Segmentation based on lidar metrics (section 2)](#segmentation)
+1. Segmentation based on lidar metrics in polygon forest stand ([section 2](#segmentation))
 
-2. Extrapolation of forest composition variables using a k-nearest neighbor (kNN) imputation algorithm (section 3): 
+2. Extrapolation of forest composition variables using a k-nearest neighbor (kNN) imputation algorithm, for each polygon forest stand ([section 3](#imputation)): 
 
     * Leading species : LEADSP
 
     * Second species : SECSP
 
-    * IThree functional group class : FUNCTIONAL_GROUP_3
+    * Three functional group class : FUNCTIONAL_GROUP_3
 
     * Five functional group class : FUNCTIONAL_GROUP_5
 
-3. Construction of the attribute table to obtain the following attributes, for each polygon forest stand (section 4):
+3. Construction of the attribute table to obtain the following attributes, for each polygon forest stand ([section 4](#attribute_table)):
 
     * Source of data : SOURCE
 
@@ -363,7 +393,7 @@ The steps for generating ecoforest polygons are as follows:
 # **2** Segmentation {-#segmentation}
 
 ## **2.1** Segmentation basics {-#segmentation_basics}
-The first step is to create polygon that will represent homogeneous forest stand. To perform this task, the Generic Region Merging tools from Orfeo ToolBox (OTB) is used. Three method can be used in this tools : Baatz & Schape, Eclidean Distance, and Full Lambda. For this work, the Baatz & Schape criterion method was used. This algorithm is the same used in the Multi-resolution Segmentation by the well known software eCognition and thus made it freely accessible. This algortihm works by merging iteratively small region together based on dissimilarity of spectral values. There is three parameters that control size and shape of resulting segments : threshold, weight of spectral homogeneity and weight of spatial homogeneity. Here is how these parameters influence segmentation:
+The first step is to create polygon that will represent homogeneous forest stand. To perform this task, the Generic Region Merging tools from Orfeo ToolBox (OTB) is used. Three method can be used in this tools : Baatz & Schape, Eclidean Distance, and Full Lambda. For this work, the Baatz & Schape criterion method was used. This algorithm is the same used in the Multi-resolution Segmentation by the well known software [eCognition](https://geospatial.trimble.com/fr/products/software/trimble-ecognition) and thus made it freely accessible. This algortihm works by merging iteratively small region together based on dissimilarity of spectral values. There is three parameters that control size and shape of resulting segments : threshold, weight of spectral homogeneity and weight of spatial homogeneity. Here is how these parameters influence segmentation:
 
 * The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :
 
@@ -382,24 +412,25 @@ The first step is to create polygon that will represent homogeneous forest stand
     * If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker
 
     * If low → region boundaries will mostly follow spectral homogeneity
+    
+If more details are needed about parameters, eCognition made this [video](https://www.youtube.com/watch?v=tt53hoRAw9Q) to explain parameter selection for their Multi-resolution Segmentation algorithm.
 
-Segmentation parameters were calibratedby conducting a [sensitivity analysis](link here) for 5 differents models with contrasted input metrics [SHOW DIFFERENT MODELS ?] to produce polygon networks of comparable cartographic complexity, defined by polygon size distribution, shape complexity, and polygon density. These criteria were used to ensure that automated delineations remained operationally plausible and comparable to conventional stand maps.
-
-If you need more details about parameters, eCognition made this [video](https://www.youtube.com/watch?v=tt53hoRAw9Q) to explain parameter selection for their Multi-resolution Segmentation algorithm.
+Segmentation parameters were calibrated by conducting a [sensitivity analysis](https://metafor-ulaval.github.io/Ontario_eFRI/calibration_grm.html) to produce polygon forest stand comparable with conventional forest resources inventory maps. Comparison were made with stand size distribution, stand shape distribution, and polygon density. These criteria were used to ensure that automated polygon forest stand remained operationally plausible and comparable to conventional forest resources inventory maps.
 
 ## **2.2** Segmentation inputs {-#segmentation_inputs}
-The inputs consist of lidar metrics computed from raw LiDAR data. LiDAR data have been acquired with a [INSERT ALL SPECS HERE]. Points density is 40 points/m².
+The inputs are lidar metrics computed from raw LiDAR data. LiDAR data have been acquired with a [INSERT ALL SPECS HERE]. Points density is 40 points/m².
 
-For this step, the following metrics are used for polygon segmentation :
+The following metrics are used for polygon segmentation :
 * z_p95 → Height of 95th percentiles of returns above 1.3 m
 * z_cv → Coefficient of variation of returns above 1.3 m
 * z_above2 → Canopy cover of first returns above 2 m
 
 ```{r}
-#| label = "Show segmentation data 1",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: show-segmentation-data-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 for(metric in segmentation_metrics){
   assign(metric,
          ggplot() +
@@ -417,10 +448,11 @@ These metrics are only one example of what can be used, but it is important to n
 An additional data used in segmentation are masks where segmentation is therefore not performed. These are typically waterbodies and roads. 
 
 ```{r}
-#| label = "Show segmentation data 2",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: show-segmentation-data-2
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 ggplot() +
   base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
            basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
@@ -432,11 +464,12 @@ ggplot() +
 ```
 
 ```{r}
-#| label = "Segmentation",
-#| echo = FALSE,
-#| include = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: segmentation
+#| echo: FALSE
+#| include: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 # readRDS("D:/grm_parametrization/results/best_parameters_all.rds")
 
 eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
@@ -460,10 +493,11 @@ segmentation %>%
 The segmentation result therefore produces polygons representing forest stands according to the selected metrics. These polygons can therefore be expected to represent homogeneous forest stands based on choosen metrics.
 
 ```{r}
-#| label = "Segmentation results 1",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: segmentation-results-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 ggplot() +
   base_map(subset_area %>% st_transform(4326) %>% st_bbox(), 
            basemap = "google-satellite", increase_zoom = 3, nolabels = TRUE) +
@@ -499,10 +533,11 @@ The automated segmented forest stand can be now compared to forest stand invento
 Area in hectare are use for size and shape index, which is determine by this formula : [perimeter/(2*sqrt(pi*area))] is use to assess shape.
 
 ```{r}
-#| label = "Segmentation results 2",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: segmentation-results-2
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 bind_rows(fri_polygons %>% st_geometry() %>% st_as_sf() %>% mutate(type = "fri"),
           segmentation %>% st_geometry() %>% st_as_sf() %>% mutate(type = "grm")) %>% 
   mutate(area = st_area(.) %>% as.numeric(),
@@ -567,11 +602,12 @@ To identify the most suitable variables for kNN imputation, a performance analys
 In addition, for each of these 4 variables, the X and Y coordinates of polygon centroid have been used for the imputation.
 
 ```{r}
-#| label = "Imputation",
-#| echo = FALSE,
-#| include = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: imputation
+#| echo: FALSE
+#| include: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 fri_polygons_species_prop <- mutate_species_prop(fri_polygons["SPCOMP"], "SPCOMP")
 fri_polygons_species_order <- mutate_species_order(fri_polygons_species_prop, "SPCOMP")
 fri_polygons_forest_type <- mutate_forest_type(fri_polygons_species_order)
@@ -602,10 +638,11 @@ segmentation_imputation %>%
 The table below shows the accuracy of each of the imputed variables :
 
 ```{r}
-#| label = "Imputation results 1",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: imputation-results-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 best_models %>% 
   mutate(accuracy = round(accuracy*100, 2))  %>% 
   dplyr::select("Target variable" = "target_var",
@@ -618,10 +655,11 @@ knitr::kable(best_models_clean)
 The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated segmentation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial gorup class shown below.
 
 ```{r}
-#| label = "Imputation results 2",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: imputation-results-2
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 fri_polygons_functional_group %>% 
   ms_clip(subset_area) %>% 
   mutate(type = "Forest polygon") -> imputation_data_1
@@ -648,10 +686,11 @@ The last and more important step is to build attribute table with all pertinent 
 This layer come from Ontario Land Cover Compilation Version 2.0. This landcover layer was made from numerous Landsat-7 ETM and Landsat-5 TM satellite images acquired between 1999 and 2011. A mix of supervised and unsupervised classification was use to produce the 27 land cover type.
 
 ```{r}
-#| label = "Show eFRI attibute table data 1",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: show-eFRI-attibute-table-data-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 ggplot() +
   geom_spatraster(data = landcover) +
   scale_fill_whitebox_d(palette = "muted") +
@@ -720,11 +759,12 @@ Here are listed the extracted attributes :
 * Soil moisture based on SAGA wetness index : MOISTURE
 
 ```{r}
-#| label = "eFRI attibute table",
-#| echo = FALSE,
-#| include = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: eFRI-attibute-table
+#| echo: FALSE
+#| include: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 eFRI_attribute_table(segmentation = segmentation_imputation,
                      metrics = metrics,
                      summary_metrics = paste0(summary_metrics, "_median"),
@@ -743,10 +783,11 @@ segmentation_data %>%
 The next figures show what can look like some of theses attibutes.
 
 ```{r}
-#| label = "eFRI attibute table results 1",
-#| echo = FALSE,
-#| message = FALSE,
-#| warning = FALSE
+#| label: eFRI-attibut-table-results-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
 ggplot() +
   geom_sf(data = segmentation_data, aes(fill = AGE)) + 
   labs(fill = "Forest age") +
