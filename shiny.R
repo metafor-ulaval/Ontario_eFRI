@@ -10,6 +10,7 @@ library(magrittr)
 library(rmapshaper)
 library(sf)
 library(terra)
+library(mapedit)
 #library(knitr)
 library(exactextractr)
 # remotes::install_github("metafor-ulaval/eFRItools")
@@ -21,7 +22,7 @@ library(eFRItools)
 
 # 🟡🟡 Functions 🟡🟡 ----
 # 🌐 Fonction qui permet de zoomer sur le shapefile 🌐
-set.view.auto <- function(map,
+set_view_auto <- function(map,
                           shp) {
   # Extraction de l'etendue du shapefile
   bbox <- st_bbox(shp)
@@ -78,6 +79,10 @@ ui <- fluidPage(
         open = "Create new segmentation",
         bsCollapsePanel("Create new segmentation",
                         div(class = "sidebar-panel",
+                            # Working directory
+                            shinyDirButton("wd", "Choose a working directory", "Please select a folder"),
+                            verbatimTextOutput("selected_wd"),
+                            uiOutput("forest_list"),
                             # Parameters
                             uiOutput("segmentation_metrics_list"), # Peut-être mettre un min et un max a cocher
                             uiOutput("summary_metrics_list"), # Peut-être mettre un min et un max a cocher
@@ -96,8 +101,6 @@ ui <- fluidPage(
                             # "If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker.",
                             # "If low → region boundaries will mostly follow spectral homogeneity.",
                             # Action button to show plots and compute statistics
-                            shinyDirButton("wd", "Choose a working directory", "Please select a folder"),
-                            verbatimTextOutput("selected_wd"),
                             textInput("name", "Choose output name :", ""),
                             actionButton("run", "Compute enhanced forest resources inventory polygons"),
                             actionButton("add_segmentation", "Add enhanced forest resources inventory polygons to map")))
@@ -107,15 +110,11 @@ ui <- fluidPage(
     # 🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵🔵
 
     # 🔵 Interface principale 🔵
-    mainPanel(
-      # Utilisation de fluidRow et column pour ajuster la carte
-      fluidRow(
-        column(12,
-               numericInput("latitude", "Latitude", value = 46.78831),
-               numericInput("longitude", "Longitude", value = -71.31259),
-               numericInput("distance", "Analysis radius (km)", value = 25),
-               leafletOutput("map", height = "600px")  # Carte de taille fixe
-        )
+    shiny::mainPanel(
+      bslib::navset_card_underline(
+        div(class = "sidebar-panel",
+            # Parameters
+            editModUI(id = "map_draw_module", height = "90vh", width = "80vw"))
       )
     )
 
@@ -154,103 +153,57 @@ server <- function(input, output, session) {
     selected_wd_reactive()
   })
 
-  # 🟠 Reactive ctg 🟠
-  metrics_area_reactive <- reactive({
-    # req(metrics_infos_reactive())
-    #
-    # metrics_infos_reactive() %>%
-    #   slice(1) %>%
-    #   pull(path) %>%
-    #   rast() -> raster_temp
-    #
-    # raster_temp[!is.na(raster_temp)] <- 1
-    #
-    # raster_temp -> raster_temp
-    #
-    # raster_temp %>%
-    #   as.polygons() %>%
-    #   st_as_sf() %>%
-    #   st_transform(4326) -> metrics_area
-
-    req(selected_wd_reactive())
-    st_read(paste0(selected_wd_reactive(), "/ctg/ctg.shp")) %>%
-      st_buffer(1) %>%
-      st_union() %>%
-      st_transform(4326) -> metrics_area
-
-    metrics_area
-  })
-
-  # 🟠 Reactive analysis radius 🟠
-  extraction_circle_reactive <- reactive({
-    req(input$longitude, input$latitude, input$distance)
-    st_sfc(st_point(c(input$longitude, input$latitude)), crs = 4326) %>%
-      st_buffer(input$distance*1000) -> extraction_circle
-
-    extraction_circle
-  })
-
   # 🟢 Map initialisation 🟢
-  output$map <- renderLeaflet({
-    leaflet() %>%
-      addTiles() %>%
-      addProviderTiles(providers$Esri.WorldImagery)
+  select_area <- callModule(mapedit::editMod,
+                            id = "map_draw_module",
+                            leafmap = leaflet() %>% addProviderTiles("Esri.WorldImagery", group = "Satellite"),
+                            sf = TRUE,
+                            record = FALSE)
+
+  # 🟣 Forest list 🟣
+  output$forest_list <- renderUI({
+    req(selected_wd_reactive())
+    radioButtons(
+      inputId = "forest",
+      label = "Choose the forest where to peform segmentation :",
+      choices = list.files(paste0(te, "/metrics")),
+      selected = character(0),
+      width = "100%",
+    )
   })
 
-  # 🟠 Update ctg and extraction_circle position 🟠
+  # 🟠 Reactive ctg 🟠
+  ctg_reactive <- reactive({
+    req(input$forest, selected_wd_reactive())
+
+    st_read(paste0(selected_wd_reactive(), "/shapefiles/", input$forest, "/ctg.shp")) %>%
+      st_buffer(1) %>%
+      st_union()
+  })
+
+  # 🟠 Update ctg 🟠
   observe({
-    req(metrics_area_reactive())
-    leafletProxy("map") %>%
-      set.view.auto(metrics_area_reactive()) %>%
-      addPolygons(data = metrics_area_reactive(),
+    req(ctg_reactive())
+
+    st_transform(ctg_reactive(),
+                 4326) ->> ctg_shp
+
+    leafletProxy("map_draw_module-map") %>%
+      clearGroup("ctg") %>%
+      addPolygons(data = ctg_shp,
+                  group = "ctg",
                   color = "white",
                   weight = 2,
-                  fillOpacity = 0)
+                  fillOpacity = 0) %>%
+      set_view_auto(ctg_shp)
 
-    metrics_area_reactive() %>%
-      st_transform(4326) %>%
-      st_centroid() %>%
-      st_coordinates() -> ctg_coordinates
-    updateNumericInput(session, "longitude", value = ctg_coordinates[1])
-    updateNumericInput(session, "latitude", value = ctg_coordinates[2])
-  })
-
-  # 🟠 Observer les coordonnées du clic sur la carte pour centrer l'affichage des parois 🟠
-  observeEvent(input$map_click, {
-    click <- input$map_click
-    updateNumericInput(session, "longitude", value = click$lng)
-    updateNumericInput(session, "latitude", value = click$lat)
-  })
-
-  # 🟠 Update circle 🟠
-  observe({
-    req(extraction_circle_reactive())
-
-    leafletProxy("map") %>%
-      clearGroup("recherche") %>%
-      set.view.auto(extraction_circle_reactive()) %>%
-      addCircleMarkers(lng = input$longitude,
-                       lat = input$latitude,
-                       group = "recherche",
-                       color = "turquoise",
-                       radius = 0.5,
-                       weight = 0.5,
-                       fillOpacity = 1) %>%
-      addPolygons(data = extraction_circle_reactive(),
-                  color = "turquoise",
-                  weight = 2,
-                  fillOpacity = 0,
-                  group = "recherche",
-                  options = pathOptions(interactive = FALSE))
   })
 
   # 🟠 Read metrics informations 🟠
   metrics_infos_reactive <- reactive({
-    req(selected_wd_reactive())
-    list.files(paste0(selected_wd_reactive(), "/metrics"), full.names = TRUE) %>%
-      read_metrics() -> metrics
-
-    metrics
+    req(input$forest, selected_wd_reactive())
+    list.files(paste0(selected_wd_reactive(), "/metrics/", input$forest), full.names = TRUE) %>%
+      read_metrics()
   })
 
   # 🟣 Metric list 🟣
@@ -263,7 +216,7 @@ server <- function(input, output, session) {
         dplyr::filter(resolution == 20) %>%
         dplyr::filter(type %in% c("lidar", "dendro", "sentinel2")) %>%
         dplyr::pull(name),
-      selected = c("z_p95", "z_cv", "z_above2", "sagawi", "fractional_cover_05_2"),
+      selected = c("z_p95", "z_above2", "B6"),
       multiple = TRUE,
       width = "100%",
       options = list(
@@ -285,7 +238,7 @@ server <- function(input, output, session) {
         dplyr::filter(resolution == 20) %>%
         dplyr::filter(type %in% c("lidar", "dendro", "sentinel2")) %>%
         dplyr::pull(name),
-      selected = c("dens", "qmdbh", "Vmerch_ha"),
+      selected = c("z_p90", "vmerch_ha", "dens", "qmdbh"),
       multiple = TRUE,
       width = "100%",
       options = list(
@@ -298,10 +251,10 @@ server <- function(input, output, session) {
 
   # 🟣 Mask list 🟣
   output$masks_list <- renderUI({
-    req(selected_wd_reactive())
+    req(input$forest, selected_wd_reactive())
 
-    possibles_masks <- c("roads.shp", "waterbodies.shp", "watercourses.shp")
-    shp_lists <- list.files(paste0(selected_wd_reactive(), "/shp"))
+    possibles_masks <- c("roads.shp", "waterbodies.shp")
+    shp_lists <- list.files(paste0(selected_wd_reactive(), "/shapefiles/", input$forest))
     masks_available <- shp_lists[shp_lists %in% possibles_masks]
     masks_available <- sub(".shp", "", masks_available)
 
@@ -311,36 +264,51 @@ server <- function(input, output, session) {
                        selected = c("roads", "waterbodies"))
   })
 
+
+
+
+
+
+
+
+
+
+
+
   # 🟠 Compute enhanced forest resources inventory polygons 🟠
   observeEvent(input$run, {
+    req(input$name, input$segmentation_metrics, input$summary_metrics)
+
     # 🟢 Create and set wd 🟢
-    segmentation_wd <- paste0(selected_wd_reactive(), "/segmentations/", input$name)
+    segmentation_wd <- paste0(selected_wd_reactive(), "/segmentation/", input$forest, "/automated_", input$name)
     dir.create(segmentation_wd)
 
     # 🟢 Best models for imputation 🟢
-    read.csv("D:/00_Ontario_eFRI/RMF/results/best_model.csv") -> best_models
+    list.files(paste0(selected_wd_reactive(), "/analysis/imputation"), pattern = paste0("results_", input$forest), full.names = T) %>%
+      map_dfr(function(x){
+        read.csv(x) %>%
+          arrange(desc(accuracy)) %>%
+          slice_max(accuracy, n = 1)
+      }) -> imputation_results
 
-    best_models %>%
+    imputation_results %>%
       pull(knn_vars) %>%
+      str_remove(",X,Y") %>%
       strsplit(",") %>%
       unlist() %>%
-      unique() -> best_models_variables
-
-    # 🟢 Read catalog 🟢
-    showNotification("Read catalog", type = "message", duration = 15, session = session)
-    st_read(paste0(selected_wd_reactive(), "/ctg/ctg.shp")) -> ctg
+      unique() -> imputation_metrics
 
     # 🟢 Get epsg from catalog 🟢
-    epsg <- st_crs(ctg)
+    epsg <- st_crs(ctg_reactive())
 
-    # 🟢 Extraction circle 🟢
-    extraction_circle_reactive() %>%
+    # 🟢 Extraction area 🟢
+    select_area()$finished %>%
       st_as_sf() %>%
-      st_transform(epsg$wkt) -> extraction_circle
+      st_transform(epsg$wkt) -> extraction_area
 
-    extraction_circle %>%
+    extraction_area %>%
       st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-               layer = "extraction_circle",
+               layer = "extraction_area",
                quiet = T)
 
     # 🟢 Save metadata 🟢
@@ -356,16 +324,6 @@ server <- function(input, output, session) {
         sep = "\n")
 
     cat(c("Selected summary metrics : ", input$summary_metrics, "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
-
-    cat(c("Coordinates of extraction circle : ", paste0(input$longitude, ", ", input$latitude), "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
-
-    cat(c("Radius of extraction circle (km) : ", input$distance, "----------"),
         file = paste0(segmentation_wd, "/metadata.txt"),
         append = TRUE,
         sep = "\n")
@@ -482,42 +440,42 @@ server <- function(input, output, session) {
     # 🟢 Clip data 🟢
     showNotification("Clip catalog", type = "message", duration = 15, session = session)
     ctg %<>%
-      st_filter(extraction_circle)
+      st_filter(extraction_area)
 
     showNotification("Clip metrics", type = "message", duration = 15, session = session)
     metrics %<>%
-      crop(extraction_circle) %>%
-      mask(extraction_circle)
+      crop(extraction_area) %>%
+      mask(extraction_area)
 
     if(!is.null(input$masks)){
       showNotification("Clip masks", type = "message", duration = 15, session = session)
       masks %<>%
-        map(crop, extraction_circle)
+        map(crop, extraction_area)
     }
 
     showNotification("Clip forest inventory polygons", type = "message", duration = 15, session = session)
     fri_polygons %<>%
-      st_filter(extraction_circle)
+      st_filter(extraction_area)
 
     showNotification("Clip landcover", type = "message", duration = 15, session = session)
     landcover %<>%
-      crop(extraction_circle) %>%
-      mask(extraction_circle)
+      crop(extraction_area) %>%
+      mask(extraction_area)
 
     showNotification("Clip forest age", type = "message", duration = 15, session = session)
     forest_age_2019 %<>%
-      crop(extraction_circle) %>%
-      mask(extraction_circle)
+      crop(extraction_area) %>%
+      mask(extraction_area)
 
     showNotification("Clip forest fire", type = "message", duration = 15, session = session)
     forest_fire_1985_2020 %<>%
-      crop(extraction_circle) %>%
-      mask(extraction_circle)
+      crop(extraction_area) %>%
+      mask(extraction_area)
 
     showNotification("Clip forest harvest", type = "message", duration = 15, session = session)
     forest_harvest_1985_2020 %<>%
-      crop(extraction_circle) %>%
-      mask(extraction_circle)
+      crop(extraction_area) %>%
+      mask(extraction_area)
 
 
     # 🟢 Segmentation 🟢
@@ -600,6 +558,18 @@ server <- function(input, output, session) {
     showNotification(paste0("Done after ", elapsed_time, "! A total of ", nrow(segmentation_data), " polygons created for segmentation named ", input$name, "."), type = "message", duration = NULL, session = session)
   })
 
+
+
+
+
+
+
+
+
+
+
+
+
   # 🟠 Add Segmentation to map 🟠
   observeEvent(input$add_segmentation, {
     segmentation_wd <- paste0(selected_wd_reactive(), "/segmentations/", input$name)
@@ -631,7 +601,7 @@ server <- function(input, output, session) {
       FUN.VALUE = character(1)
     )
 
-    leafletProxy("map") %>%
+    leafletProxy("map_draw_module") %>%
       set.view.auto(segmentation) %>%
       addPolygons(data = segmentation,
                   fillOpacity = 0.05,

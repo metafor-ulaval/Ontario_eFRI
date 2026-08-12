@@ -1,8 +1,11 @@
 ---
 title: "Optimal Generic Region Merging parameters"
-author: "Francis Lessard"
-date: "2026-04-23"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+date: "2026-05-20"
 ---
 
 ```{r}

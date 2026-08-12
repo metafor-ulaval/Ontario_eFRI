@@ -1,0 +1,57 @@
+---
+title: "Project outputs"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+date: "2026-05-20"
+---
+
+```{r}
+#| label: setup
+#| include: FALSE
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r}
+#| label: read-library
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+library(tidyverse)
+library(magrittr)
+library(terra)
+library(tidyterra)
+library(sf)
+library(knitr)
+library(maptiles)
+library(patchwork)
+```
+
+```{r}
+#| label: parameters
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+wd <- "D:/00_Ontario_eFRI/10_livrables"
+```
+
+```{r}
+#| label: read-data
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+```
+
+
+```{r}
+#| label: figures-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+```

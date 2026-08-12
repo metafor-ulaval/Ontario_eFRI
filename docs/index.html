@@ -8,7 +8,7 @@
 
 <meta name="dcterms.date" content="2026-05-20">
 
-<title>Enhanced Forest Resources Inventory – Ontario eFRI</title>
+<title>Introduction – Ontario eFRI</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -94,11 +94,15 @@ ul.task-list li input[type="checkbox"] {
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
     <a class="nav-link active" href="./index.html" aria-current="page"> 
-<span class="menu-text">Home</span></a>
+<span class="menu-text">Introduction</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./data_and_method.html"> 
+<span class="menu-text">Data and Methods</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="./calibration_grm.html"> 
-<span class="menu-text">Calibration</span></a>
+<span class="menu-text">Appendix A : Segmentation paramaters optimisation</span></a>
   </li>  
 </ul>
           </div> <!-- /navcollapse -->
@@ -116,27 +120,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><strong>1</strong> Introduction</a>
-  <ul class="collapse">
-  <li><a href="#introduction_objective" id="toc-introduction_objective" class="nav-link" data-scroll-target="#introduction_objective"><strong>1.1</strong> Objective</a></li>
-  <li><a href="#introduction_studyarea" id="toc-introduction_studyarea" class="nav-link" data-scroll-target="#introduction_studyarea"><strong>1.2</strong> Study area</a></li>
-  <li><a href="#introduction_steps" id="toc-introduction_steps" class="nav-link" data-scroll-target="#introduction_steps"><strong>1.3</strong> Step</a></li>
-  </ul></li>
-  <li><a href="#segmentation" id="toc-segmentation" class="nav-link" data-scroll-target="#segmentation"><strong>2</strong> Segmentation</a>
-  <ul class="collapse">
-  <li><a href="#segmentation_basics" id="toc-segmentation_basics" class="nav-link" data-scroll-target="#segmentation_basics"><strong>2.1</strong> Segmentation basics</a></li>
-  <li><a href="#segmentation_inputs" id="toc-segmentation_inputs" class="nav-link" data-scroll-target="#segmentation_inputs"><strong>2.2</strong> Segmentation inputs</a></li>
-  <li><a href="#segmentation_results" id="toc-segmentation_results" class="nav-link" data-scroll-target="#segmentation_results"><strong>2.3</strong> Segmentation results</a></li>
-  </ul></li>
-  <li><a href="#imputation" id="toc-imputation" class="nav-link" data-scroll-target="#imputation"><strong>3</strong> Imputation</a>
-  <ul class="collapse">
-  <li><a href="#imputation_basics" id="toc-imputation_basics" class="nav-link" data-scroll-target="#imputation_basics"><strong>3.1</strong> Imputation basics</a></li>
-  <li><a href="#imputation_results" id="toc-imputation_results" class="nav-link" data-scroll-target="#imputation_results"><strong>3.1</strong> Imputation results</a></li>
-  </ul></li>
-  <li><a href="#attribute_table" id="toc-attribute_table" class="nav-link" data-scroll-target="#attribute_table"><strong>4</strong> Attribute table</a>
-  <ul class="collapse">
-  <li><a href="#attribute_table_results" id="toc-attribute_table_results" class="nav-link" data-scroll-target="#attribute_table_results"><strong>4.1</strong> Attribute table results</a></li>
-  </ul></li>
+  <li><a href="#project_summary" id="toc-project_summary" class="nav-link active" data-scroll-target="#project_summary"><strong>1</strong> Project summary</a></li>
+  <li><a href="#project_context" id="toc-project_context" class="nav-link" data-scroll-target="#project_context"><strong>2</strong> Project context</a></li>
+  <li><a href="#previous_work" id="toc-previous_work" class="nav-link" data-scroll-target="#previous_work"><strong>3</strong> Previous work</a></li>
+  <li><a href="#project_objectives" id="toc-project_objectives" class="nav-link" data-scroll-target="#project_objectives"><strong>4</strong> Project objectives</a></li>
+  <li><a href="#introduction_studyarea" id="toc-introduction_studyarea" class="nav-link" data-scroll-target="#introduction_studyarea"><strong>5</strong> Study area</a></li>
   </ul>
 </nav>
     </div>
@@ -145,7 +133,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Enhanced Forest Resources Inventory</h1>
+<h1 class="title">Introduction</h1>
 </div>
 
 
@@ -168,315 +156,82 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="introduction" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>1</strong> Introduction</h1>
-<p>In recent years, many Canadian provinces have acquired airborne lidar data covering a large part of their territory. This technology makes it possible to redefine the description of forest attributes. Indeed, numerous initiatives have been carried out since the dissemination and democratization of lidar data and its derivative products.</p>
-<section id="introduction_objective" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="introduction_objective"><strong>1.1</strong> Objective</h2>
-<p>The objective of this project is to automatically generate polygons that describe the forest stand. Both the delineation and description are done automatically through a series of steps that are described in the document. This project is a continuation of Ethan Berman’s work at the University of British Columbia, which was conducted in 2023. Details are available on this page : https://bermane.github.io/ontario-inventory/index.html. The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available here: https://github.com/metafor-ulaval/eFRItools. All the functions can be used for other purposes that concern automated forest stand segmentation and forest attribute characterization.</p>
+<section id="project_summary" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>1</strong> Project summary</h1>
+<p>Forest managers increasingly have access to detailed, wall-to-wall information on forest structure, but operational planning still relies largely on stand polygons. This project developed and tested an automated framework for transforming LiDAR-derived enhanced forest inventory data into forest stands that can be used in operational inventory and planning. Applied in the Romeo Malette and Ottawa Valley forest management units, the workflow combines automated stand delineation, extraction of LiDAR-derived forest attributes, integration of disturbance and age information, and flexible attribution of species composition. The project produced new stand delineations, an open-source implementation of the workflow, and a comparative assessment of polygon quality based on structural homogeneity, representation of forest variability, and correspondence with independently detected structural transitions.</p>
 </section>
-<section id="introduction_studyarea" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="introduction_studyarea"><strong>1.2</strong> Study area</h2>
+<section id="project_context" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>2</strong> Project context</h1>
+<p>Forest inventory systems rely on spatially explicit information to describe forest conditions and support forest management planning. In operational inventories, this information is typically organized within stand polygons, which provide the spatial units used to summarize attributes such as volume, tree density, canopy structure, species composition, age, and disturbance history. The usefulness of these products therefore depends not only on the accuracy of the forest attributes themselves, but also on the relevance of the spatial units used to represent and aggregate them. In Ontario, conventional Forest Resources Inventory products have historically relied on aerial photo-interpretation to delineate relatively homogeneous forest stands and assign interpreted attributes. This approach remains central to forest management planning, but it is time-consuming, partly subjective, and difficult to update frequently across large forest management units. As forest conditions change through harvesting, natural disturbance, succession, and stand development, there is a growing need for more consistent, reproducible, and updateable approaches to stand delineation and attribution.</p>
+<p>Recent investments in airborne single photon LiDAR provide an opportunity to modernize this workflow. Ontario’s Forest Resources Inventory leaf-on LiDAR program provides SPL data and derived products to support FRI development, including canopy height models, terrain models, forest inventory raster metrics, and forest inventory attributes. These datasets can be used to describe forest structure wall-to-wall and to support polygon-based inventory products that are more consistent with current forest conditions.</p>
+<p>However, moving from wall-to-wall raster products to operational forest inventory polygons remains a key challenge. Forest managers still require polygon-based products for planning, reporting, growth and yield projections, and operational decision-making. Automated stand delineation must therefore produce polygons that are not only technically reproducible, but also meaningful for forest inventory use: internally homogeneous, distinct from neighbouring units, and aligned with real structural transitions in the landscape.</p>
+<p>This project, funded by the Knowledge Transfer and Tool Development (KTTD) of the Forestry Futures Trust Ontario, was designed to refine and operationalize an automated polygon-based inventory framework that integrates LiDAR-derived enhanced forest inventory attributes, conventional FRI information, and additional disturbance and attribution layers. The project builds on previous open-source tools developed to integrate photo-interpreted and LiDAR-derived forest attributes into a polygonal forest inventory framework.</p>
+<!-- The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available [here](https://github.com/metafor-ulaval/eFRItools). All the functions can be used for other purposes that concern automated forest stand segmentation and forest attribute characterization. -->
+</section>
+<section id="previous_work" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>3</strong> Previous work</h1>
+<p>The previous Forestry Futures Trust project, led by the University of British Columbia in collaboration with GreenFirst Forest Products, the Ontario Ministry of Natural Resources and Forestry, and Université Laval, developed an open-source framework to integrate photo-interpreted and airborne LiDAR-derived attributes into a polygonal forest inventory. That work addressed a practical operational question: how can area-based LiDAR estimates, produced as raster layers, be aggregated into inventory polygons that remain compatible with strategic and tactical forest management needs?</p>
+<p>The project demonstrated that Generic Region Merging segmentation could be used to generate new polygons from LiDAR-derived forest attributes, producing stand-like units that were more consistent with current forest structure than older FRI polygons in some areas. It also developed an imputation workflow to transfer interpreted attributes from existing FRI polygons to newly generated polygons, allowing the new polygon layer to retain information not directly predicted from LiDAR, such as species composition and age.</p>
+<p>This work represented an important proof of concept, but several issues remained before the approach could be more broadly implemented:</p>
+<ul>
+<li><p>The segmentation workflow needed to be refined to produce polygons that were more compatible with the shape, size, and spatial structure expected in operational forest inventories.</p></li>
+<li><p>The approach required further testing across contrasting forest types, particularly beyond the boreal conditions where much of the initial development occurred.</p></li>
+<li><p>Additional attributes such as disturbance history, stand age, and species composition needed to be better integrated or updated when legacy FRI information no longer reflected current forest conditions.</p></li>
+<li><p>The quality of the resulting polygons needed to be evaluated using criteria that go beyond simple visual comparison with existing photo-interpreted maps.</p></li>
+</ul>
+<p>A central remaining question was how to evaluate the quality of the resulting polygons. Previous work showed that automated segmentation could generate structurally homogeneous units, but an operational validation framework also needs to ask whether polygons effectively partition forest variability and whether their boundaries correspond to real changes in forest structure. These criteria guided the validation component of the present project.</p>
+</section>
+<section id="project_objectives" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>4</strong> Project objectives</h1>
+<p>The general objective of this project was to refine an automated forest stand delineation and attribution framework so that it can better support operational forest inventory modernization in Ontario.</p>
+<p>More specifically, the project aimed to:</p>
+<ol type="1">
+<li>Refine the automated segmentation workflow</li>
+</ol>
+<p>The project tested and adjusted the segmentation approach to improve its transferability across forest types, with a focus on producing polygons that are more compatible with operational FRI products in terms of size, shape, and structural relevance.</p>
+<ol start="2" type="1">
+<li>Integrate LiDAR-derived enhanced forest inventory attributes</li>
+</ol>
+<p>The workflow was designed to incorporate wall-to-wall EFI raster attributes produced from Ontario’s SPL LiDAR data, allowing structural attributes such as height, volume, basal area, density, and canopy metrics to be summarized within newly delineated polygons.</p>
+<ol start="3" type="1">
+<li>Incorporate disturbance and age information</li>
+</ol>
+<p>The project integrated disturbance information from provincial and national disturbance products to improve the temporal consistency of the new polygon inventory, particularly in areas where the existing FRI did not reflect more recent harvests or natural disturbances.</p>
+<ol start="4" type="1">
+<li>Maintain flexibility for species composition attribution</li>
+</ol>
+<p>The initial proposal included additional work on imputing species composition into newly generated polygons. During the project, this component was refined. Improvements from the original imputation approach were limited, while a parallel project using deep learning approaches showed stronger potential for species composition mapping. As a result, the framework was designed to remain flexible: species composition can be incorporated from any compatible raster product, including future outputs from deep learning models, rather than being tied to a single imputation method.</p>
+<ol start="5" type="1">
+<li>Evaluate the quality of automated delineations</li>
+</ol>
+<p>The project developed and applied a validation framework based on three complementary criteria:</p>
+<ul>
+<li><p>Internal structural homogeneity;</p></li>
+<li><p>The ability of polygons to partition forest structural variability;</p></li>
+<li><p>The correspondence between mapped polygon boundaries and independently detected structural transitions.</p></li>
+</ul>
+</section>
+<section id="introduction_studyarea" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>5</strong> Study area</h1>
 <p>The study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/Introduction study area-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-</section>
-<section id="introduction_steps" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="introduction_steps"><strong>1.3</strong> Step</h2>
-<p>The steps for generating ecoforest polygons are as follows:</p>
-<ol type="1">
-<li><p><a href="#segmentation">Segmentation based on lidar metrics (section 2)</a></p></li>
-<li><p>Extrapolation of forest composition variables using a k-nearest neighbor (kNN) imputation algorithm (section 3):</p>
-<ul>
-<li><p>Leading species : LEADSP</p></li>
-<li><p>Second species : SECSP</p></li>
-<li><p>IThree functional group class : FUNCTIONAL_GROUP_3</p></li>
-<li><p>Five functional group class : FUNCTIONAL_GROUP_5</p></li>
-</ul></li>
-<li><p>Construction of the attribute table to obtain the following attributes, for each polygon forest stand (section 4):</p>
-<ul>
-<li><p>Source of data : SOURCE</p></li>
-<li><p>Year of produced data : YRSOURCE</p></li>
-<li><p>Area : AREA</p></li>
-<li><p>Perimeter : PERIMETER</p></li>
-<li><p>Proportion forested : PROPFORESTED</p></li>
-<li><p>Most frequent landcover type : POLYTYPE</p></li>
-<li><p>Most frequent landcover proportion : POLYTYPEPROP</p></li>
-<li><p>Forest age : AGE</p></li>
-<li><p>Year of last perturbation : YRDEP</p></li>
-<li><p>Type of last perturbation : DEPTYPE</p></li>
-<li><p>Proportion of last perturbation : DEPPROP</p></li>
-<li><p>Year of most widespread harvest : YRHARVEST</p></li>
-<li><p>Proportion of most widespread harvest : HARVESTPROP</p></li>
-<li><p>Year of most widespread forest fire : YRFIRE</p></li>
-<li><p>Proportion of most widespread forest fire : FIREPROP</p></li>
-<li><p>Merchantable volume per hectare : VMERCH_HA_MEDIAN</p></li>
-<li><p>Quadratic mean diameter at breast height : QMDBH_MEDIAN</p></li>
-<li><p>Number of stems with DBH &gt; 7.1 cm per ha : DENS_MEDIAN</p></li>
-<li><p>Average tree height weighted by basal area : LOR_MEDIAN</p></li>
-<li><p>Basal area, tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN</p></li>
-<li><p>Height of forest stand based on median z_p95 : HEIGHT</p></li>
-<li><p>Canopy cover based on median z_above2 : CANOPY_COVER</p></li>
-<li><p>Forest density based on median fractional cover between 50 and 200 cm : DENSITY</p></li>
-<li><p>Median slope : SLOPE</p></li>
-<li><p>Soil moisture based on SAGA wetness index : MOISTURE</p></li>
-</ul></li>
-</ol>
-<div style="page-break-after: always;"></div>
-</section>
-</section>
-<section id="segmentation" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>2</strong> Segmentation</h1>
-<section id="segmentation_basics" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="segmentation_basics"><strong>2.1</strong> Segmentation basics</h2>
-<p>The first step is to create polygon that will represent homogeneous forest stand. To perform this task, the Generic Region Merging tools from Orfeo ToolBox (OTB) is used. Three method can be used in this tools : Baatz &amp; Schape, Eclidean Distance, and Full Lambda. For this work, the Baatz &amp; Schape criterion method was used. This algorithm is the same used in the Multi-resolution Segmentation by the well known software eCognition and thus made it freely accessible. This algortihm works by merging iteratively small region together based on dissimilarity of spectral values. There is three parameters that control size and shape of resulting segments : threshold, weight of spectral homogeneity and weight of spatial homogeneity. Here is how these parameters influence segmentation:</p>
-<ul>
-<li><p>The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :</p>
-<ul>
-<li><p>Small threshold → fine segmentation (many small regions)</p></li>
-<li><p>Large threshold → coarse segmentation (fewer, larger regions)</p></li>
-</ul></li>
-<li><p>The weight of spectral homogeneity gives to spectral similarity (pixel values, band means) when deciding whether regions should merge :</p>
-<ul>
-<li><p>If high → segmentation will mostly respect spectral values</p></li>
-<li><p>If low → spectral similarity matters little, other criteria (shape) dominate</p></li>
-</ul></li>
-<li><p>The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :</p>
-<ul>
-<li><p>If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker</p></li>
-<li><p>If low → region boundaries will mostly follow spectral homogeneity</p></li>
-</ul></li>
-</ul>
-<p>Segmentation parameters were calibratedby conducting a <a href="link here">sensitivity analysis</a> for 5 differents models with contrasted input metrics [SHOW DIFFERENT MODELS ?] to produce polygon networks of comparable cartographic complexity, defined by polygon size distribution, shape complexity, and polygon density. These criteria were used to ensure that automated delineations remained operationally plausible and comparable to conventional stand maps.</p>
-<p>If you need more details about parameters, eCognition made this <a href="https://www.youtube.com/watch?v=tt53hoRAw9Q">video</a> to explain parameter selection for their Multi-resolution Segmentation algorithm.</p>
-</section>
-<section id="segmentation_inputs" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="segmentation_inputs"><strong>2.2</strong> Segmentation inputs</h2>
-<p>The inputs consist of lidar metrics computed from raw LiDAR data. LiDAR data have been acquired with a [INSERT ALL SPECS HERE]. Points density is 40 points/m².</p>
-<p>For this step, the following metrics are used for polygon segmentation : * z_p95 → Height of 95th percentiles of returns above 1.3 m * z_cv → Coefficient of variation of returns above 1.3 m * z_above2 → Canopy cover of first returns above 2 m</p>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/Show segmentation data 1-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>These metrics are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. The metrics used will reflect how the segmentation polygons are divided. Thus, if a spectral index such as NDVI is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.</p>
-<p>An additional data used in segmentation are masks where segmentation is therefore not performed. These are typically waterbodies and roads.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/Show segmentation data 2-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-</section>
-<section id="segmentation_results" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="segmentation_results"><strong>2.3</strong> Segmentation results</h2>
-<p>The segmentation result therefore produces polygons representing forest stands according to the selected metrics. These polygons can therefore be expected to represent homogeneous forest stands based on choosen metrics.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/Segmentation results 1-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>The automated segmented forest stand can be now compared to forest stand inventories. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the <a href="link here">sensitivity analysis</a>, the difference between distributions are supposed to be minimal and therefore the automated segmented forest stand should represent operationnaly plausible forest stand that mimic polygons of the forest stand inventorie.</p>
-<p>Area in hectare are use for size and shape index, which is determine by this formula : [perimeter/(2<em>sqrt(pi</em>area))] is use to assess shape.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/Segmentation results 2-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<div style="page-break-after: always;"></div>
-</section>
-</section>
-<section id="imputation" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>3</strong> Imputation</h1>
-<section id="imputation_basics" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="imputation_basics"><strong>3.1</strong> Imputation basics</h2>
-<p>Some attributes can’t be directly extracted from a raster layer containing the information. For example, there is still no layer describing tree species across Ontario. For this tasks, k-nearest neighbor (kNN) imputation can be used to infer what would be some attributes (REF). This widely used method use similarity between variables from two different datasets. In order to fill a missing data, the algorithm identifies the k most similar observations based on distance of common variables. The missing values are then estimated using the corresponding values from these neighbors, often by taking their mean (for numerical variables) or mode (for categorical variables).</p>
-<p>To identify the most suitable variables for kNN imputation, a performance analysis was conducted using all possible combinations of five uncorrelated variables. This analysis evaluated, for each combination, how accurately the imputed values matched the observed values of the forest polygon inventory. Therefore, the optimal combination of metrics depends on the specific variable being imputed :</p>
-<ul>
-<li><p>Imputed leading species : dem, rumple_index, z_kurt, z_p95, B6</p></li>
-<li><p>Imputed second species : dem, rumple_index, sagawi, z_p95, NDVI</p></li>
-<li><p>Imputed three functional group class : dem, relative_topographic_position_100m, rumple_index, z_p95, B6</p></li>
-<li><p>Imputed five functional group class : dem, rumple_index, slope, z_p95, B6</p></li>
-</ul>
-<p>In addition, for each of these 4 variables, the X and Y coordinates of polygon centroid have been used for the imputation.</p>
-</section>
-<section id="imputation_results" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="imputation_results"><strong>3.1</strong> Imputation results</h2>
-<p>The table below shows the accuracy of each of the imputed variables :</p>
-<div class="cell">
-<div class="cell-output-display">
-<table class="caption-top table table-sm table-striped small">
-<colgroup>
-<col style="width: 19%">
-<col style="width: 67%">
-<col style="width: 13%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;">Target variable</th>
-<th style="text-align: left;">Used metrics</th>
-<th style="text-align: right;">Accuracy (%)</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">FUNCTIONAL_GROUP_3</td>
-<td style="text-align: left;">dem,relative_topographic_position_100m,rumple_index,z_p95,B6,X,Y</td>
-<td style="text-align: right;">73.65</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">FUNCTIONAL_GROUP_5</td>
-<td style="text-align: left;">dem,rumple_index,slope,z_p95,B6,X,Y</td>
-<td style="text-align: right;">62.30</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">SP_NO_1</td>
-<td style="text-align: left;">dem,rumple_index,z_kurt,z_p95,B6,X,Y</td>
-<td style="text-align: right;">65.87</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">SP_NO_2</td>
-<td style="text-align: left;">dem,rumple_index,sagawi,z_p95,NDVI,X,Y</td>
-<td style="text-align: right;">36.63</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<p>The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated segmentation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial gorup class shown below.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/Imputation results 2-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<div style="page-break-after: always;"></div>
-</section>
-</section>
-<section id="attribute_table" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>4</strong> Attribute table</h1>
-<p>The last and more important step is to build attribute table with all pertinent attributes that a forest inventory have. Some of the attributes are derived from external layer. The following layers were use : *Landcover This layer come from Ontario Land Cover Compilation Version 2.0. This landcover layer was made from numerous Landsat-7 ETM and Landsat-5 TM satellite images acquired between 1999 and 2011. A mix of supervised and unsupervised classification was use to produce the 27 land cover type.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/Show eFRI attibute table data 1-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>The following layers are part of the National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada and are produced by Canadian Forest Service. Only three layer were used to produce attribute table of segmented polygons : *Forest age in 2019 https://opendata.nfis.org/mapserver/nfis-change_eng.html</p>
-<p>*Forest fires from 1985 to 2020</p>
-<p>*Forest harvests from 1985 to 2020</p>
-<p>Here are listed the extracted attributes : * Source of data : SOURCE</p>
-<ul>
-<li><p>Year of produced data : YRSOURCE</p></li>
-<li><p>Area : AREA</p></li>
-<li><p>Perimeter : PERIMETER</p></li>
-<li><p>Proportion forested : PROPFORESTED</p></li>
-<li><p>Most frequent landcover type : POLYTYPE</p></li>
-<li><p>Most frequent landcover proportion : POLYTYPEPROP</p></li>
-<li><p>Forest age : AGE</p></li>
-<li><p>Year of last perturbation : YRDEP</p></li>
-<li><p>Type of last perturbation : DEPTYPE</p></li>
-<li><p>Proportion of last perturbation : DEPPROP</p></li>
-<li><p>Year of most widespread harvest : YRHARVEST</p></li>
-<li><p>Proportion of most widespread harvest : HARVESTPROP</p></li>
-<li><p>Year of most widespread forest fire : YRFIRE</p></li>
-<li><p>Proportion of most widespread forest fire : FIREPROP</p></li>
-<li><p>Merchantable volume per hectare : VMERCH_HA_MEDIAN</p></li>
-<li><p>Quadratic mean diameter at breast height : QMDBH_MEDIAN</p></li>
-<li><p>Number of stems with DBH &gt; 7.1 cm per ha : DENS_MEDIAN</p></li>
-<li><p>Average tree height weighted by basal area : LOR_MEDIAN</p></li>
-<li><p>Basal area, tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN</p></li>
-<li><p>Height of forest stand based on median z_p95 : HEIGHT</p></li>
-<li><p>Canopy cover based on median z_above2 : CANOPY_COVER</p></li>
-<li><p>Forest density based on median fractional cover between 50 and 200 cm : DENSITY</p></li>
-<li><p>Median slope : SLOPE</p></li>
-<li><p>Soil moisture based on SAGA wetness index : MOISTURE</p></li>
-</ul>
-<section id="attribute_table_results" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="attribute_table_results"><strong>4.1</strong> Attribute table results</h2>
-<p>The next figures show what can look like some of theses attibutes.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/eFRI attibute table results 1-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/introduction-study-area-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/eFRI attibute table results 1-2.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/eFRI attibute table results 1-3.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/eFRI attibute table results 1-4.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/eFRI attibute table results 1-5.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/eFRI attibute table results 1-6.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="index_files/figure-html/eFRI attibute table results 1-7.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/introduction-study-area-2.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
