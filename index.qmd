@@ -18,9 +18,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 #| label: read-library
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 library(tidyverse)
 library(magrittr)
 library(terra)
@@ -34,9 +35,10 @@ library(patchwork)
 
 ```{r}
 #| label: parameters
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 wd <- "D:/00_Ontario_eFRI/10_livrables"
 
 
@@ -44,9 +46,9 @@ wd <- "D:/00_Ontario_eFRI/10_livrables"
 
 ```{r}
 #| label: read-data
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| include: false
+#| message: false
+#| warning: false
 for(forest in c("RMF", "OVF")){
   st_read(paste0(wd, "/shapefiles/", forest, "/ctg.shp"), quiet = T) %>%
     st_geometry() %>%
@@ -129,9 +131,10 @@ The study area is located in the province of Ontario, in Canada. Romeo Malette F
 
 ```{r}
 #| label: introduction-study-area
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 for(forest in c("RMF", "OVF")){
   sat <- get_tiles(x = st_bbox(get(forest) %>% st_buffer(5000)),
                    provider = "Esri.WorldImagery",

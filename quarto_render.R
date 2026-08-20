@@ -1,8 +1,6 @@
-library(quarto)
+quarto::quarto_render()
 
-quarto_render()
-
-quarto_render("./index.qmd")
-quarto_render("./data_and_method.qmd")
-quarto_render("./project_outputs.qmd")
-quarto_render("./calibration_grm.qmd")
+quarto::quarto_render("./index.qmd")
+quarto::quarto_render("./data_and_method.qmd")
+quarto::quarto_render("./project_outputs.qmd")
+quarto::quarto_render("./calibration_grm.qmd")

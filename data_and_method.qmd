@@ -10,7 +10,7 @@ date: "2026-05-20"
 
 ```{r}
 #| label: setup
-#| include: FALSE
+#| include: false
 knitr::opts_chunk$set(echo = TRUE)
 
 # Terminology
@@ -30,9 +30,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 #| label: read-library
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 library(tidyverse)
 library(magrittr)
 library(terra)
@@ -52,9 +53,10 @@ library(reticulate)
 
 ```{r}
 #| label: parameters
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
 Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
 Sys.setenv(GDAL_CACHEMAX = "65536") # 64 GO
@@ -78,12 +80,12 @@ params <- expand.grid(forests = forests,
 
 ```{r}
 #| label: compute-segmentations
-#| echo: FALSE
-#| eval: FALSE # Activate when the chunk have been run once before rendering to be sure that the chunk doesn't run
-#| message: FALSE
-#| warning: FALSE
-for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
-# for(p in seq_len(nrow(params))[c(4,6)]){ # OVF
+#| echo: false
+#| eval: false # Activate when the chunk have been run once before rendering to be sure that the chunk doesn't run
+#| message: false
+#| warning: false
+# for(p in seq_len(nrow(params))[c(1, 3, 5)]){ # RMF
+for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
   param <- params[p,]
   
   cat("Forest :", param$forests, "/", names(param$models), ":", unlist(param$models), "\n")
@@ -121,8 +123,8 @@ for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
            model_name == names(param$models),
            type == "by_forest_model") -> segmentation_paramaters
   
-  segmentation_wd <- paste0(wd, "/segmentation/", param$forest, "/", names(param$models)) #####
-  dir.create(segmentation_wd)
+  segmentation_wd <- paste0(wd, "/segmentation/", param$forest, "/", names(param$models))
+  # dir.create(segmentation_wd)
   
   # Catalog
   st_read(paste0(wd, "/shapefiles/", param$forest, "/ctg.shp"), quiet = T) %>%
@@ -140,10 +142,7 @@ for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
   metrics_infos_selected %>%
     pull(path) %>%
     map(rast) %>%
-    #map(project, epsg_rast, method = "bilinear") %>%
-    
-    map(project, "EPSG:2959", method = "bilinear") %>%
-    
+    map(project, epsg_rast, method = "bilinear") %>%
     map(resample, epsg_rast) %>%
     rast -> metrics
   
@@ -209,23 +208,27 @@ for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
   rast(paste0(wd, "/metrics/", param$forest, "/other/forest_harvest_1985_2020.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_harvest_1985_2020
   
-  # Segmentation
-  eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
-                    # masks = masks,
-                    masks = NULL,
-                    thresh = segmentation_paramaters$thresh,
-                    spec = segmentation_paramaters$spec,
-                    spat = segmentation_paramaters$spat,
-                    method = "bs",
-                    clean_nodata = TRUE,
-                    output_path = segmentation_wd,
-                    output_name = names(param$models),
-                    otb_dir = "D:/00_Ontario_eFRI/00_logiciels/OTB-9.1.0-Win64/bin") -> segmentation
+  # # Segmentation
+  # eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
+  #                   # masks = masks,
+  #                   masks = NULL,
+  #                   thresh = segmentation_paramaters$thresh,
+  #                   spec = segmentation_paramaters$spec,
+  #                   spat = segmentation_paramaters$spat,
+  #                   method = "bs",
+  #                   clean_nodata = TRUE,
+  #                   output_path = segmentation_wd,
+  #                   output_name = names(param$models),
+  #                   otb_dir = "D:/00_Ontario_eFRI/00_logiciels/OTB-9.1.0-Win64/bin") -> segmentation
+  # 
+  # segmentation %>% 
+  #   st_write(paste0(segmentation_wd, "/data.gpkg"), 
+  #            layer = names(param$models),
+  #            quiet = T)
   
-  segmentation %>% 
-    st_write(paste0(segmentation_wd, "/data.gpkg"), 
-             layer = names(param$models),
-             quiet = T)
+  st_read(paste0(segmentation_wd, "/data.gpkg"),
+          layer = names(param$models),
+          quiet = T) -> segmentation
   
   # eFRI attibute table
   eFRI_attribute_table(segmentation = segmentation,
@@ -242,10 +245,10 @@ for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
            CANOPY_COVER = Z_ABOVE2,
            MOISTURE = SAGAWI) -> segmentation_data
   
-    segmentation_data %>% 
-      st_write(paste0(segmentation_wd, "/data.gpkg"), 
-               layer = paste0(names(param$models), "_data"),
-               quiet = T)
+  segmentation_data %>% 
+    st_write(paste0(segmentation_wd, "/data.gpkg"), 
+             layer = paste0(names(param$models), "_data"),
+             quiet = T)
   
   # Imputation
   eFRI_imputation(segmentation = segmentation_data,
@@ -256,8 +259,8 @@ for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
                   forest_harvest = forest_harvest_1985_2020,
                   ctg = ctg,
                   lidar_year_field = "Fl_Cr_Y",
-                  # forest_year_field = "YR_UPD", # OVF
-                  forest_year_field = "YRUPD", # RMF
+                  forest_year_field = "YR_UPD", # OVF
+                  # forest_year_field = "YRUPD", # RMF
                   forest_composition_field = "SPCOMP",
                   forest_type_field = "POLYTYPE",
                   target_var = imputation_results$target_var,
@@ -280,9 +283,9 @@ for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
 
 ```{r}
 #| label: read-data
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| include: false
+#| message: false
+#| warning: false
 # Parameters
 param_figures <- params[3,]
 segmentation_metrics <- param_figures$models[[1]]
@@ -499,9 +502,10 @@ For all the following figures, a restricted area of 5x5 km in Romeo Malette Fore
 
 ```{r}
 #| label: study-area-subset
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 ggplot() +
   geom_spatraster_rgb(data = sat_forest) +
   geom_sf(data = forest_4326, color = "white", fill = NA, lwd = 1) +
@@ -541,9 +545,10 @@ The following metrics with a resolution of 20 meters were used for polygon segme
 LiDAR data have been acquired during the month of june and july 2018 with a single-photon LiDAR Leica SPL100. Flightlines were parallel with and overlap of 50 percent. Average point density is 40 points/m².
 ```{r}
 #| label: show-segmentation-data-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 for(metric in param_figures$models[[1]]){
   assign(metric,
          ggplot() +
@@ -564,9 +569,10 @@ The segmentation produces polygons representing forest stands according to the s
 
 ```{r}
 #| label: segmentation-results-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area) +
   geom_sf(data = fri_polygons_clip_4326, 
@@ -596,9 +602,10 @@ An additional data that can be used in segmentation are masks where there is no 
 
 ```{r}
 #| label: show-segmentation-data-2
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area) +
   geom_sf(data = masks_4326[[1]], 
@@ -625,9 +632,10 @@ Area in hectare are use for size and shape index, which is determine by this for
 
 ```{r}
 #| label: segmentation-results-2
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 metrics_infos %>% 
   filter(name == "dem") %>% 
   pull(path) %>% 
@@ -723,16 +731,17 @@ segmentation_results_area / segmentation_results_shape_index
 
 \newpage
 
-# **4** Attribute table {-#attribute_table}
+# **3** Attribute table {-#attribute_table}
 The last and more important step is to build attribute table with all pertinent attributes that a forest inventory have. Some of the attributes are derived from external layer. The following layers were use :
 *Landcover
 This layer come from Ontario Land Cover Compilation Version 2.0. This landcover layer was made from numerous Landsat-7 ETM and Landsat-5 TM satellite images acquired between 1999 and 2011. A mix of supervised and unsupervised classification was use to produce the 27 land cover type.
 
 ```{r}
 #| label: show-eFRI-attibute-table-data-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 ggplot() +
   geom_spatraster(data = landcover) +
   scale_fill_whitebox_d(palette = "muted") +
@@ -773,14 +782,15 @@ Here are listed the extracted attributes :
 * Median slope : SLOPE
 * Soil moisture based on SAGA wetness index : MOISTURE
 
-## **4.1** Attribute table results {-#attribute_table_results}
+## **3.1** Attribute table results {-#attribute_table_results}
 The next figures show what can look like some of theses attibutes.
 
 ```{r}
 #| label: eFRI-attibut-table-results-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 ggplot() +
   geom_sf(data = segmentation_smoothed_clip_4326, aes(fill = AGE)) + 
   labs(fill = "Forest age") +
@@ -833,9 +843,9 @@ ggplot() +
 
 \newpage
 
-# **3** Imputation {-#imputation}
+# **4** Imputation {-#imputation}
 
-## **3.1** Imputation basics {-#imputation_basics}
+## **4.1** Imputation basics {-#imputation_basics}
 Some attributes can't be directly extracted from a raster layer containing the information. For example, there is still no layer describing tree species across Ontario. For this tasks, k-nearest neighbor (kNN) imputation can be used to infer what would be some attributes (REF). This widely used method use similarity between variables from two different datasets. In order to fill a missing data, the algorithm identifies the k most similar observations based on distance of common variables. The missing values are then estimated using the corresponding values from these neighbors, often by taking their mean (for numerical variables) or mode (for categorical variables).
 
 To identify the most suitable metrics for kNN imputation, a performance analysis was conducted using all possible combinations of five uncorrelated metrics. The combinaison with the highest accuracy was retain as the one using the best metrics. This analysis evaluated, for each combination, how accurately the imputed values matched the observed values of the photo-interpreted forest inventory polygons. First of all, polygons intersecting a fire or a harvest whose year falls between the year of photo-interpretation and the year of LiDAR acquisition were removed. Indeed the photo-intepreted polygons no longer describe what the LiDAR metrics saw. Secondly, only forested polygon were retain by applying four filters. The polygons where column "POLYTYPE" was "FOR" were retain, where the proportion forested was higher than 50 % based on [landcover raster](link), where the z_p95 was higher or equal than 5 m and pz_above2 was higher or equal than 0,5. Finally, to filter correlated metrics, for each variable being imputed, clustering was performed with of a threshold of 0,8. For every metric in a cluster, a one-way ANOVA was run with the imputed variable, and keep the single metric with the highest F-value. Depending of the variable being imputed, 7865 or 9633 combinaisons of five metrics were tested.
@@ -848,14 +858,15 @@ Therefore, the optimal combination of metrics depends on the specific variable b
 
 In addition, for each of these 4 variables, the X and Y coordinates of polygon centroid have been used for the imputation.
 
-## **3.1** Imputation results {-#imputation_results}
+## **4.2** Imputation results {-#imputation_results}
 The table below shows the accuracy of each of the imputed variables :
 
 ```{r}
 #| label: imputation-results-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 imputation_results %>% 
   mutate(accuracy = round(accuracy*100, 2))  %>% 
   mutate(target_var = case_when(target_var == "SP_NO_1" ~ "Leading species",
@@ -877,9 +888,10 @@ The map below shows the imputed three functional group class (softwood, hardwood
 
 ```{r}
 #| label: imputation-results-2
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 fri_polygons_clip_4326 %>% 
   mutate_species_prop(col_name = "SPCOMP") %>% 
   mutate_species_order(col_name = "SPCOMP") %>% 
@@ -907,9 +919,9 @@ ggplot() +
 
 <!-- This part is only a description of methods -->
 
-# **4** Performance assessment {-#performance-assessment} 
+# **5** Performance assessment {-#performance-assessment} 
 
-## **4.1** Methods {-#methods}
+## **5.1** Methods {-#methods}
 
 In an inventory setting, useful delineations should produce units that are internally homogeneous with respect to key forest attributes, distinct from neighbouring units, and delimited in ways that correspond to real structural changes across the landscape. Existing studies have shown that remotely sensed segmentation can generate relatively homogeneous units, but fewer have evaluated these complementary properties together, particularly in direct comparison with conventional photo-interpreted forest inventory maps. 
 
@@ -944,10 +956,13 @@ Regarding the study area of RMF showed at figure X, these three analysis were co
 
 ```{r}
 #| label: drone-flight-area-subset
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
-st_read(paste0(wd, "/shapefiles/drone_flight_areas/drone_flight_areas.shp")) %>% 
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+st_read(paste0(wd, "/shapefiles/drone_flight_areas/drone_flight_areas.shp"),
+        quiet = TRUE) %>%
+  filter(!sector %in% c("S5", "S8")) %>% 
   filter(forest == "RMF") %>% 
   st_transform(4326) -> dfa
 

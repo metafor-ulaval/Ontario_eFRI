@@ -10,16 +10,16 @@ date: "2026-05-20"
 
 ```{r}
 #| label: setup
-#| include: FALSE
+#| include: false
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
 #| label: libraries
-#| echo: FALSE
-#| include: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 library(tidyverse)
 library(tidyterra)
 library(future.apply)
@@ -43,10 +43,10 @@ library(scatterplot3d)
 
 ```{r}
 #| label: function
-#| echo: FALSE
-#| include: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 sample_farthest_point <- function(nb,
                                   res,
                                   sampling_area,
@@ -126,9 +126,10 @@ In this example, the evaluated forest is located in the province of Ontario, in 
 
 ```{r}
 #| label: show-base-data-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/PolygonForest.shp", quiet = T) -> polygon_forest
   
 st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/ctg.shp", quiet = T) %>%
@@ -164,9 +165,10 @@ To position theses area, only actual forest stand (POLYTYPE == "FOR") have been 
 
 ```{r}
 #| label: show-base-data-2
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 polygon_forest %>% 
   filter(POLYTYPE == "FOR") %>%
   st_geometry() %>%
@@ -190,9 +192,10 @@ A positive buffer of 500 m and then a negative one of 500 m again enable to merg
 
 ```{r}
 #| label: show-base-data-3
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 polygon_forest_temp %>% 
   st_buffer(500) %>%
   st_union() %>%
@@ -213,9 +216,10 @@ A final inner buffer of approximately 7000 m was use to produce final polygon th
 
 ```{r}
 #| label: show-base-data-4
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 inner_radius <- sqrt(10000^2*2)/2
 
 polygon_forest_temp %>%
@@ -236,9 +240,10 @@ The first area was placed randomly and then the 9 next one were iteratively plac
 
 ```{r}
 #| label: show-base-data-5
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 sample_farthest_point(nb = 10,
                       res = 100,
                       sampling_area = polygon_forest_temp,
@@ -296,9 +301,10 @@ For every area, only actual forest stand (POLYTYPE == "FOR") were used to perfor
 
 ```{r}
 #| label: show-base-data-6
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 sampling_square %>% 
   slice(4) -> sampling_square_temp
 
@@ -327,9 +333,10 @@ The model "SPL only" was used to perform segmentation parametrization. The metri
 
 ```{r}
 #| label: show-base-data-7
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 terra::rast("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_RMF.tif") -> metrics
 
 metrics %>%
@@ -398,9 +405,10 @@ The results presented here are, as mentionned before, in the Romeo Malette Fores
 
 ```{r}
 #| label: show-figures-and-tables-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 # Parameters
 dens_threshold <- 0.1
 weight_area <- 1/2
@@ -453,9 +461,10 @@ After this step, the optimal parameters was choosen as the one that maximized bo
 - the best parameters set was choosen as the lowest final score among all combinaison that had a SMAPE of polygon density of more of less 0.1. In the next figure, the red circle are the best paramaters.
 ```{r}
 #| label: show-figures-and-tables-2
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 results_temp %>%
   arrange(final_score) %>%
   slice(1) %>%
@@ -500,9 +509,10 @@ The next figure shows a example of a segmentation in the Romeo Malette Forest fo
 
 ```{r}
 #| label: show-segmentation-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 suppressMessages(
   sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
     sf::st_make_valid() %>%
@@ -601,9 +611,10 @@ f3
 
 ```{r}
 #| label: show-segmentation-2
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 ggplot() +
   geom_density(aes(x = polygon_forest_area_raster/10000),
                color = "#1E88E5",

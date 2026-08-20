@@ -13,7 +13,7 @@ date: "2026-05-20"
 
 ```{r}
 #| label: setup
-#| include: FALSE
+#| include: false
 
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -21,9 +21,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 #| label: read-library
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
 library(tidyverse)
 library(magrittr)
 library(terra)
@@ -34,41 +35,25 @@ library(maptiles)
 library(patchwork)
 ```
 
-```{r}
-#| label: parameters
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
-wd <- "D:/00_Ontario_eFRI/10_livrables/analysis/figures"
-```
-
-```{r}
-#| label: read-data
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
-
-```
-
 # **1** Comparative performance of automated stand delineations and photo-interpreted inventory map {-#performance-assessment}
 
 ```{r}
 #| label: figures-1
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| message: false
+#| warning: false
 
-knitr::include_graphics(paste0(wd, "/segmentation_S1_simplified.jpg"))
+knitr::include_graphics("figures/segmentation_S1_simplified.jpg")
 ```
 Figure 1. Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment.
 
 ```{r}
 #| label: figures-2
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| message: false
+#| warning: false
 
-knitr::include_graphics(paste0(wd, "/segmentation_S7_simplified.jpg"))
+knitr::include_graphics("figures/segmentation_S7_simplified.jpg")
 ```
 Figure 2. Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment.
 
@@ -76,11 +61,11 @@ Figure 2. Example validation area showing the photo-interpreted forest inventory
 
 ```{r}
 #| label: figures-3
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| message: false
+#| warning: false
 
-knitr::include_graphics(paste0(wd, "/pve_figure.png"))
+knitr::include_graphics("figures/pve_figure.png")
 ```
 Figure 3. Performance of automated stand delineations in partitioning forest-attribute variability relative to the photo-interpreted forest inventory map. Cell values are differences in proportion of variance explained (PVE), expressed in percentage points. Positive values indicate greater PVE than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
 
@@ -88,11 +73,11 @@ Figure 3. Performance of automated stand delineations in partitioning forest-att
 
 ```{r}
 #| label: figures-4
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| message: false
+#| warning: false
 
-knitr::include_graphics(paste0(wd, "/ih_figure.png"))
+knitr::include_graphics("figures/ih_figure.png")
 ```
 Figure 4. Performance of automated stand delineations in improving internal polygon homogeneity relative to the photo-interpreted forest inventory map. Cell values represent the relative change in area-weighted within-polygon standard deviation (wSD), expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate lower within-polygon variability than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
 
@@ -100,10 +85,10 @@ Figure 4. Performance of automated stand delineations in improving internal poly
 
 ```{r}
 #| label: figures-5
-#| echo: FALSE
-#| message: FALSE
-#| warning: FALSE
+#| echo: false
+#| message: false
+#| warning: false
 
-knitr::include_graphics(paste0(wd, "/smw_figure.png"))
+knitr::include_graphics("figures/smw_figure.png")
 ```
 Figure 5. Performance of automated stand delineations in improving correspondence of stand boundaries with structural transitions relative to the photo-interpreted forest inventory map. Cell values represent the relative change in correspondence between a stands boundary and a detected structural structure, expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate higher correspondence. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
