@@ -74,7 +74,7 @@ However, moving from wall-to-wall raster products to operational forest inventor
 
 This project, funded by the Knowledge Transfer and Tool Development (KTTD) of the Forestry Futures Trust Ontario, was designed to refine and operationalize an automated polygon-based inventory framework that integrates LiDAR-derived enhanced forest inventory attributes, conventional FRI information, and additional disturbance and attribution layers. The project builds on previous open-source tools developed to integrate photo-interpreted and LiDAR-derived forest attributes into a polygonal forest inventory framework.
 
-<!-- The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available [here](https://github.com/metafor-ulaval/eFRItools). All the functions can be used for other purposes that concern automated forest stand segmentation and forest attribute characterization. -->
+<!-- The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available [here](https://github.com/metafor-ulaval/eFRItools). All the functions can be used for other purposes that concern automated stand delineations and forest attribute characterization. -->
 
 # **3** Previous work {-#previous_work}
 The previous Forestry Futures Trust project, led by the University of British Columbia in collaboration with GreenFirst Forest Products, the Ontario Ministry of Natural Resources and Forestry, and Université Laval, developed an open-source framework to integrate photo-interpreted and airborne LiDAR-derived attributes into a polygonal forest inventory. That work addressed a practical operational question: how can area-based LiDAR estimates, produced as raster layers, be aggregated into inventory polygons that remain compatible with strategic and tactical forest management needs?
@@ -89,12 +89,12 @@ This work represented an important proof of concept, but several issues remained
     
   * Additional attributes such as disturbance history, stand age, and species composition needed to be better integrated or updated when legacy FRI information no longer reflected current forest conditions.
     
-  * The quality of the resulting polygons needed to be evaluated using criteria that go beyond simple visual comparison with existing photo-interpreted maps.
+  * The quality of the resulting polygons needed to be evaluated using criteria that go beyond simple visual comparison with existing photo-interpreted forest inventory maps.
     
-A central remaining question was how to evaluate the quality of the resulting polygons. Previous work showed that automated segmentation could generate structurally homogeneous units, but an operational validation framework also needs to ask whether polygons effectively partition forest variability and whether their boundaries correspond to real changes in forest structure. These criteria guided the validation component of the present project.
+A central remaining question was how to evaluate the quality of the resulting polygons. Previous work showed that automated stand delineation could generate structurally homogeneous units, but an operational validation framework also needs to ask whether polygons effectively partition forest variability and whether their boundaries correspond to real changes in forest structure. These criteria guided the validation component of the present project.
 
 # **4** Project objectives {-#project_objectives}
-The general objective of this project was to refine an automated forest stand delineation and attribution framework so that it can better support operational forest inventory modernization in Ontario.
+The general objective of this project was to refine an automated stand delineation and attribution framework so that it can better support operational forest inventory modernization in Ontario.
 
 More specifically, the project aimed to:
 
@@ -114,7 +114,7 @@ The project integrated disturbance information from provincial and national dist
 
 The initial proposal included additional work on imputing species composition into newly generated polygons. During the project, this component was refined. Improvements from the original imputation approach were limited, while a parallel project using deep learning approaches showed stronger potential for species composition mapping. As a result, the framework was designed to remain flexible: species composition can be incorporated from any compatible raster product, including future outputs from deep learning models, rather than being tied to a single imputation method.
 
-5. Evaluate the quality of automated delineations
+5. Evaluate the quality of automated stand delineations
 
 The project developed and applied a validation framework based on three complementary criteria:
 
@@ -148,6 +148,6 @@ for(forest in c("RMF", "OVF")){
   assign(paste0(forest, "_figure"), figure)
 }
 
-RMF_figure + labs(title = "Romeo Malette Forest")
-OVF_figure + labs(title = "Ottawa Valley Forest")
+RMF_figure
+OVF_figure
 ```

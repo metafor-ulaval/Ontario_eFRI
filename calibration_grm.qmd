@@ -9,15 +9,17 @@ date: "2026-05-20"
 ---
 
 ```{r}
-#| label = "setup",
-#| include = FALSE
+#| label: setup
+#| include: FALSE
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-#| label = "libraries",
-#| echo = FALSE,
-#| include = FALSE
+#| label: libraries
+#| echo: FALSE
+#| include: FALSE
+#| message: FALSE
+#| warning: FALSE
 library(tidyverse)
 library(tidyterra)
 library(future.apply)
@@ -35,13 +37,16 @@ library(htmlwidgets)
 library(eFRItools)
 library(basemapR)
 library(patchwork)
+library(maptiles)
 library(scatterplot3d)
 ```
 
 ```{r}
-#| label = "function",
-#| echo = FALSE,
-#| include = FALSE
+#| label: function
+#| echo: FALSE
+#| include: FALSE
+#| message: FALSE
+#| warning: FALSE
 sample_farthest_point <- function(nb,
                                   res,
                                   sampling_area,
@@ -113,160 +118,20 @@ smape <- function(actual, predicted) {
 
 ## Introduction
 
-This document shows the step to find the optimals parameters of the Generic Region Merging (GRM) algorithm of the Orfeo ToolBox to automatically delineate operationally plausible forest stand. Photo-interpreted forest stands of the same area are the reference data. The optimization is performed on the Symmetric mean absolute percentage error (SMAPE) of polygon density, the overlapping kernel density of the polygon stand area and the overlapping kernel density of the polygon stand shape index. Best parameters were computed for two specific forest and five differents models, but performance metrics can be averaged to find best paramaters that suit the prefered scale.
+This document shows the step to find the optimals parameters of the Generic Region Merging (GRM) algorithm of the Orfeo ToolBox to automatically delineate operationally plausible forest stand. photo-interpreted forest inventory map of the same area are the reference data. The optimization is performed on the Symmetric mean absolute percentage error (SMAPE) of polygon density, the overlapping kernel density of the polygon stand area at the pixel level and the overlapping kernel density of the polygon stand shape index at the pixel level. Best parameters were computed for two specific forest and five differents models, but performance metrics can be averaged to find best paramaters that suit the prefered scale.
 
-```{r}
-#| label = "base data",
-#| eval = FALSE,
-#| echo = FALSE,
-#| include = FALSE
-m <- c("z_p95", "z_above2", "z_cv", "z_skew", "sagawi", "B6", "B8", "B11")
-inner_radius <- sqrt(10000^2*2)/2
-
-for(f in c("RMF", "OVF")){
-
-  st_read(paste0("D:/00_Ontario_eFRI/03_shp_data/", f, "/PolygonForest.shp"), quiet = T) -> polygon_forest
-
-  st_read(paste0("D:/00_Ontario_eFRI/03_shp_data/", f, "/ctg.shp"), quiet = T) %>%
-    st_transform(st_crs(polygon_forest)) -> ctg
-
-  ctg %>%
-    st_geometry() %>%
-    st_buffer(1000) %>%
-    st_union() %>%
-    st_buffer(-1000) -> area
-
-  polygon_forest %>%
-    filter(POLYTYPE == "FOR") %>%
-    st_geometry() %>%
-    st_as_sf() %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    st_cast("POLYGON") %>%
-    st_filter(area) %>%
-    st_buffer(500) %>%
-    st_union() %>%
-    st_buffer(-500) %>%
-    st_buffer(-inner_radius)  %>%
-    st_as_sf() -> sampling_inner_area
-
-  sample_farthest_point(nb = 10,
-                        res = 100,
-                        sampling_area = sampling_inner_area,
-                        seed = 1) %>%
-    st_as_sf() -> sampling_point
-
-  map_dfr(1:10,
-          function(x){
-            sampling_point[x,] %>%
-              st_buffer(2500) %>%
-              st_as_sf() %>%
-              st_bbox() %>%
-              st_as_sfc() %>%
-              st_as_sf()
-          }) %>%
-    st_as_sf() -> sampling_square
-
-  sampling_square %>%
-    st_transform(st_crs(polygon_forest)) %>%
-    st_write(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_", f, ".shp"))
-
-  polygon_forest %>%
-    st_intersection(sampling_square) %>%
-    rowid_to_column("id") -> polygon_forest
-
-  polygon_forest %>%
-    st_write(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_", f,".shp"))
-
-  polygon_forest %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    st_cast("POLYGON") %>%
-    filter(POLYTYPE == "FOR") -> polygon_forest_FOR
-
-  polygon_forest %>%
-    filter(!id %in% polygon_forest_FOR$id) %>%
-    st_geometry() %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    st_cast("POLYGON") %>%
-    st_as_sf() -> polygon_forest_NON_FOR
-
-  list.files(paste0("D:/00_Ontario_eFRI/04_metrics/", f), full.names = TRUE) %>%
-    read_metrics() %>%
-    filter(name %in% m) %T>%
-    {pull(.,name) ->> metrics_names} %>% # Extract metrics names in the right order
-    pull(path) %>%
-    map(rast) %>%
-    map(terra::project, paste0("EPSG:", st_crs(polygon_forest)$epsg), method = "bilinear") %>%
-    map(terra::resample, .[[1]]) %>%
-    rast -> metrics
-
-  names(metrics) <- metrics_names
-
-  metrics %<>%
-    terra::crop(polygon_forest_FOR) %>%
-    terra::mask(polygon_forest_FOR)
-
-  # Save objects
-  metrics %>%
-    writeRaster(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_", f,".tif"))
-
-  polygon_forest_FOR %>%
-    st_write(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_", f,".shp"))
-
-  polygon_forest_NON_FOR %>%
-    st_write(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/masks_", f,".shp"))
-
-}
-```
-
-\newpage
 ## Sampling area
 
-The two evaluated forest are located in the province of Ontario, in Canada. The first one is Romeo Malette Forest and are located in the middle of the province and is more conniferous. The second one is Ottawa Valley Forest and is located more south and that's why there is more deciduous forest. In each forest, ten smaller square area of 5 km x 5 km have been used to perform subsequent analysis. 
+In this example, the evaluated forest is located in the province of Ontario, in Canada. Romeo Malette Forest and are located in the middle of the province and is conniferous. Ten smaller squares area of 5 km x 5 km were used to perform subsequent analysis. 
 
 ```{r}
-#| label = "show base data 1",
-#| echo = FALSE
-for(f in c("RMF", "OVF")){
-  st_read(paste0("D:/00_Ontario_eFRI/03_shp_data/", f, "/PolygonForest.shp"), quiet = T) -> polygon_forest
+#| label: show-base-data-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/PolygonForest.shp", quiet = T) -> polygon_forest
   
-  st_read(paste0("D:/00_Ontario_eFRI/03_shp_data/", f, "/ctg.shp"), quiet = T) %>%
-    st_transform(st_crs(polygon_forest)) -> ctg
-
-  ctg %>%
-    st_geometry() %>%
-    st_buffer(10) %>%
-    st_union() %>%
-    st_buffer(-10) %>% 
-    st_transform(4326) -> area_clean
-  
-  area_clean %>% 
-    st_bbox() -> bbox
-  
-  st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_", f, ".shp"),
-          quiet = T) %>% 
-    st_transform(4326) -> sampling_square
-  
-  ggplot() +
-    suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
-    geom_sf(data = sampling_square, fill = "#FFC107", alpha = 0.5) +
-    geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) +    
-    theme_bw() -> p
-  
-  assign(f, p)
-}
-
-RMF / OVF 
-```
-
-\newpage
-To position theses area, only actual forest stand (POLYTYPE == "FOR") have been retain. 
-
-```{r}
-#| label = "show base data 2",
-#| echo = FALSE
-st_read("D:/00_Ontario_eFRI/03_shp_data/OVF/PolygonForest.shp", quiet = T) -> polygon_forest
-
-st_read("D:/00_Ontario_eFRI/03_shp_data/OVF/ctg.shp", quiet = T) %>%
+st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/ctg.shp", quiet = T) %>%
   st_transform(st_crs(polygon_forest)) -> ctg
 
 ctg %>%
@@ -276,46 +141,70 @@ ctg %>%
   st_buffer(-10) %>% 
   st_transform(4326) -> area_clean
 
-area_clean %>% 
-  st_bbox() -> bbox
+sat <- get_tiles(x = st_bbox(area_clean %>% st_buffer(5000)),
+                 provider = "Esri.WorldImagery",
+                 zoom = 11,
+                 crop = TRUE)
+  
+st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_RMF.shp",
+        quiet = T) %>% 
+  st_transform(4326) -> sampling_square
+  
+ggplot() +
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_sf(data = sampling_square, fill = "#F0E442") +
+  geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) +  
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
 
-ctg %>%
-  st_geometry() %>%
-  st_buffer(1000) %>%
-  st_union() %>%
-  st_buffer(-1000) -> area
+\newpage
+To position theses area, only actual forest stand (POLYTYPE == "FOR") have been retain. 
 
+```{r}
+#| label: show-base-data-2
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
 polygon_forest %>% 
   filter(POLYTYPE == "FOR") %>%
   st_geometry() %>%
-  st_as_sf() %>%
-  sf::st_cast("MULTIPOLYGON") %>%
-  st_cast("POLYGON") %>%
-  st_filter(area) -> polygon_forest_temp
+  st_as_sf() %>% 
+  st_buffer(1) %>%
+  st_union() %>%
+  st_buffer(-1) %>% 
+  st_as_sf() -> polygon_forest_temp
 
 ggplot() +
-    suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
-    geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#D81B60", alpha = 0.5, lwd = 0) +
-    geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) + 
-    annotate("text", label = "map data © 2020 Google", size = 2) +
-    theme_bw()
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5, lwd = 0) +
+  geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) + 
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
 ```
 
 \newpage
 A positive buffer of 500 m and then a negative one of 500 m again enable to merge close forest stand. 
 
 ```{r}
-#| label = "show base data 3",
-#| echo = FALSE
+#| label: show-base-data-3
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
 polygon_forest_temp %>% 
   st_buffer(500) %>%
   st_union() %>%
-  st_buffer(-500) -> polygon_forest_temp
+  st_buffer(-500)  %>%
+  st_as_sf() -> polygon_forest_temp
 
 ggplot() +
-  suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
-  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#D81B60", alpha = 0.5) +
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5) +
   geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) +  
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
   theme_bw()
 ```
 
@@ -323,8 +212,10 @@ ggplot() +
 A final inner buffer of approximately 7000 m was use to produce final polygon that allowed to place the center of each area. 
 
 ```{r}
-#| label = "show base data 4",
-#| echo = FALSE
+#| label: show-base-data-4
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
 inner_radius <- sqrt(10000^2*2)/2
 
 polygon_forest_temp %>%
@@ -332,9 +223,11 @@ polygon_forest_temp %>%
   st_as_sf() -> polygon_forest_temp
 
 ggplot() +
-  suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
-  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#D81B60", alpha = 0.5) +
-  geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) +  
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5) +
+  geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) + 
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
   theme_bw()
 ```
 
@@ -342,8 +235,10 @@ ggplot() +
 The first area was placed randomly and then the 9 next one were iteratively placed as far as possible of the last placed one. The next figure shows the last placed area in red and the distance raster that enable to fin the farthest position.
 
 ```{r}
-#| label = "show base data 5",
-#| echo = FALSE
+#| label: show-base-data-5
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
 sample_farthest_point(nb = 10,
                       res = 100,
                       sampling_area = polygon_forest_temp,
@@ -381,87 +276,81 @@ map_dfr(1:10,
         }) %>%
   st_as_sf() -> sampling_square
 
-suppressMessages(ggplot() +
-  suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
+ggplot() +
+  geom_spatraster_rgb(data = sat*1.5) +
   geom_spatraster(data = (dist_raster_masked %>% terra::project("EPSG:4326", method = "bilinear"))/1000) +
   scale_fill_continuous(palette = "Viridis", na.value = NA) +
-  geom_sf(data = sampling_square %>% st_transform(4326), fill = "#FFC107", alpha = 0.5) +
+  geom_sf(data = sampling_square %>% st_transform(4326), fill = "#F0E442") +
   geom_sf(data = sampling_point[1:9,] %>% st_transform(4326), pch = 16) +
   geom_sf(data = sampling_point[10,] %>% st_transform(4326), color = "red", pch = 16) +
   geom_sf(data = area_clean, fill = NA, color = "white", lwd = 1) +
   labs(fill = "Distance from first 9 points (km)") +
   theme(legend.position = "bottom") +
-  theme_bw())
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
 ```
 
 \newpage
 For every area, only actual forest stand (POLYTYPE == "FOR") were used to perform segmentation.
 
 ```{r}
-#| label = "show base data 6",
-#| echo = FALSE
+#| label: show-base-data-6
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
 sampling_square %>% 
-  slice(9) -> sampling_square_temp
+  slice(4) -> sampling_square_temp
 
-sampling_square_temp %>% 
-  st_transform(4326) %>% 
-  st_bbox() -> bbox
+sat_sampling_square <- get_tiles(x = st_bbox(sampling_square_temp %>% st_buffer(250)),
+                                 provider = "Esri.WorldImagery",
+                                 zoom = 14,
+                                 crop = TRUE)
 
-sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_OVF.shp", quiet = T) %>% 
-  dplyr::select() %>%
-  sf::st_cast("POLYGON") -> polygon_forest
-
-polygon_forest %>% 
+sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
+  sf::st_cast("MULTIPOLYGON") %>%
+  sf::st_cast("POLYGON") %>%
   st_filter(sampling_square_temp) -> polygon_forest_temp
 
 ggplot() +
-  suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
-  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = "black", fill = "#D81B60", alpha = 0.5) +
+  geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = "black", linewidth = 1, alpha = 0.4) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
   theme_bw()
 ```
 
 \newpage
 ## Segmentation
 
-Five differents sets of metrics were used to perform segmentation :
-
-- model_A : z_p95 + z_above2 + z_cv
-- model_B : z_p95 + z_above2 + z_skew
-- model_D : z_p95 + z_above2 + sagawi
-- model_F : z_p95 + z_above2 + B6
-- model_G : B6 + B8 + B11
-
-The metrics used are shown in the follow figure.
+The model "SPL only" was used to perform segmentation parametrization. The metrics used in this model are shown in the follow figures.
 
 ```{r}
-#| label = "show base data 7",
-#| echo = FALSE
-terra::rast("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_OVF.tif") -> metrics
+#| label: show-base-data-7
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+terra::rast("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_RMF.tif") -> metrics
 
 metrics %>%
   terra::crop(sampling_square_temp %>% st_transform(st_crs(metrics))) %>%
   terra::mask(sampling_square_temp %>% st_transform(st_crs(metrics))) -> metrics_temp
 
-map(names(metrics_temp),
-    function(x){
-      ggplot() +
-        geom_spatraster(data = metrics_temp[[x]]) +
-            scale_fill_whitebox_c(palette = "muted",
+for(x in c("z_p95", "z_above2", "B6")){
+  ggplot() +
+    geom_spatraster(data = metrics_temp[[x]]) +
+    scale_fill_whitebox_c(palette = "muted",
                           labels = scales::label_number(accuracy = 1),
                           breaks = scales::pretty_breaks(n = 5)) +
     theme_void() +
-    labs(fill = x)
-    }) -> f
+    labs(fill = x) -> metric_fig
+  
+  assign(x, metric_fig)
+}
 
-f[[1]]
-f[[2]]
-f[[3]]
-f[[4]]
-f[[5]]
-f[[6]]
-f[[7]]  
-f[[8]]
-
+z_p95
+z_above2
+B6
 ```
 
 \newpage
@@ -485,962 +374,33 @@ Finally, the parameters tested are the following ones :
 
 Thus, a total of 1000 paramaters combinaisons was tested.
 
-```{r}
-#| label = "segmentation",
-#| eval = FALSE,
-#| echo = FALSE,
-#| include = FALSE
-plan(multisession, workers = round(ncores()*0.25))
-
-forest <- c("RMF", "OVF")
-thresh <- seq(10, 100, 10)
-spec <- seq(0.1, 1, 0.1)
-spat <- seq(0.1, 1, 0.1)
-models <- list(model_A = c("z_p95", "z_above2", "z_cv"),
-               model_B = c("z_p95", "z_above2", "z_skew"),
-               model_D = c("z_p95", "z_above2", "sagawi"),
-               model_F = c("z_p95", "z_above2", "B6"),
-               model_G = c("B6", "B8", "B11"))
-
-models_df <- data.frame(model_name = names(models),
-                        model_var  = sapply(models, paste, collapse = ", "),
-                        stringsAsFactors = FALSE)
-
-params <- merge(expand.grid(forest = forest,
-                            thresh = thresh,
-                            spec = spec,
-                            spat = spat,
-                            stringsAsFactors = FALSE),
-                models_df)
-
-# Remove done files
-params %>%
-  mutate(done = file.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", forest, "/", model_name, "/segmentation_thresh", thresh, "_spec", spec*100, "_spat", spat*100, "_smoothed.shp"))) %>%
-  filter(!done) -> params
-
-# Remove remaining raster files
-list.files(path = "D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation", full.names = T) %>%
-  map(list.files, full.names = T) %>%
-  unlist() %>%
-  map(list.files, pattern = "\\.tif$", full.names = T) %>%
-  unlist() %>%
-  file.remove()
-
-# params %>%
-#   filter(forest == "RMF" & model_name == "model_F" & thresh == 60 & spec == 0.2 & spat == 0.1) -> param
-
-# p <- 889
-# x <- 1
-
-future_lapply(seq_len(nrow(params)), function(p){
-
-  library(eFRItools)
-  library(sf)
-  library(terra)
-  library(stringr)
-
-  param = params[p,]
-
-  cat("Forest :", param$forest, "/ Model :", param$model_name, "/ Threshold :", param$thresh, "/ Spec :", param$spec, "/ Spat :", param$spat, "\n")
-
-  if(!dir.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest))){
-    dir.create(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest))
-  }
-
-  if(!dir.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name))){
-    dir.create(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name))
-  }
-
-  output_name <- paste0("_thresh", param$thresh,
-                        "_spec", param$spec*100,
-                        "_spat", param$spat*100)
-
-  st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_", param$forest, ".shp"),
-          quiet = T) -> sampling_square
-
-  rast(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_", param$forest,".tif")) -> metrics
-
-  st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/masks_", param$forest,".shp"),
-          quiet = T) -> masks
-
-  map_dfr(seq_len(nrow(sampling_square)),
-          function(x){
-
-            metrics[[strsplit(param$model_var, ", ")[[1]]]] %>%
-              terra::crop(sampling_square[x,]) %>%
-              terra::mask(sampling_square[x,]) -> metrics_temp
-
-            masks %>%
-              sf::st_filter(sampling_square[x,]) -> masks_temp
-
-            eFRI_segmentation(metrics = metrics_temp,
-                              masks = list(vect(masks_temp)),
-                              thresh = param$thresh,
-                              spec = param$spec,
-                              spat = param$spat,
-                              method = "bs",
-                              clean_nodata = TRUE,
-                              output_path = paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name),
-                              output_name = paste0("segmentation", output_name, "_it", x),
-                              otb_dir = "D:/00_Ontario_eFRI/logiciels/OTB-9.1.0-Win64/bin") %>%
-              sf::st_geometry() %>%
-              sf::st_as_sf() -> segmentation
-
-            sf::st_geometry(segmentation) <- "geometry"
-
-            return(segmentation)
-
-          }) -> segmentation_merged
-
-  list.files(path = paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name),
-             pattern = "\\.tif$",
-             full.names = T) %>%
-    stringr::str_subset(paste0("segmentation", output_name)) %>%
-    file.remove()
-
-  st_write(segmentation_merged,
-           paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name, "/segmentation", output_name, ".shp"),
-           append = FALSE,
-           quiet = T)
-
-  chunk_size <- 1000
-  segmentation_chunks <- split(segmentation_merged,
-                               ceiling(seq_len(nrow(segmentation_merged)) / chunk_size))
-
-  map_dfr(seq_along(segmentation_chunks),
-          function(chunk_no) {
-
-            cat("Processing chunk", chunk_no, "out of", length(segmentation_chunks), "\n")
-
-            chunk <- segmentation_chunks[[chunk_no]]
-
-            chunk %>%
-              smoothr::smooth(method = "ksmooth", smoothness = 1) %>%
-              sf::st_make_valid() -> chunk_smoothed
-
-              return(chunk_smoothed)
-
-          }) -> segmentation_smoothed
-
-  segmentation_smoothed %>%
-    st_cast("MULTIPOLYGON", warn = FALSE) %>%
-    st_make_valid() -> segmentation_smoothed
-
-  segmentation_smoothed[st_geometry_type(segmentation_smoothed) %in% c("POLYGON", "MULTIPOLYGON"),] -> segmentation_smoothed
-
-  st_write(segmentation_smoothed,
-           paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name, "/segmentation", output_name, "_smoothed.shp"),
-           append = FALSE,
-           quiet = T)
-
-  return(TRUE)
-
-})
-```
-
-The next figure shows a example of a segmentation in the Ottawa Valley Forest for the model_A (z_p95 + z_above2 + z_cv) with mid parameters (threshold of 50, spectral homogeneity of 0.5 and spatial homogeneity of 0.5). There is also a example of a segmnetation that was smoothed to get a better shape index of each polygon forest stand.
-
-```{r}
-#| label = "show segmentation 1",
-#| echo = FALSE
-polygon_forest %>%
-  mutate(area = as.numeric(sf::st_area(.)),
-         perimeter = as.numeric(sf::st_perimeter(.)),
-         perimeter_area_ratio = perimeter/area,
-         shape_index = perimeter / sqrt(pi * area)) %>%
-  filter_if(is.numeric, is.finite) -> polygon_forest_temp
-
-suppressMessages(
-  st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/OVF/model_A/segmentation_thresh50_spec50_spat50.shp",
-        quiet = T) %>% 
-  sf::st_make_valid() %>%
-  sf::st_cast("MULTIPOLYGON") %>%
-  sf::st_cast("POLYGON") %>%
-  mutate(area = as.numeric(st_area(.)),
-         perimeter = as.numeric(st_perimeter(.)),
-         perimeter_area_ratio = perimeter/area,
-         shape_index = perimeter / sqrt(pi * area)) %>%
-  filter_if(is.numeric, is.finite)) -> segmentation 
-
-suppressMessages(st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/OVF/model_A/segmentation_thresh50_spec50_spat50_smoothed.shp",
-        quiet = T) %>% 
-  sf::st_make_valid() %>%
-  sf::st_cast("MULTIPOLYGON") %>%
-  sf::st_cast("POLYGON") %>%
-  mutate(area = as.numeric(st_area(.)),
-         perimeter = as.numeric(st_perimeter(.)),
-         perimeter_area_ratio = perimeter/area,
-         shape_index = perimeter / sqrt(pi * area)) %>%
-  filter_if(is.numeric, is.finite)) -> segmentation_smoothed
-
-polygon_forest_temp %>%
-  dplyr::select(area) %>%
-  terra::rasterize(metrics, field = "area") %>%
-  terra::values(na.rm = TRUE) -> polygon_forest_area_raster
-
-polygon_forest_area_raster[is.finite(polygon_forest_area_raster)] -> polygon_forest_area_raster
-
-segmentation %>%
-  dplyr::select(area) %>%
-  terra::rasterize(metrics, field = "area") %>%
-  terra::values(na.rm = TRUE) -> segmentation_area_raster
-
-segmentation_area_raster[is.finite(segmentation_area_raster)] -> segmentation_area_raster
-
-polygon_forest_temp %>%
-  dplyr::select(shape_index) %>%
-  terra::rasterize(metrics, field = "shape_index") %>%
-  terra::values(na.rm = TRUE) -> polygon_forest_shape_index_raster
-
-polygon_forest_shape_index_raster[is.finite(polygon_forest_shape_index_raster)] -> polygon_forest_shape_index_raster
-
-segmentation %>%
-  dplyr::select(shape_index) %>%
-  terra::rasterize(metrics, field = "shape_index") %>%
-  terra::values(na.rm = TRUE) -> segmentation_shape_index_raster
-
-segmentation_shape_index_raster[is.finite(segmentation_shape_index_raster)] -> segmentation_shape_index_raster
-
-segmentation_smoothed %>%
-  dplyr::select(shape_index) %>%
-  terra::rasterize(metrics, field = "shape_index") %>%
-  terra::values(na.rm = TRUE) -> segmentation_smoothed_shape_index_raster
-
-segmentation_smoothed_shape_index_raster[is.finite(segmentation_smoothed_shape_index_raster)] -> segmentation_smoothed_shape_index_raster
-
-ggplot() +
-  suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
-  geom_sf(data = segmentation %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#7A9A05", alpha = 0.5) +
-  theme_bw() -> f1
-
-ggplot() +
-  suppressMessages(base_map(bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T)) +
-  geom_sf(data = segmentation_smoothed %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#1E88E5", alpha = 0.5) +
-  theme_bw() -> f2
-
-f1 / f2
-```
-
 \newpage
 ## Analysis
 
 The three performance metrics are the following ones :
 1. Symmetric mean absolute percentage error (SMAPE) of polygon density
- - The value is positive when the segmentation have a higher density than the ecoforestry polygon and negative when the segmentation have a lower density
- - In the example above, the SMAPE of the density is 0.17 as the ecoforestry have a density of 7.25 polygon/km² (1465 polygons) and the segmentation a density of 8.59 polygon/km² (1650 polygons)
+ - The value is positive when the segmentation have a higher density than the photo-interpreted forest inventory map and negative when the segmentation have a lower density
+ - In the example above, the SMAPE of the density is 0.17 as the photo-interpreted forest inventory map have a density of 7.25 polygon/km² (1465 polygons) and the segmentation a density of 8.59 polygon/km² (1650 polygons)
 
-2. Overlapping kernel density of the polygon stand area (left figure)
- - This performance metric represent how the distribution of the segmentation polygon stand area suit well the distribution of the ecoforestry polygon area
+2. Overlapping kernel density of the polygon stand area at the pixel level
+ - This performance metric represent how the distribution of the segmentation polygon stand area suit well the distribution of the photo-interpreted forest inventory polygon area
 
-3. Overlapping kernel density of the polygon stand shape index (right figure)
- - The same way as the last performance metric, this performance metric represent how the distribution of the segmentation polygon stand shape index suit well the distribution of the ecoforestry polygon shape index
+3. Overlapping kernel density of the polygon stand shape index at the pixel level
+ - The same way as the last performance metric, this performance metric represent how the distribution of the segmentation polygon stand shape index suit well the distribution of the photo-interpreted forest inventory polygon shape index
  - The shape index was computed with smoothed polygon to avoid overestimating the perimeter of polygons
 
-The assumption behind this analysis is that the automated segmented polygon stand should have the same distribution of polygon area and shape than the reference ecoforestery polygon stand and therefore be operationally plausible forest stand.
-
-```{r}
-#| label = "show segmentation 2",
-#| echo = FALSE
-dens_polygon_forest <- nrow(polygon_forest_temp)/as.numeric(sum(st_area(polygon_forest_temp))/1000000)
-dens_segmentation <- nrow(segmentation)/as.numeric(sum(st_area(segmentation))/1000000)
-smape_dens <- smape(dens_polygon_forest, dens_segmentation)
-
-ggplot() +
-  geom_histogram(aes(x = segmentation_area_raster/10000,
-                     y = after_stat(density)),
-                 bins = 100,
-                 fill = "#D81B60",
-                 alpha = 0.3) +
-  geom_density(aes(x = segmentation_area_raster/10000),
-               color = "#D81B60",
-               linewidth = 1) +
-  
-  geom_histogram(aes(x = polygon_forest_area_raster/10000,
-                     y = after_stat(density)),
-                 bins = 100,
-                 fill = "#0B4D00",
-                 alpha = 0.3) +
-  geom_density(aes(x = polygon_forest_area_raster/10000),
-               color = "#0B4D00",
-               linewidth = 1) +
-  labs(x = "Polygon area (ha)",
-       y = "Density") +
-  theme_bw() -> p_area_raster
-
-ggplot() +
-  geom_histogram(aes(x = segmentation_shape_index_raster,
-                     y = after_stat(density)),
-                 bins = 100,
-                 fill = "#D81B60",
-                 alpha = 0.3) +
-  geom_density(aes(x = segmentation_shape_index_raster),
-               color = "#D81B60",
-               linewidth = 1) +
-  
-  geom_histogram(aes(x = segmentation_smoothed_shape_index_raster,
-                     y = after_stat(density)),
-                 bins = 100,
-                 fill = "#1E88E5",
-                 alpha = 0.3) +
-  geom_density(aes(x = segmentation_smoothed_shape_index_raster),
-               color = "#1E88E5",
-               linewidth = 1) +
-  
-  geom_histogram(aes(x = polygon_forest_shape_index_raster,
-                     y = after_stat(density)),
-                 bins = 100,
-                 fill = "#0B4D00",
-                 alpha = 0.3) +
-  geom_density(aes(x = polygon_forest_shape_index_raster),
-               color = "#0B4D00",
-               linewidth = 1) +
-  labs(x = "Shape index",
-       y = "Density") +
-  theme_bw() -> p_shape_raster
-
-p_area_raster / p_shape_raster
-```
-
-```{r}
-#| label = "results",
-#| eval = FALSE,
-#| echo = FALSE,
-#| include = FALSE
-forest <- c("RMF", "OVF")
-thresh <- seq(10, 100, 10)
-spec <- seq(0.1, 1, 0.1)
-spat <- seq(0.1, 1, 0.1)
-models <- list(model_A = c("z_p95", "z_above2", "z_cv"),
-               model_B = c("z_p95", "z_above2", "z_skew"),
-               model_D = c("z_p95", "z_above2", "sagawi"),
-               model_F = c("z_p95", "z_above2", "B6"),
-               model_G = c("B6", "B8", "B11"))
-
-models_df <- data.frame(model_name = names(models),
-                        model_var  = sapply(models, paste, collapse = ", "),
-                        stringsAsFactors = FALSE)
-
-params <- merge(expand.grid(forest = forest,
-                            thresh = thresh,
-                            spec = spec,
-                            spat = spat,
-                            stringsAsFactors = FALSE),
-                models_df)
-
-# Remove done files
-params %>%
-  mutate(done = file.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", forest, "/", model_name, "/tables/results_thresh", thresh, "_spec", spec*100, "_spat", spat*100, ".rds"))) %>%
-  filter(!done) -> params
-
-# p <- 1
-
-params %>%
-  filter(forest == "OVF",
-         model_name == "model_A",
-         thresh == 50,
-         spec == 0.5,
-         spat == 0.5) -> param
-
-batch_size <- ncores()  # petit !
-
-indices <- split(seq_len(nrow(params)),
-                 ceiling(seq_along(seq_len(nrow(params))) / batch_size))
-
-for(batch in indices){
-
-  plan(callr, workers = round(lasR::ncores()*0.25))
-
-  future.apply::future_lapply(batch, function(p){
-
-    tryCatch({
-
-      library(tidyverse)
-      library(sf)
-      library(terra)
-      library(overlapping)
-      library(patchwork)
-      library(rmapshaper)
-      library(magrittr)
-
-      param = params[p,]
-
-      cat("Forest :", param$forest, "/ Model :", param$model_name, "/ Threshold :", param$thresh, "/ Spec :", param$spec, "/ Spat :", param$spat, "\n")
-
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest))){
-        dir.create(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest))
-      }
-
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name))){
-        dir.create(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name))
-      }
-
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_nam, "/tables"))){
-        dir.create(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/tables"))
-      }
-
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures"))){
-        dir.create(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures"))
-      }
-
-      if(!dir.exists(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/maps"))){
-        dir.create(paste0("D:/00_Ontario_eFRI/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/maps"))
-      }
-
-      output_name <- paste0("_thresh", param$thresh,
-                            "_spec", param$spec*100,
-                            "_spat", param$spat*100)
-
-      terra::rast(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_", param$forest, ".tif")) -> metrics
-
-      sf::st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_", param$forest, ".shp"), quiet = T) %>%
-        dplyr::select() %>%
-        sf::st_cast("MULTIPOLYGON") %>%
-        sf::st_cast("POLYGON") %>%
-        mutate(area = as.numeric(sf::st_area(.)),
-               perimeter = as.numeric(sf::st_perimeter(.)),
-               perimeter_area_ratio = perimeter/area,
-               shape_index = perimeter / sqrt(pi * area)) %>%
-        filter_if(is.numeric, is.finite) -> polygon_forest
-
-      sf::st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name, "/segmentation", output_name, ".shp"), quiet = T) %>%
-        sf::st_cast("MULTIPOLYGON") %>%
-        sf::st_cast("POLYGON") %>%
-        mutate(area = as.numeric(st_area(.)),
-               perimeter = as.numeric(st_perimeter(.)),
-               perimeter_area_ratio = perimeter/area,
-               shape_index = perimeter / sqrt(pi * area)) %>%
-        filter_if(is.numeric, is.finite) -> segmentation
-
-      sf::st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forest, "/", param$model_name, "/segmentation", output_name, "_smoothed.shp"), quiet = T) %>%
-        sf::st_make_valid() %>%
-        sf::st_cast("MULTIPOLYGON") %>%
-        sf::st_cast("POLYGON") %>%
-        mutate(area = as.numeric(st_area(.)),
-               perimeter = as.numeric(st_perimeter(.)),
-               perimeter_area_ratio = perimeter/area,
-               shape_index = perimeter / sqrt(pi * area)) %>%
-        filter_if(is.numeric, is.finite) -> segmentation_smoothed
-
-      polygon_forest %>%
-        dplyr::select(area) %>%
-        terra::rasterize(metrics, field = "area") %>%
-        terra::values(na.rm = TRUE) -> polygon_forest_area_raster
-
-      polygon_forest_area_raster[is.finite(polygon_forest_area_raster)] -> polygon_forest_area_raster
-
-      segmentation %>%
-        dplyr::select(area) %>%
-        terra::rasterize(metrics, field = "area") %>%
-        terra::values(na.rm = TRUE) -> segmentation_area_raster
-
-      segmentation_area_raster[is.finite(segmentation_area_raster)] -> segmentation_area_raster
-
-      overlap_area_raster_OV <- overlapping::overlap(list(segmentation_area_raster, polygon_forest_area_raster))$OV
-
-      # ggplot() +
-      #   geom_density(data = segmentation, aes(x = area/10000), color = "#D81B60") +
-      #   geom_density(data = polygon_forest, aes(x = area/10000), color = "#0B4D00") +
-      #   theme_bw() -> p_area_poly
-
-      ggplot() +
-        geom_histogram(data = segmentation %>% dplyr::filter(is.finite(area)),
-                       aes(x = area/10000,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#D81B60",
-                       alpha = 0.3) +
-        geom_density(data = segmentation %>% dplyr::filter(is.finite(area)),
-                     aes(x = area/10000),
-                     color = "#D81B60",
-                     linewidth = 1) +
-
-        geom_histogram(data = polygon_forest %>% dplyr::filter(is.finite(area)),
-                       aes(x = area/10000,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#0B4D00",
-                       alpha = 0.3) +
-        geom_density(data = polygon_forest %>% dplyr::filter(is.finite(area)),
-                     aes(x = area/10000),
-                     color = "#0B4D00",
-                     linewidth = 1) +
-        theme_bw() -> p_area_poly
-
-      # ggplot() +
-      #   geom_density(data = segmentation_area_raster, aes(x = area/10000), color = "#D81B60") +
-      #   geom_density(data = polygon_forest_area_raster, aes(x = area/10000), color = "#0B4D00") +
-      #   theme_bw() -> p_area_raster
-
-      ggplot() +
-        geom_histogram(aes(x = segmentation_area_raster/10000,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#D81B60",
-                       alpha = 0.3) +
-        geom_density(aes(x = segmentation_area_raster/10000),
-                     color = "#D81B60",
-                     linewidth = 1) +
-
-        geom_histogram(aes(x = polygon_forest_area_raster/10000,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#0B4D00",
-                       alpha = 0.3) +
-        geom_density(aes(x = polygon_forest_area_raster/10000),
-                     color = "#0B4D00",
-                     linewidth = 1) +
-        theme_bw() -> p_area_raster
-
-      p_area_poly / p_area_raster -> p_area
-
-      ggsave(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures/area", output_name, ".jpg"),
-             plot = p_area,
-             width = 15,
-             height = 10,
-             dpi = 150)
-
-      graphics.off()
-      rm(polygon_forest_area_raster,
-         segmentation_area_raster,
-         p_area_poly,
-         p_area_raster,
-         p_area)
-      gc()
-
-      polygon_forest %>%
-        dplyr::select(shape_index) %>%
-        terra::rasterize(metrics, field = "shape_index") %>%
-        terra::values(na.rm = TRUE) -> polygon_forest_shape_index_raster
-
-      polygon_forest_shape_index_raster[is.finite(polygon_forest_shape_index_raster)] -> polygon_forest_shape_index_raster
-
-      segmentation %>%
-        dplyr::select(shape_index) %>%
-        terra::rasterize(metrics, field = "shape_index") %>%
-        terra::values(na.rm = TRUE) -> segmentation_shape_index_raster
-
-      segmentation_shape_index_raster[is.finite(segmentation_shape_index_raster)] -> segmentation_shape_index_raster
-
-      segmentation_smoothed %>%
-        dplyr::select(shape_index) %>%
-        terra::rasterize(metrics, field = "shape_index") %>%
-        terra::values(na.rm = TRUE) -> segmentation_smoothed_shape_index_raster
-
-      segmentation_smoothed_shape_index_raster[is.finite(segmentation_smoothed_shape_index_raster)] -> segmentation_smoothed_shape_index_raster
-
-      overlap_shape_raster_OV <- overlapping::overlap(list(segmentation_shape_index_raster, polygon_forest_shape_index_raster))$OV
-
-      overlap_shape_smoothed_raster_OV <- overlapping::overlap(list(segmentation_smoothed_shape_index_raster, polygon_forest_shape_index_raster))$OV
-
-      # ggplot() +
-      #   geom_density(data = segmentation, aes(x = shape_index), color = "#D81B60") +
-      #   geom_density(data = segmentation_smoothed, aes(x = shape_index), color = "#1E88E5") +
-      #   geom_density(data = polygon_forest, aes(x = shape_index), color = "#0B4D00") +
-      #   theme_void() -> p_shape_poly
-
-      ggplot() +
-        geom_histogram(data = segmentation %>% dplyr::filter(is.finite(shape_index)),
-                       aes(x = shape_index,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#D81B60",
-                       alpha = 0.3) +
-        geom_density(data = segmentation %>% dplyr::filter(is.finite(shape_index)),
-                     aes(x = shape_index),
-                     color = "#D81B60",
-                     linewidth = 1) +
-
-        geom_histogram(data = segmentation_smoothed %>% dplyr::filter(is.finite(shape_index)),
-                       aes(x = shape_index,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#1E88E5",
-                       alpha = 0.3) +
-        geom_density(data = segmentation_smoothed %>% dplyr::filter(is.finite(shape_index)),
-                     aes(x = shape_index),
-                     color = "#1E88E5",
-                     linewidth = 1) +
-
-        geom_histogram(data = polygon_forest %>% dplyr::filter(is.finite(shape_index)),
-                       aes(x = shape_index,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#0B4D00",
-                       alpha = 0.3) +
-        geom_density(data = polygon_forest %>% dplyr::filter(is.finite(shape_index)),
-                     aes(x = shape_index),
-                     color = "#0B4D00",
-                     linewidth = 1) +
-        theme_bw() -> p_shape_poly
-
-      # ggplot() +
-      #   geom_density(data = segmentation_shape_index_raster, aes(x = shape_index), color = "#D81B60") +
-      #   geom_density(data = segmentation_smoothed_shape_index_raster, aes(x = shape_index), color = "#1E88E5") +
-      #   geom_density(data = polygon_forest_shape_index_raster, aes(x = shape_index), color = "#0B4D00") +
-      #   theme_void() -> p_shape_raster
-
-      ggplot() +
-        geom_histogram(aes(x = segmentation_shape_index_raster,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#D81B60",
-                       alpha = 0.3) +
-        geom_density(aes(x = segmentation_shape_index_raster),
-                     color = "#D81B60",
-                     linewidth = 1) +
-
-        geom_histogram(aes(x = segmentation_smoothed_shape_index_raster,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#1E88E5",
-                       alpha = 0.3) +
-        geom_density(aes(x = segmentation_smoothed_shape_index_raster),
-                     color = "#1E88E5",
-                     linewidth = 1) +
-
-        geom_histogram(aes(x = polygon_forest_shape_index_raster,
-                           y = after_stat(density)),
-                       bins = 100,
-                       fill = "#0B4D00",
-                       alpha = 0.3) +
-        geom_density(aes(x = polygon_forest_shape_index_raster),
-                     color = "#0B4D00",
-                     linewidth = 1) +
-        theme_bw() -> p_shape_raster
-
-      p_shape_poly / p_shape_raster -> p_shape
-
-      ggsave(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/figures/shape", output_name, ".jpg"),
-             plot = p_shape,
-             width = 15,
-             height = 10,
-             dpi = 150)
-
-      graphics.off()
-      rm(polygon_forest_shape_index_raster,
-         segmentation_shape_index_raster,
-         segmentation_smoothed_shape_index_raster,
-         p_shape_poly,
-         p_shape_raster,
-         p_shape)
-      gc()
-
-      polygon_forest %>%
-        slice(1000) %>%
-        sf::st_centroid() %>%
-        sf::st_buffer(1000) -> clip_area
-
-      ggplot() +
-        # base_map(clip_area %>% st_transform(4326) %>% st_bbox, basemap = "google-satellite", increase_zoom = 3, nolabels = T) +
-        geom_sf(data = polygon_forest %>% st_filter(clip_area) %>% rmapshaper::ms_clip(clip_area) %>% sf::st_transform(4326), color = "#D81B60", fill = NA, lwd = 1) +
-        geom_sf(data = segmentation_smoothed %>% st_filter(clip_area) %>% rmapshaper::ms_clip(clip_area) %>% sf::st_transform(4326), color = "#1E88E5", fill = NA, lwd = 1) +
-        theme_bw() -> p_map
-
-      ggsave(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/maps/map", output_name, ".jpg"),
-             plot = p_map,
-             width = 10,
-             height = 10,
-             dpi = 300)
-
-      graphics.off()
-      rm(p_map,
-         clip_area)
-      gc()
-
-      tibble(forest = param$forest,
-             model_name = param$model_name,
-             thresh = param$thresh,
-             spec = param$spec,
-             spat = param$spat,
-
-             overlap_area = overlapping::overlap(list(segmentation$area, polygon_forest$area))$OV,
-             overlap_area_raster = overlap_area_raster_OV,
-
-             overlap_shape = overlapping::overlap(list(segmentation$shape_index, polygon_forest$shape_index))$OV,
-             overlap_shape_raster = overlap_shape_raster_OV,
-
-             overlap_shape_smoothed = overlapping::overlap(list(segmentation_smoothed$shape_index, polygon_forest$shape_index))$OV,
-             overlap_shape_smoothed_raster = overlap_shape_smoothed_raster_OV,
-
-             mean_area_forest = mean(polygon_forest$area),
-             mean_area_segmentation = mean(segmentation$area),
-             mean_area_smape = smape(mean_area_forest, mean_area_segmentation),
-
-             sd_area_forest = sd(polygon_forest$area),
-             sd_area_segmentation = sd(segmentation$area),
-             sd_area_smape = smape(sd_area_forest, sd_area_segmentation),
-
-             n_forest = nrow(polygon_forest),
-             n_segmentation = nrow(segmentation),
-             n_smape = smape(n_forest, n_segmentation),
-
-             dens_forest = n_forest/(as.numeric(sum(st_area(polygon_forest)))/1000000),
-             dens_segmentation = n_segmentation/(as.numeric(sum(st_area(segmentation)))/1000000),
-             dens_smape = smape(dens_forest, dens_segmentation)) %>%
-
-        bind_cols(quantile(polygon_forest$area,
-                           probs = seq(0, 1, 0.1)) %>%
-                    as.list() %>%
-                    tibble::as_tibble_row(.name_repair = "minimal") %>%
-                    rename_with(~ paste0("quantile_forest_", seq(0, 100, 10))),
-                  quantile(segmentation$area,
-                           probs = seq(0, 1, 0.1)) %>%
-                    as.list() %>%
-                    tibble::as_tibble_row(.name_repair = "minimal") %>%
-                    rename_with(~ paste0("quantile_segmentation_", seq(0, 100, 10)))) -> results
-
-      results %>%
-        saveRDS(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/", param$forest, "/", param$model_name, "/tables/results", output_name, ".rds"))
-
-      terra::tmpFiles(remove = TRUE)
-      rm(metrics,
-         polygon_forest,
-         segmentation,
-         chunk_size,
-         segmentation_chunks,
-         segmentation_smoothed,
-         overlap_area_raster_OV,
-         overlap_shape_raster_OV,
-         overlap_shape_smoothed_raster_OV)
-      gc()
-
-      return(NULL)
-
-    }, error = function(e) {
-
-      cat(c("Error at index ", p, " : ", conditionMessage(e), "----------"),
-          file = paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/log_error/log_error_", param$forest, "_", param$model_name, "_thresh", param$thresh, "_spec", param$spec*100, "_spat", param$spat*100, ".txt"),
-          append = TRUE,
-          sep = "\n")
-
-      return(NULL)
-    })
-
-  })
-
-}
-
-list.files("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results", full.names = TRUE) %>%
-  map(list.files, full.names = TRUE) %>%
-  unlist() %>%
-  map(list.files, full.names = TRUE, pattern = "tables") %>%
-  unlist() %>%
-  list.files(full.names = TRUE, pattern = "\\.rds$") %T>%
-  {files_names <<- .} %>%
-  map_dfr(readRDS) -> results
-
-# Forgot to save the model name in th first round, but its now corrected at line 721, so I need to add it manually for the first results
-files_names %>%
-  str_extract("model_[A-Z]") -> model_names
-
-results %>%
-  mutate(model_name = model_names) %>%
-  select(forest, model_name, everything()) -> results
-
-results %>%
-  saveRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/results.rds")
-```
-
-```{r}
-#| label = "figures and tables",
-#| eval = FALSE,
-#| echo = FALSE,
-#| include = FALSE
-# Parameters
-dens_threshold <- 0.1
-weight_area <- 1/2
-weight_shape <- 1/2
-
-# Read data
-readRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/results.rds") %>%
-  mutate(area_score = overlap_area_raster,
-         shape_score = overlap_shape_smoothed_raster) %>%
-  mutate(final_score = (weight_area*(1-area_score)) + (weight_shape*(1-shape_score))) %>%
-  mutate_at(c("thresh", "spec", "spat"), as.numeric) -> results
-
-# Compute for a specific forest and model and produce figures
-selected_forest <- "RMF"
-selected_forest <- "OVF"
-selected_model <- "model_B"
-
-results %>%
-  filter(forest == selected_forest) %>%
-  filter(model_name == selected_model) %>%
-  filter(dens_smape >= -dens_threshold & dens_smape <= dens_threshold) %>%
-  mutate(parameters = paste0("thresh", thresh, "_spec", spec*100, "_spat", spat*100)) -> results_temp
-
-#plot_ly(data = results_temp %>% filter(spec >= 50),
-plot_ly(data = results_temp,
-        x = ~area_score, y = ~shape_score, z = ~dens_smape,
-        color = ~final_score,
-        colors = c("#117733", "#882235"),
-        #size = ~thresh,
-        #size = ~spat,
-        size = ~spec,
-        sizes = c(1, 1000),
-        type = "scatter3d",
-        mode = "markers",
-        text = ~parameters,
-        hovertemplate = paste("Overlap Area : %{x}<br>",
-                              "Overlap shape : %{y}<br>",
-                              "Symmetric Mean Absolute Percentage Error (SMAPE) : %{z}<br>",
-                              "Parameters : %{text}<extra></extra>"))
-
-plot_ly(data = results_temp,
-        x = ~thresh, y = ~spec, z = ~spat,
-        color = ~ dens_smape,
-        colors = c("#332288", "#117733", "#882235"),
-        size = ~ dens_smape,
-        sizes = c(1, 1000),
-        type = "scatter3d",
-        mode = "markers",
-        hovertemplate = paste("Threshold : %{x}<br>",
-                              "Spec : %{y}<br>",
-                              "Spat : %{z}<br>",
-                              "Symmetric Mean Asbolute Error (SMAPE) : %{marker.color}<extra></extra>"))
-
-plot_ly(data = results_temp,
-        x = ~thresh, y = ~spec, z = ~spat,
-        color = ~area_score,
-        colors = c("#882235", "#117733"),
-        size = ~area_score,
-        sizes = c(1, 1000),
-        type = "scatter3d",
-        mode = "markers",
-        hovertemplate = paste("Threshold : %{x}<br>",
-                              "Spec : %{y}<br>",
-                              "Spat : %{z}<br>",
-                              "Overlap Area : %{marker.color}<extra></extra>"))
-
-plot_ly(data = results_temp,
-        x = ~thresh, y = ~spec, z = ~spat,
-        color = ~shape_score,
-        colors = c("#882235", "#117733"),
-        size = ~shape_score,
-        sizes = c(1, 1000),
-        type = "scatter3d",
-        mode = "markers",
-        hovertemplate = paste("Threshold : %{x}<br>",
-                              "Spec : %{y}<br>",
-                              "Spat : %{z}<br>",
-                              "Overlap Shape : %{marker.color}<extra></extra>"))
-
-plot_ly(data = results_temp,
-        x = ~thresh, y = ~spec, z = ~spat,
-        color = ~final_score,
-        colors = c("#117733", "#882235"),
-        size = ~final_score,
-        sizes = c(1000, 1),
-        type = "scatter3d",
-        mode = "markers",
-        hovertemplate = paste("Threshold : %{x}<br>",
-                              "Spec : %{y}<br>",
-                              "Spat : %{z}<br>",
-                              "Final score : %{marker.color}<extra></extra>"))
-
-results_temp %>%
-  arrange(final_score) %>%
-  slice(1) %>%
-  dplyr::select(forest, model_name, thresh, spec, spat, overlap_area_raster, overlap_shape_smoothed_raster, n_forest, n_segmentation, dens_smape, final_score) -> best_parameters_temp
-
-# Compute for each forest and model
-results %>%
-  group_by(forest, model_name) %>%
-  reframe() -> forest_model_combinations
-
-map_dfr(seq_len(nrow(forest_model_combinations)),
-        function(x){
-
-          results %>%
-            filter(forest == forest_model_combinations$forest[x]) %>%
-            filter(model_name == forest_model_combinations$model_name[x]) %>%
-            filter(dens_smape >= -dens_threshold & dens_smape <= dens_threshold) %>%
-            # Median values
-            # slice_min(abs(spec - median(spec))) %>%
-            # slice_min(abs(spat - median(spat))) %>%
-            # slice_min(abs(thresh - median(thresh))) %>%
-            # Min final score
-            arrange(final_score) %>%
-            slice(1) %>%
-            # Final selection
-            dplyr::select(forest, model_name, thresh, spec, spat, overlap_area_raster, overlap_shape_smoothed_raster, n_forest, n_segmentation, dens_smape, final_score)
-
-        }) %>%
-  mutate(type = "by_forest_model") -> best_parameters_by_forest_model
-
-# Compute for each forest
-best_parameters_by_forest <- results %>%
-  group_by(forest, thresh, spec, spat) %>%
-  reframe(area_score = mean(area_score),
-          shape_score = mean(shape_score),
-          dens_smape = mean(dens_smape)) %>%
-  mutate(final_score = (weight_area*(1-area_score)) + (weight_shape*(1-shape_score))) %>%
-  filter(dens_smape >= -dens_threshold & dens_smape <= dens_threshold) %>%
-  group_by(forest) %>%
-  # # Median values
-  # slice_min(abs(spec - median(spec))) %>%
-  # slice_min(abs(spat - median(spat))) %>%
-  # slice_min(abs(thresh - median(thresh)))
-  # Min final score
-  arrange(final_score) %>%
-  slice(1)
-
-map_dfr(unique(results$forest),
-        function(f){
-
-          best_parameters_by_forest %>%
-            filter(forest == f) -> best_parameters_by_forest_temp
-
-          results %>%
-            filter(forest == f) %>%
-            filter(thresh == best_parameters_by_forest_temp$thresh &
-                     spec == best_parameters_by_forest_temp$spec &
-                     spat == best_parameters_by_forest_temp$spat) %>%
-            dplyr::select(forest, model_name, thresh, spec, spat, overlap_area_raster, overlap_shape_smoothed_raster, n_forest, n_segmentation, dens_smape, final_score)
-
-        }) %>%
-  mutate(type = "by_forest") -> best_parameters_by_forest
-
-# Compute general results
-best_parameters <- results %>%
-  group_by(thresh, spec, spat) %>%
-  reframe(area_score = mean(area_score),
-          shape_score = mean(shape_score),
-          dens_smape = mean(dens_smape)) %>%
-  mutate(final_score = (weight_area*(1-area_score)) + (weight_shape*(1-shape_score))) %>%
-  filter(dens_smape >= -dens_threshold & dens_smape <= dens_threshold) %>%
-  # # Median values
-  # slice_min(abs(spec - median(spec))) %>%
-  # slice_min(abs(spat - median(spat))) %>%
-  # slice_min(abs(thresh - median(thresh)))
-  # # Min final score
-  arrange(final_score) %>%
-  slice(1)
-
-results %>%
-  filter(thresh == best_parameters$thresh &
-           spec == best_parameters$spec &
-           spat == best_parameters$spat) %>%
-  dplyr::select(forest, model_name, thresh, spec, spat, overlap_area_raster, overlap_shape_smoothed_raster, n_forest, n_segmentation, dens_smape, final_score) %>%
-  mutate(type = "all") -> best_parameters
-
-# Merge all results
-bind_rows(best_parameters_by_forest_model,
-          best_parameters_by_forest,
-          best_parameters) -> best_parameters_all
-
-best_parameters_all %>%
-  saveRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/best_parameters_all.rds")
-```
+The assumption behind this analysis is that the automated stand delineations should have the same distribution of polygon area and shape than the photo-interpreted forest inventory polygon and therefore be operationally plausible forest stand.
 
 \newpage
 ## Results
 
-The results presented here are, as mentionned before, in the Ottawa Valley Forest for the model_A (z_p95 + z_above2 + z_cv). All the follow process can be made for every forest and every combinaison of metrics. The threshold of the SMAPE is 0.1 which represent more of less 10 % of polygon density variation. All sets of parameters that gave SMAPE lower than -0.1 and higher than 0.1 have been removed. 
+The results presented here are, as mentionned before, in the Romeo Malette Forest for the model "SPL only" (z_p95 + z_above2 + B6). All the follow process can be made for every forest and every combinaison of metrics. The threshold of the SMAPE is 0.1 which represent more of less 10 % of polygon density variation. All sets of parameters that gave SMAPE lower than -0.1 and higher than 0.1 have been removed. 
 
 ```{r}
-#| label = "show figures and tables 1",
-#| echo = FALSE
+#| label: show-figures-and-tables-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
 # Parameters
 dens_threshold <- 0.1
 weight_area <- 1/2
@@ -1455,8 +415,8 @@ readRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results
   mutate_at(c("thresh", "spec", "spat"), as.numeric) -> results
 
 # Compute for a specific forest and model and produce figures
-selected_forest <- "OVF"
-selected_model <- "model_A"
+selected_forest <- "RMF"
+selected_model <- "model_F"
 
 results %>%
   filter(forest == selected_forest) %>%
@@ -1484,61 +444,18 @@ s3d <- scatterplot3d(
   zlab = "Spat"
 )
 ```
+Figure x Symmetric mean absolute percentage error (SMAPE) of polygon density
 
 \newpage
-After this step, the optimal parameters was choosen as the one that maximized both the overlap of the areas and the shape index.
 
+After this step, the optimal parameters was choosen as the one that maximized both the overlap of the areas and the shape index.. The final score was computed as follow :
+- (0.5 x (1-overlap_area)) + (0.5 x (1-overlap_shape_index))
+- the best parameters set was choosen as the lowest final score among all combinaison that had a SMAPE of polygon density of more of less 0.1. In the next figure, the red circle are the best paramaters.
 ```{r}
-#| label = "show figures and tables 2",
-#| echo = FALSE
-# Color scaling
-pal <- colorRampPalette(c("#882235", "#117733"))
-col_scaled <- pal(100)[cut(results_temp$area_score, breaks = 100)]
-
-# Size scaling
-cex_scaled <- scales::rescale(results_temp$area_score, to = c(0.5, 2))
-
-# Plot
-s3d_area <- scatterplot3d(
-  x = results_temp$thresh,
-  y = results_temp$spec,
-  z = results_temp$spat,
-  color = col_scaled,
-  pch = 16,
-  cex.symbols = cex_scaled,
-  xlab = "Threshold",
-  ylab = "Spec",
-  zlab = "Spat"
-)
-
-# Color scaling
-pal <- colorRampPalette(c("#882235", "#117733"))
-col_scaled <- pal(100)[cut(results_temp$shape_score, breaks = 100)]
-
-# Size scaling
-cex_scaled <- scales::rescale(results_temp$shape_score, to = c(0.5, 2))
-
-# Plot
-s3d_shape <- scatterplot3d(
-  x = results_temp$thresh,
-  y = results_temp$spec,
-  z = results_temp$spat,
-  color = col_scaled,
-  pch = 16,
-  cex.symbols = cex_scaled,
-  xlab = "Threshold",
-  ylab = "Spec",
-  zlab = "Spat"
-)
-```
-
-\newpage
-The final score was computed as follow :
-- final_score = (0.5 x (1-overlap_area)) + (0.5 x (1-overlap_shape_index))
-- the best parameters set was choosen as the lowest final score among all combinaison that had a SMAPE of polygon density of more of less 0.1.
-```{r}
-#| label = "show figures and tables 3",
-#| echo = FALSE
+#| label: show-figures-and-tables-2
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
 results_temp %>%
   arrange(final_score) %>%
   slice(1) %>%
@@ -1577,10 +494,144 @@ coords <- s3d$xyz.convert(
 points(coords$x, coords$y, col = "red", pch = 19, cex = 2)
 
 })
+```
 
+The next figure shows a example of a segmentation in the Romeo Malette Forest for the model SPL only (z_p95 + z_above2 + B6) with the best parameters as shown in the last figure (threshold of 40, spectral homogeneity of 0.5 and spatial homogeneity of 0.5). There is also a example of a segmentation that was smoothed as mentionned before.
 
+```{r}
+#| label: show-segmentation-1
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+suppressMessages(
+  sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
+    sf::st_make_valid() %>%
+    sf::st_cast("MULTIPOLYGON") %>%
+    sf::st_cast("POLYGON") %>%
+    mutate(area = as.numeric(sf::st_area(.)),
+           perimeter = as.numeric(sf::st_perimeter(.)),
+           perimeter_area_ratio = perimeter/area,
+           shape_index = perimeter / sqrt(pi * area)) %>%
+    filter_if(is.numeric, is.finite)) -> polygon_forest_temp
+
+polygon_forest_temp %>%
+  dplyr::select(area) %>%
+  terra::rasterize(metrics, field = "area") %>%
+  terra::values(na.rm = TRUE) -> polygon_forest_area_raster
+
+polygon_forest_area_raster[is.finite(polygon_forest_area_raster)] -> polygon_forest_area_raster
+
+polygon_forest_temp %>%
+  dplyr::select(shape_index) %>%
+  terra::rasterize(metrics, field = "shape_index") %>%
+  terra::values(na.rm = TRUE) -> polygon_forest_shape_index_raster
+
+polygon_forest_shape_index_raster[is.finite(polygon_forest_shape_index_raster)] -> polygon_forest_shape_index_raster
+
+suppressMessages(
+  st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50.shp",
+          quiet = T) %>% 
+    sf::st_make_valid() %>%
+    sf::st_cast("MULTIPOLYGON") %>%
+    sf::st_cast("POLYGON") %>%
+    mutate(area = as.numeric(st_area(.)),
+           perimeter = as.numeric(st_perimeter(.)),
+           perimeter_area_ratio = perimeter/area,
+           shape_index = perimeter / sqrt(pi * area)) %>%
+    filter_if(is.numeric, is.finite)) -> segmentation 
+
+segmentation %>%
+  dplyr::select(area) %>%
+  terra::rasterize(metrics, field = "area") %>%
+  terra::values(na.rm = TRUE) -> segmentation_area_raster
+
+segmentation_area_raster[is.finite(segmentation_area_raster)] -> segmentation_area_raster
+
+segmentation %>%
+  dplyr::select(shape_index) %>%
+  terra::rasterize(metrics, field = "shape_index") %>%
+  terra::values(na.rm = TRUE) -> segmentation_shape_index_raster
+
+segmentation_shape_index_raster[is.finite(segmentation_shape_index_raster)] -> segmentation_shape_index_raster
+
+suppressMessages(
+  st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50_smoothed.shp",
+          quiet = T) %>% 
+    sf::st_make_valid() %>%
+    sf::st_cast("MULTIPOLYGON") %>%
+    sf::st_cast("POLYGON") %>%
+    mutate(area = as.numeric(st_area(.)),
+           perimeter = as.numeric(st_perimeter(.)),
+           perimeter_area_ratio = perimeter/area,
+           shape_index = perimeter / sqrt(pi * area)) %>%
+    filter_if(is.numeric, is.finite)) -> segmentation_smoothed
+
+segmentation_smoothed %>%
+  dplyr::select(shape_index) %>%
+  terra::rasterize(metrics, field = "shape_index") %>%
+  terra::values(na.rm = TRUE) -> segmentation_smoothed_shape_index_raster
+
+segmentation_smoothed_shape_index_raster[is.finite(segmentation_smoothed_shape_index_raster)] -> segmentation_smoothed_shape_index_raster
+
+ggplot() +
+  geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#1E88E5", linewidth = 1, alpha = 0.5) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw() -> f1
+
+ggplot() +
+  geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+  geom_sf(data = segmentation %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#D81B60", linewidth = 1, alpha = 0.5) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw() -> f2
+
+ggplot() +
+  geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+  geom_sf(data = segmentation_smoothed %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#FFC107", linewidth = 1, alpha = 0.5) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw() -> f3
+
+f1
+f2
+f3
+```
+
+```{r}
+#| label: show-segmentation-2
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+ggplot() +
+  geom_density(aes(x = polygon_forest_area_raster/10000),
+               color = "#1E88E5",
+               linewidth = 1) +
+  geom_density(aes(x = segmentation_area_raster/10000),
+               color = "#D81B60",
+               linewidth = 1) +
+  labs(x = "Polygon area (ha)",
+       y = "Density") +
+  theme_bw() -> p_area_raster
+
+ggplot() +
+  geom_density(aes(x = polygon_forest_shape_index_raster),
+               color = "#1E88E5",
+               linewidth = 1) +
+  geom_density(aes(x = segmentation_shape_index_raster),
+               color = "#D81B60",
+               linewidth = 1) +
+  geom_density(aes(x = segmentation_smoothed_shape_index_raster),
+               color = "#FFC107",
+               linewidth = 1) +
+  labs(x = "Shape index",
+       y = "Density") +
+  theme_bw() -> p_shape_raster
+
+p_area_raster
+p_shape_raster
 ```
 
 \newpage
 ## References
-

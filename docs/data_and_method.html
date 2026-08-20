@@ -101,6 +101,10 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Data and Methods</span></a>
   </li>  
   <li class="nav-item">
+    <a class="nav-link" href="./project_outputs.html"> 
+<span class="menu-text">Project Outputs</span></a>
+  </li>  
+  <li class="nav-item">
     <a class="nav-link" href="./calibration_grm.html"> 
 <span class="menu-text">Appendix A : Segmentation paramaters optimisation</span></a>
   </li>  
@@ -139,9 +143,6 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#performance-assessment" id="toc-performance-assessment" class="nav-link" data-scroll-target="#performance-assessment"><strong>4</strong> Performance assessment</a>
   <ul class="collapse">
   <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods"><strong>4.1</strong> Methods</a></li>
-  <li><a href="#internal-homogeneity" id="toc-internal-homogeneity" class="nav-link" data-scroll-target="#internal-homogeneity"><strong>4.2</strong> Internal homogeneity</a></li>
-  <li><a href="#proportion-variance-explained" id="toc-proportion-variance-explained" class="nav-link" data-scroll-target="#proportion-variance-explained"><strong>4.3</strong> Proportion of variance explained</a></li>
-  <li><a href="#boundary-validation" id="toc-boundary-validation" class="nav-link" data-scroll-target="#boundary-validation"><strong>4.4</strong> Boundary validation</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -183,45 +184,44 @@ ul.task-list li input[type="checkbox"] {
 <h1 class="unnumbered"><strong>1</strong> Summary of project methods</h1>
 <p>The steps for generating enhanced forest resources inventory are as follows:</p>
 <ol type="1">
-<li><p>Segmentation based on lidar metrics in polygon forest stand (<a href="#segmentation">section 2</a>)</p></li>
-<li><p>Construction of the attribute table to obtain the following attributes (<a href="#attribute_table">section 3</a>):</p></li>
+<li>Segmentation based on lidar metrics in polygon forest stand (<a href="#segmentation">section 2</a>)</li>
+<li>Construction of the attribute table to obtain the following attributes (<a href="#attribute_table">section 3</a>):</li>
 </ol>
 <ul>
-<li><p>Source of data : SOURCE</p></li>
-<li><p>Year of produced data : YRSOURCE</p></li>
-<li><p>Area : AREA</p></li>
-<li><p>Perimeter : PERIMETER</p></li>
-<li><p>Proportion forested : PROPFORESTED</p></li>
-<li><p>Most frequent landcover type : POLYTYPE</p></li>
-<li><p>Most frequent landcover proportion : POLYTYPEPROP</p></li>
-<li><p>Forest age : AGE</p></li>
-<li><p>Year of last perturbation : YRDEP</p></li>
-<li><p>Type of last perturbation : DEPTYPE</p></li>
-<li><p>Proportion of last perturbation : DEPPROP</p></li>
-<li><p>Year of most widespread harvest : YRHARVEST</p></li>
-<li><p>Proportion of most widespread harvest : HARVESTPROP</p></li>
-<li><p>Year of most widespread forest fire : YRFIRE</p></li>
-<li><p>Proportion of most widespread forest fire : FIREPROP</p></li>
-<li><p>Merchantable volume per hectare : VMERCH_HA_MEDIAN</p></li>
-<li><p>Quadratic mean diameter at breast height : QMDBH_MEDIAN</p></li>
-<li><p>Number of stems with DBH &gt; 7.1 cm per ha : DENS_MEDIAN</p></li>
-<li><p>Average tree height weighted by basal area : LOR_MEDIAN</p></li>
-<li><p>Basal area, tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN</p></li>
-<li><p>Height of forest stand based on median z_p95 : HEIGHT</p></li>
-<li><p>Canopy cover based on median z_above2 : CANOPY_COVER</p></li>
-<li><p>Forest density based on median fractional cover between 50 and 200 cm : DENSITY</p></li>
-<li><p>Median slope : SLOPE</p></li>
-<li><p>Soil moisture based on SAGA wetness index : MOISTURE</p></li>
+<li>Source of data : SOURCE</li>
+<li>Year of produced data : YRSOURCE</li>
+<li>Area : AREA</li>
+<li>Perimeter : PERIMETER<br>
+</li>
+<li>Proportion forested : PROPFORESTED<br>
+</li>
+<li>Most frequent landcover type : POLYTYPE</li>
+<li>Most frequent landcover proportion : POLYTYPEPROP</li>
+<li>Forest age : AGE</li>
+<li>Year of last perturbation : YRDEP</li>
+<li>Type of last perturbation : DEPTYPE</li>
+<li>Proportion of last perturbation : DEPPROP</li>
+<li>Year of most widespread harvest : YRHARVEST</li>
+<li>Proportion of most widespread harvest : HARVESTPROP</li>
+<li>Year of most widespread forest fire : YRFIRE</li>
+<li>Proportion of most widespread forest fire : FIREPROP</li>
+<li>Merchantable volume per hectare : VMERCH_HA</li>
+<li>Quadratic mean diameter at breast height : QMDBH</li>
+<li>Number of stems with DBH &gt; 7.1 cm per ha : DENS</li>
+<li>Basal area, tree cross sectional area (approximated as a circle) at breast height : BA_HA</li>
+<li>Height of forest stand based on median z_p95 : HEIGHT</li>
+<li>Canopy cover based on median z_above2 : CANOPY_COVER</li>
+<li>Median slope : SLOPE</li>
+<li>Soil moisture based on SAGA wetness index : MOISTURE</li>
 </ul>
 <ol start="3" type="1">
 <li>Extrapolation of forest composition variables using a k-nearest neighbor (kNN) imputation algorithm (<a href="#imputation">section 4</a>):</li>
 </ol>
 <ul>
-<li><p>Leading species : LEADSP</p></li>
-<li><p>Second species : SECSP</p></li>
-<li><p>Three functional group class : FUNCTIONAL_GROUP_3</p></li>
+<li>Leading species : LEADSP</li>
+<li>Second species : SECSP</li>
+<li>Three functional group class : FUNCTIONAL_GROUP_3 For all the following figures, a restricted area of 5x5 km in Romeo Malette Forest have been selected for easier visualization of input and results.</li>
 </ul>
-<p>For all the following figures, a restricted area of 5x5 km in Romeo Malette Forest have been selected for easier visualization of input and results.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -238,26 +238,9 @@ ul.task-list li input[type="checkbox"] {
 <h1 class="unnumbered"><strong>2</strong> Segmentation</h1>
 <section id="segmentation_basics" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="segmentation_basics"><strong>2.1</strong> Segmentation basics</h2>
-<p>The first step is to create polygon that will represent homogeneous forest stand. To perform this task, the Generic Region Merging tools from Orfeo ToolBox (OTB) is used. Three method can be used in this tools : Baatz &amp; Schape, Eclidean Distance, and Full Lambda. For this work, the Baatz &amp; Schape criterion method was used. This algorithm is the same used in the Multi-resolution Segmentation by the well known software <a href="https://geospatial.trimble.com/fr/products/software/trimble-ecognition">eCognition</a> and thus made it freely accessible. This algortihm works by merging iteratively small region together based on dissimilarity of spectral values. There is three parameters that control size and shape of resulting segments : threshold, weight of spectral homogeneity and weight of spatial homogeneity. Here is how these parameters influence segmentation:</p>
-<ul>
-<li><p>The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :</p>
-<ul>
-<li><p>Small threshold → fine segmentation (many small regions)</p></li>
-<li><p>Large threshold → coarse segmentation (fewer, larger regions)</p></li>
-</ul></li>
-<li><p>The weight of spectral homogeneity gives to spectral similarity (pixel values, band means) when deciding whether regions should merge :</p>
-<ul>
-<li><p>If high → segmentation will mostly respect spectral values</p></li>
-<li><p>If low → spectral similarity matters little, other criteria (shape) dominate</p></li>
-</ul></li>
-<li><p>The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :</p>
-<ul>
-<li><p>If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker</p></li>
-<li><p>If low → region boundaries will mostly follow spectral homogeneity</p></li>
-</ul></li>
-</ul>
+<p>The first step is to create polygon that will represent homogeneous forest stand. To perform this task, the Generic Region Merging tools from Orfeo ToolBox (OTB) is used. Three method can be used in this tools : Baatz &amp; Schape, Eclidean Distance, and Full Lambda. For this work, the Baatz &amp; Schape criterion method was used. This algorithm is the same used in the Multi-resolution Segmentation by the well known software <a href="https://geospatial.trimble.com/fr/products/software/trimble-ecognition">eCognition</a> and thus made it freely accessible. This algortihm works by merging iteratively small region together based on dissimilarity of spectral values. There is three parameters that control size and shape of resulting segments : threshold, weight of spectral homogeneity and weight of spatial homogeneity. Here is how these parameters influence segmentation: * The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is : * Small threshold → fine segmentation (many small regions) * Large threshold → coarse segmentation (fewer, larger regions) * The weight of spectral homogeneity gives to spectral similarity (pixel values, band means) when deciding whether regions should merge : * If high → segmentation will mostly respect spectral values * If low → spectral similarity matters little, other criteria (shape) dominate * The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge : * If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker * If low → region boundaries will mostly follow spectral homogeneity</p>
 <p>If more details are needed about parameters, eCognition made this <a href="https://www.youtube.com/watch?v=tt53hoRAw9Q">video</a> to explain parameter selection for their Multi-resolution Segmentation algorithm.</p>
-<p>Segmentation parameters were calibrated by conducting a <a href="https://metafor-ulaval.github.io/Ontario_eFRI/calibration_grm.html">sensitivity analysis</a> to produce polygon forest stand comparable with conventional forest resources inventory maps. Comparison were made with stand size and shape distribution, and polygon density. These criteria were used to ensure that automated polygon forest stand remained operationally plausible and comparable to conventional forest resources inventory maps.</p>
+<p>Segmentation parameters were calibrated by conducting a <a href="https://metafor-ulaval.github.io/Ontario_eFRI/calibration_grm.html">sensitivity analysis</a> to produce polygon comparable with conventional photo-interpreted forest inventory polygons. Comparison were made with stand size and shape distribution, and polygon density. These criteria were used to ensure that automated stand delineations remained operationally plausible and comparable to conventional forest resources inventory maps.</p>
 </section>
 <section id="segmentation_inputs" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="segmentation_inputs"><strong>2.2</strong> Segmentation inputs</h2>
@@ -272,23 +255,12 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<p>Figure 2 Metrics used for automated polygon stand segmentation. Two metrics are derived from LiDAR data and the other one is the Vegetation Red Edge 2 band from Sentinel-2 (B6). All theses metrics have a resolution of 20 meters.</p>
+<p>Figure 2 Metrics used for automated stand delineation. Two metrics are derived from LiDAR data and the other one is the Vegetation Red Edge 2 band from Sentinel-2 (B6). All theses metrics have a resolution of 20 meters.</p>
 <p>These metrics are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. All kinds of metrics that describes the forest characteristics can be used as input for this algorithm. The metrics used will reflect how the segmentation polygons are divided. Thus, if a topographic index such as the topographic wetness index (TWI) is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.</p>
-<p>An additional data used in segmentation are masks where segmentation is therefore not performed. These are typically waterbodies and roads.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="data_and_method_files/figure-html/show-segmentation-data-2-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Figure 3 Mask used where segmentation is not performed.</p>
 </section>
 <section id="segmentation_results" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="segmentation_results"><strong>2.3</strong> Segmentation results</h2>
-<p>The segmentation produces polygons representing forest stands according to the selected metrics. These polygons can be expected to represent homogeneous forest stands based on choosen metrics.</p>
+<p>The segmentation produces polygons representing forest stands according to the selected metrics. These polygons can be expected to represent homogeneous forest stands based on choosen metrics. The following figure shows photo-interpreted forest inventory polygons compared with automated stand delineation. Overall, the number of polygon produce is similar as for the whole Romeo Malette Forest, the is X photo-interpreted forest inventory polygons and X automated stand polygons. The third panel shows a smoothing step that can be made later in ArcGIS Pro or any GIS that allows a smoothing step that keep the topology of adjacent polygons. The tool use in this case is “Smooth Polygon” of the toolbox “Cartography”. Theses parameters wetre used : algorithm = “PAEK”; tolerance = 100; endpoint_option = “FIXED_ENDPOINT” and error_option = “RESOLVE_ERRORS”.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -298,7 +270,19 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<p>The automated segmented forest stand can be now compared to forest stand inventories. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the <a href="https://metafor-ulaval.github.io/Ontario_eFRI/calibration_grm.html">sensitivity analysis</a>, the difference between distributions are supposed to be minimal and therefore the automated segmented forest stand should represent operationnaly plausible forest stand that mimic polygons of the forest stand inventorie.</p>
+<p>Figure 3 Photo-interpreted forest inventory polygons compared with automated stand delineations without and with smoothing.</p>
+<p>An additional data that can be used in segmentation are masks where there is no forest and therefore polygon can be erased. These are typically waterbodies and roads.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="data_and_method_files/figure-html/show-segmentation-data-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Figure 4 Mask used where segmentation is not performed and resulting polygon after the masks applications</p>
+<p>The automated stand delineations can be now compared to photo-interpreted forest inventory polygons. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the <a href="https://metafor-ulaval.github.io/Ontario_eFRI/calibration_grm.html">sensitivity analysis</a>, the difference between distributions are supposed to be minimal and therefore the automated stand delineation should represent operationnaly plausible forest stand that mimic polygons of the photo-interpreted forest inventory polygons.</p>
 <p>Area in hectare are use for size and shape index, which is determine by this formula : [perimeter/(2<em>sqrt(pi</em>area))] is use to assess shape.</p>
 <div class="cell">
 <div class="cell-output-display">
@@ -324,36 +308,10 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<p>The following layers are part of the National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada and are produced by Canadian Forest Service. Only three layer were used to produce attribute table of segmented polygons : *Forest age in 2019 https://opendata.nfis.org/mapserver/nfis-change_eng.html</p>
-<p>*Forest fires from 1985 to 2020</p>
-<p>*Forest harvests from 1985 to 2020</p>
-<p>Here are listed the extracted attributes : * Source of data : SOURCE</p>
-<ul>
-<li><p>Year of produced data : YRSOURCE</p></li>
-<li><p>Area : AREA</p></li>
-<li><p>Perimeter : PERIMETER</p></li>
-<li><p>Proportion forested : PROPFORESTED</p></li>
-<li><p>Most frequent landcover type : POLYTYPE</p></li>
-<li><p>Most frequent landcover proportion : POLYTYPEPROP</p></li>
-<li><p>Forest age : AGE</p></li>
-<li><p>Year of last perturbation : YRDEP</p></li>
-<li><p>Type of last perturbation : DEPTYPE</p></li>
-<li><p>Proportion of last perturbation : DEPPROP</p></li>
-<li><p>Year of most widespread harvest : YRHARVEST</p></li>
-<li><p>Proportion of most widespread harvest : HARVESTPROP</p></li>
-<li><p>Year of most widespread forest fire : YRFIRE</p></li>
-<li><p>Proportion of most widespread forest fire : FIREPROP</p></li>
-<li><p>Merchantable volume per hectare : VMERCH_HA_MEDIAN</p></li>
-<li><p>Quadratic mean diameter at breast height : QMDBH_MEDIAN</p></li>
-<li><p>Number of stems with DBH &gt; 7.1 cm per ha : DENS_MEDIAN</p></li>
-<li><p>Average tree height weighted by basal area : LOR_MEDIAN</p></li>
-<li><p>Basal area, tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN</p></li>
-<li><p>Height of forest stand based on median z_p95 : HEIGHT</p></li>
-<li><p>Canopy cover based on median z_above2 : CANOPY_COVER</p></li>
-<li><p>Forest density based on median fractional cover between 50 and 200 cm : DENSITY</p></li>
-<li><p>Median slope : SLOPE</p></li>
-<li><p>Soil moisture based on SAGA wetness index : MOISTURE</p></li>
-</ul>
+<p>The following layers are part of the National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada and are produced by Canadian Forest Service. Only three layer were used to produce attribute table of segmented polygons : <em>Forest age in 2019 https://opendata.nfis.org/mapserver/nfis-change_eng.html </em>Forest fires from 1985 to 2020 *Forest harvests from 1985 to 2020</p>
+<p>Here are listed the extracted attributes : * Source of data : SOURCE * Year of produced data : YRSOURCE * Area : AREA * Perimeter : PERIMETER<br>
+* Proportion forested : PROPFORESTED<br>
+* Most frequent landcover type : POLYTYPE * Most frequent landcover proportion : POLYTYPEPROP * Forest age : AGE * Year of last perturbation : YRDEP * Type of last perturbation : DEPTYPE * Proportion of last perturbation : DEPPROP * Year of most widespread harvest : YRHARVEST * Proportion of most widespread harvest : HARVESTPROP * Year of most widespread forest fire : YRFIRE * Proportion of most widespread forest fire : FIREPROP * Merchantable volume per hectare : VMERCH_HA_MEDIAN * Quadratic mean diameter at breast height : QMDBH_MEDIAN * Number of stems with DBH &gt; 7.1 cm per ha : DENS_MEDIAN * Average tree height weighted by basal area : LOR_MEDIAN * Basal area, tree cross sectional area (approximated as a circle) at breast height : BA_HA_MEDIAN * Height of forest stand based on median z_p95 : HEIGHT * Canopy cover based on median z_above2 : CANOPY_COVER * Forest density based on median fractional cover between 50 and 200 cm : DENSITY * Median slope : SLOPE * Soil moisture based on SAGA wetness index : MOISTURE</p>
 <section id="attribute_table_results" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="attribute_table_results"><strong>4.1</strong> Attribute table results</h2>
 <p>The next figures show what can look like some of theses attibutes.</p>
@@ -416,11 +374,12 @@ ul.task-list li input[type="checkbox"] {
 <section id="imputation_basics" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="imputation_basics"><strong>3.1</strong> Imputation basics</h2>
 <p>Some attributes can’t be directly extracted from a raster layer containing the information. For example, there is still no layer describing tree species across Ontario. For this tasks, k-nearest neighbor (kNN) imputation can be used to infer what would be some attributes (REF). This widely used method use similarity between variables from two different datasets. In order to fill a missing data, the algorithm identifies the k most similar observations based on distance of common variables. The missing values are then estimated using the corresponding values from these neighbors, often by taking their mean (for numerical variables) or mode (for categorical variables).</p>
-<p>To identify the most suitable variables for kNN imputation, a performance analysis was conducted using all possible combinations of five uncorrelated variables. This analysis evaluated, for each combination, how accurately the imputed values matched the observed values of the forest polygon inventory. Therefore, the optimal combination of metrics depends on the specific variable being imputed :</p>
+<p>To identify the most suitable metrics for kNN imputation, a performance analysis was conducted using all possible combinations of five uncorrelated metrics. The combinaison with the highest accuracy was retain as the one using the best metrics. This analysis evaluated, for each combination, how accurately the imputed values matched the observed values of the photo-interpreted forest inventory polygons. First of all, polygons intersecting a fire or a harvest whose year falls between the year of photo-interpretation and the year of LiDAR acquisition were removed. Indeed the photo-intepreted polygons no longer describe what the LiDAR metrics saw. Secondly, only forested polygon were retain by applying four filters. The polygons where column “POLYTYPE” was “FOR” were retain, where the proportion forested was higher than 50 % based on <a href="link">landcover raster</a>, where the z_p95 was higher or equal than 5 m and pz_above2 was higher or equal than 0,5. Finally, to filter correlated metrics, for each variable being imputed, clustering was performed with of a threshold of 0,8. For every metric in a cluster, a one-way ANOVA was run with the imputed variable, and keep the single metric with the highest F-value. Depending of the variable being imputed, 7865 or 9633 combinaisons of five metrics were tested.</p>
+<p>Therefore, the optimal combination of metrics depends on the specific variable being imputed :</p>
 <ul>
-<li><p>Imputed leading species : dem, rumple_index, z_kurt, z_p95, B6</p></li>
-<li><p>Imputed second species : dem, rumple_index, sagawi, z_p95, NDVI</p></li>
-<li><p>Imputed three functional group class : dem, relative_topographic_position_100m, rumple_index, z_p95, B6</p></li>
+<li>Imputed leading species : dem, rumple_index, z_kurt, z_p95, B6</li>
+<li>Imputed second species : dem, rumple_index, sagawi, z_p95, NDVI</li>
+<li>Imputed three functional group class : dem, relative_topographic_position_100m, rumple_index, z_p95, B6</li>
 </ul>
 <p>In addition, for each of these 4 variables, the X and Y coordinates of polygon centroid have been used for the imputation.</p>
 </section>
@@ -462,7 +421,7 @@ ul.task-list li input[type="checkbox"] {
 </table>
 </div>
 </div>
-<p>The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated segmentation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial gorup class shown below.</p>
+<p>The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial gorup class shown below.</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
 <pre><code>Mutate species proportion for 295 polygon(s)
@@ -479,29 +438,37 @@ Mutate functional group for 295 polygon(s)</code></pre>
 </div>
 </div>
 <div style="page-break-after: always;"></div>
+<!-- This part is only a description of methods -->
 </section>
 </section>
 <section id="performance-assessment" class="level1 unnumbered">
 <h1 class="unnumbered"><strong>4</strong> Performance assessment</h1>
 <section id="methods" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="methods"><strong>4.1</strong> Methods</h2>
-<p>In an inventory setting, useful delineations should produce units that are internally homogeneous with respect to key forest attributes, distinct from neighbouring units, and delimited in ways that correspond to real structural changes across the landscape. Existing studies have shown that remotely sensed segmentation can generate relatively homogeneous units, but fewer have evaluated these complementary properties together, particularly in direct comparison with conventional photo-interpreted maps.</p>
-<p>Rather than focusing solely on within-unit homogeneity, we also examine whether delineations partition structural variability effectively and whether their mapped limits correspond to independently detected structural transitions. Such an evaluation is especially relevant if automated delineations are to complement, or partially replace, conventional photo-interpreted inventory maps while offering gains in consistency, reproducibility, and update frequency.</p>
-<p>In section, we evaluate the performance of automated stand delineations derived from multiple remotely sensed data sources relative to conventional photo-interpreted stand maps. Using high-resolution spatial forest attributes as an independent reference, we assess whether alternative delineation approaches produce structurally homogeneous stands, partition forest landscapes into distinct structural units, and correspond to independently detected structural transitions. The analysis is intended to determine whether automated delineation can provide a practical and objective basis for updating stand boundaries in operational forest inventories.</p>
+<p>In an inventory setting, useful delineations should produce units that are internally homogeneous with respect to key forest attributes, distinct from neighbouring units, and delimited in ways that correspond to real structural changes across the landscape. Existing studies have shown that remotely sensed segmentation can generate relatively homogeneous units, but fewer have evaluated these complementary properties together, particularly in direct comparison with conventional photo-interpreted forest inventory maps.</p>
+<p>Rather than focusing solely on within-unit homogeneity, we also examine whether delineations partition structural variability effectively and whether their mapped limits correspond to independently detected structural transitions. Such an evaluation is especially relevant if Automated stand delineations are to complement, or partially replace, conventional photo-interpreted inventory maps while offering gains in consistency, reproducibility, and update frequency.</p>
+<p>In section, we evaluate the performance of automated stand delineations derived from multiple remotely sensed data sources relative to conventional photo-interpreted forest inventory maps. Using high-resolution spatial forest attributes as an independent reference, we assess whether alternative delineation approaches produce structurally homogeneous stands, partition forest landscapes into distinct structural units, and correspond to independently detected structural transitions. The analysis is intended to determine whether Automated stand delineations can provide a practical and objective basis for updating stand boundaries in operational forest inventories.</p>
 <p>Spatial forest attributes were generated using a Random Forest models calibrated with field inventory plots. The models were generated using LiDAR data independent of that used to produce the segmentations. This data was collected in the field using a drone. The forest attributes are at a resolution of 1 m. A “buffered area” approach was used to produce them, meaning the metrics required for the models were calculated at a resolution of 1 m, but using a 20 m by 20 m moving window. The are as follow :</p>
 <ul>
-<li><p>Merchantable volume</p></li>
-<li><p>Stem density</p></li>
-<li><p>Quadratic mean diameter at breast height (QMDBH)</p></li>
+<li>Merchantable volume</li>
+<li>Stem density</li>
+<li>Quadratic mean diameter at breast height (QMDBH)</li>
 </ul>
 <p>An additional attribute is the canopy height which is described by the z_p90.</p>
 <p>Specifically, we aimed to:</p>
 <ol type="1">
-<li><p>Assess the internal structural homogeneity of stands produced by alternative delineation inputs, including photo-interpreted maps and automated delineations derived from LiDAR and satellite imagery <a href="#internal-homogeneity">section 4.2</a>;</p></li>
-<li><p>Evaluate the extent to which different delineations partition forest landscapes into distinct structural units, capturing spatial variability in forest attributes <a href="#proportion-variance-explained">section 4.3</a>; and</p></li>
-<li><p>Assess how well stand limits produced by each delineation correspond to independently detected structural transitions in forest attributes <a href="#boundary-validation">section 4.4</a>.</p></li>
+<li>Partitioning of forest-attribute variability</li>
 </ol>
-<p>Regarding the study area of RMF showed at figure X, the next analysis have been conducted within the restricted area of drone flight to ensure independency of result. The figure x show the drone flight areas within study area.</p>
+<p>Evaluate the extent to which different delineations partition forest landscapes into distinct structural units, capturing spatial variability in forest attributes. This metric evaluates how well the segmentation partitions the landscape by comparing the variability within each resulting polygon to the total variability across the sector. For each polygon created by the segmentation, SSE is the sum of squared deviations between the pixel values it contains and that polygon’s own mean, while SST is the sum of squared deviations between all pixel values across the sector and the sector’s global mean, giving R² = 1 − SSE/SST. A higher R² indicates that the polygons produced by the segmentation better explain the spatial variability of the sector, reflecting a stronger partitioning of the landscape into distinct, internally homogeneous units.</p>
+<ol start="2" type="1">
+<li>Internal polygon homogeneity</li>
+</ol>
+<p>Assess the internal structural homogeneity of stands produced by alternative delineation inputs, including photo-interpreted forest inventory maps and automated delineations derived from LiDAR and satellite imagery. This metric assesses the internal homogeneity of stands by computing the area-weighted average of the standard deviation of each predicted attribute across all stands, calculated as the sum of each stand’s area multiplied by its standard deviation, divided by the total area. A lower weighted standard deviation indicates that stands are more internally uniform, with less variability in predicted attribute values within their boundaries.</p>
+<ol start="3" type="1">
+<li>Correspondence of stand boundaries with structural transitions</li>
+</ol>
+<p>Assess how well stand limits produced by each delineation correspond to independently detected structural transitions in forest attributes.</p>
+<p>Regarding the study area of RMF showed at figure X, these three analysis were conducted within the restricted area of drone flight to ensure independency of result. The figure x show the drone flight areas within study area.</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
 <pre><code>Reading layer `drone_flight_areas' from data source 
@@ -522,17 +489,6 @@ Geodetic CRS:  WGS 84</code></pre>
 </div>
 </div>
 <p>Figure x Drone flight areas within Romeo Malette forest where the analysis have been conducted</p>
-</section>
-<section id="internal-homogeneity" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="internal-homogeneity"><strong>4.2</strong> Internal homogeneity</h2>
-<p>This metric assesses the internal homogeneity of stands by computing the area-weighted average of the standard deviation of each predicted attribute across all stands, calculated as the sum of each stand’s area multiplied by its standard deviation, divided by the total area. A lower weighted standard deviation indicates that stands are more internally uniform, with less variability in predicted attribute values within their boundaries.</p>
-</section>
-<section id="proportion-variance-explained" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="proportion-variance-explained"><strong>4.3</strong> Proportion of variance explained</h2>
-<p>This metric evaluates how well the segmentation partitions the landscape by comparing the variability within each resulting polygon to the total variability across the sector. For each polygon created by the segmentation, SSE is the sum of squared deviations between the pixel values it contains and that polygon’s own mean, while SST is the sum of squared deviations between all pixel values across the sector and the sector’s global mean, giving R² = 1 − SSE/SST. A higher R² indicates that the polygons produced by the segmentation better explain the spatial variability of the sector, reflecting a stronger partitioning of the landscape into distinct, internally homogeneous units.</p>
-</section>
-<section id="boundary-validation" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="boundary-validation"><strong>4.4</strong> Boundary validation</h2>
 
 
 </section>

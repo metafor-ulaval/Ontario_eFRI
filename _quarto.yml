@@ -11,8 +11,8 @@ website:
         text: "Introduction"
       - href: data_and_method.qmd
         text: "Data and Methods"
-      # - href: projet_ouputs.qmd
-      #   text: Project Outputs
+      - href: project_outputs.qmd
+        text: "Project Outputs"
       - href: calibration_grm.qmd
         text: "Appendix A : Segmentation paramaters optimisation"
 
