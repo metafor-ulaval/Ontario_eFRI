@@ -121,7 +121,7 @@ for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
            model_name == names(param$models),
            type == "by_forest_model") -> segmentation_paramaters
   
-  segmentation_wd <- paste0(wd, "/segmentation/", param$forest, "/", names(param$models))
+  segmentation_wd <- paste0(wd, "/segmentation/", param$forest, "/", names(param$models)) #####
   dir.create(segmentation_wd)
   
   # Catalog
@@ -140,7 +140,10 @@ for(p in seq_len(nrow(params))[c(3,5)]){ # RMF
   metrics_infos_selected %>%
     pull(path) %>%
     map(rast) %>%
-    map(project, epsg_rast, method = "bilinear") %>%
+    #map(project, epsg_rast, method = "bilinear") %>%
+    
+    map(project, "EPSG:2959", method = "bilinear") %>%
+    
     map(resample, epsg_rast) %>%
     rast -> metrics
   

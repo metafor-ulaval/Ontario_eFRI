@@ -8,7 +8,7 @@
 
 <meta name="dcterms.date" content="2026-05-20">
 
-<title>Introduction – Ontario eFRI</title>
+<title>Optimal Generic Region Merging parameters – Ontario eFRI</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -93,7 +93,7 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="./index.html" aria-current="page"> 
+    <a class="nav-link" href="./index.html"> 
 <span class="menu-text">Introduction</span></a>
   </li>  
   <li class="nav-item">
@@ -105,7 +105,7 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Project Outputs</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./calibration_grm.html"> 
+    <a class="nav-link active" href="./calibration_grm.html" aria-current="page"> 
 <span class="menu-text">Appendix A : Segmentation paramaters optimisation</span></a>
   </li>  
 </ul>
@@ -124,11 +124,13 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#project_summary" id="toc-project_summary" class="nav-link active" data-scroll-target="#project_summary"><strong>1</strong> Project summary</a></li>
-  <li><a href="#project_context" id="toc-project_context" class="nav-link" data-scroll-target="#project_context"><strong>2</strong> Project context</a></li>
-  <li><a href="#previous_work" id="toc-previous_work" class="nav-link" data-scroll-target="#previous_work"><strong>3</strong> Previous work</a></li>
-  <li><a href="#project_objectives" id="toc-project_objectives" class="nav-link" data-scroll-target="#project_objectives"><strong>4</strong> Project objectives</a></li>
-  <li><a href="#introduction_studyarea" id="toc-introduction_studyarea" class="nav-link" data-scroll-target="#introduction_studyarea"><strong>5</strong> Study area</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#sampling-area" id="toc-sampling-area" class="nav-link" data-scroll-target="#sampling-area">Sampling area</a></li>
+  <li><a href="#segmentation" id="toc-segmentation" class="nav-link" data-scroll-target="#segmentation">Segmentation</a></li>
+  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#analysis" id="toc-analysis" class="nav-link" data-scroll-target="#analysis">Analysis</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
 </nav>
     </div>
@@ -137,7 +139,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Introduction</h1>
+<h1 class="title">Optimal Generic Region Merging parameters</h1>
 </div>
 
 
@@ -160,86 +162,216 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="project_summary" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>1</strong> Project summary</h1>
-<p>Forest managers increasingly have access to detailed, wall-to-wall information on forest structure, but operational planning still relies largely on stand polygons. This project developed and tested an automated framework for transforming LiDAR-derived enhanced forest inventory data into forest stands that can be used in operational inventory and planning. Applied in the Romeo Malette and Ottawa Valley forest management units, the workflow combines automated stand delineation, extraction of LiDAR-derived forest attributes, integration of disturbance and age information, and flexible attribution of species composition. The project produced new stand delineations, an open-source implementation of the workflow, and a comparative assessment of polygon quality based on structural homogeneity, representation of forest variability, and correspondence with independently detected structural transitions.</p>
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>This document shows the step to find the optimals parameters of the Generic Region Merging (GRM) algorithm of the Orfeo ToolBox to automatically delineate operationally plausible forest stand. photo-interpreted forest inventory map of the same area are the reference data. The optimization is performed on the Symmetric mean absolute percentage error (SMAPE) of polygon density, the overlapping kernel density of the polygon stand area at the pixel level and the overlapping kernel density of the polygon stand shape index at the pixel level. Best parameters were computed for two specific forest and five differents models, but performance metrics can be averaged to find best paramaters that suit the prefered scale.</p>
 </section>
-<section id="project_context" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>2</strong> Project context</h1>
-<p>Forest inventory systems rely on spatially explicit information to describe forest conditions and support forest management planning. In operational inventories, this information is typically organized within stand polygons, which provide the spatial units used to summarize attributes such as volume, tree density, canopy structure, species composition, age, and disturbance history. The usefulness of these products therefore depends not only on the accuracy of the forest attributes themselves, but also on the relevance of the spatial units used to represent and aggregate them. In Ontario, conventional Forest Resources Inventory products have historically relied on aerial photo-interpretation to delineate relatively homogeneous forest stands and assign interpreted attributes. This approach remains central to forest management planning, but it is time-consuming, partly subjective, and difficult to update frequently across large forest management units. As forest conditions change through harvesting, natural disturbance, succession, and stand development, there is a growing need for more consistent, reproducible, and updateable approaches to stand delineation and attribution.</p>
-<p>Recent investments in airborne single photon LiDAR provide an opportunity to modernize this workflow. Ontario’s Forest Resources Inventory leaf-on LiDAR program provides SPL data and derived products to support FRI development, including canopy height models, terrain models, forest inventory raster metrics, and forest inventory attributes. These datasets can be used to describe forest structure wall-to-wall and to support polygon-based inventory products that are more consistent with current forest conditions.</p>
-<p>However, moving from wall-to-wall raster products to operational forest inventory polygons remains a key challenge. Forest managers still require polygon-based products for planning, reporting, growth and yield projections, and operational decision-making. Automated stand delineation must therefore produce polygons that are not only technically reproducible, but also meaningful for forest inventory use: internally homogeneous, distinct from neighbouring units, and aligned with real structural transitions in the landscape.</p>
-<p>This project, funded by the Knowledge Transfer and Tool Development (KTTD) of the Forestry Futures Trust Ontario, was designed to refine and operationalize an automated polygon-based inventory framework that integrates LiDAR-derived enhanced forest inventory attributes, conventional FRI information, and additional disturbance and attribution layers. The project builds on previous open-source tools developed to integrate photo-interpreted and LiDAR-derived forest attributes into a polygonal forest inventory framework.</p>
-<!-- The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available [here](https://github.com/metafor-ulaval/eFRItools). All the functions can be used for other purposes that concern automated stand delineations and forest attribute characterization. -->
-</section>
-<section id="previous_work" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>3</strong> Previous work</h1>
-<p>The previous Forestry Futures Trust project, led by the University of British Columbia in collaboration with GreenFirst Forest Products, the Ontario Ministry of Natural Resources and Forestry, and Université Laval, developed an open-source framework to integrate photo-interpreted and airborne LiDAR-derived attributes into a polygonal forest inventory. That work addressed a practical operational question: how can area-based LiDAR estimates, produced as raster layers, be aggregated into inventory polygons that remain compatible with strategic and tactical forest management needs?</p>
-<p>The project demonstrated that Generic Region Merging segmentation could be used to generate new polygons from LiDAR-derived forest attributes, producing stand-like units that were more consistent with current forest structure than older FRI polygons in some areas. It also developed an imputation workflow to transfer interpreted attributes from existing FRI polygons to newly generated polygons, allowing the new polygon layer to retain information not directly predicted from LiDAR, such as species composition and age.</p>
-<p>This work represented an important proof of concept, but several issues remained before the approach could be more broadly implemented:</p>
-<ul>
-<li><p>The segmentation workflow needed to be refined to produce polygons that were more compatible with the shape, size, and spatial structure expected in operational forest inventories.</p></li>
-<li><p>The approach required further testing across contrasting forest types, particularly beyond the boreal conditions where much of the initial development occurred.</p></li>
-<li><p>Additional attributes such as disturbance history, stand age, and species composition needed to be better integrated or updated when legacy FRI information no longer reflected current forest conditions.</p></li>
-<li><p>The quality of the resulting polygons needed to be evaluated using criteria that go beyond simple visual comparison with existing photo-interpreted forest inventory maps.</p></li>
-</ul>
-<p>A central remaining question was how to evaluate the quality of the resulting polygons. Previous work showed that automated stand delineation could generate structurally homogeneous units, but an operational validation framework also needs to ask whether polygons effectively partition forest variability and whether their boundaries correspond to real changes in forest structure. These criteria guided the validation component of the present project.</p>
-</section>
-<section id="project_objectives" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>4</strong> Project objectives</h1>
-<p>The general objective of this project was to refine an automated stand delineation and attribution framework so that it can better support operational forest inventory modernization in Ontario.</p>
-<p>More specifically, the project aimed to:</p>
-<ol type="1">
-<li>Refine the automated segmentation workflow</li>
-</ol>
-<p>The project tested and adjusted the segmentation approach to improve its transferability across forest types, with a focus on producing polygons that are more compatible with operational FRI products in terms of size, shape, and structural relevance.</p>
-<ol start="2" type="1">
-<li>Integrate LiDAR-derived enhanced forest inventory attributes</li>
-</ol>
-<p>The workflow was designed to incorporate wall-to-wall EFI raster attributes produced from Ontario’s SPL LiDAR data, allowing structural attributes such as height, volume, basal area, density, and canopy metrics to be summarized within newly delineated polygons.</p>
-<ol start="3" type="1">
-<li>Incorporate disturbance and age information</li>
-</ol>
-<p>The project integrated disturbance information from provincial and national disturbance products to improve the temporal consistency of the new polygon inventory, particularly in areas where the existing FRI did not reflect more recent harvests or natural disturbances.</p>
-<ol start="4" type="1">
-<li>Maintain flexibility for species composition attribution</li>
-</ol>
-<p>The initial proposal included additional work on imputing species composition into newly generated polygons. During the project, this component was refined. Improvements from the original imputation approach were limited, while a parallel project using deep learning approaches showed stronger potential for species composition mapping. As a result, the framework was designed to remain flexible: species composition can be incorporated from any compatible raster product, including future outputs from deep learning models, rather than being tied to a single imputation method.</p>
-<ol start="5" type="1">
-<li>Evaluate the quality of automated stand delineations</li>
-</ol>
-<p>The project developed and applied a validation framework based on three complementary criteria:</p>
-<ul>
-<li><p>Internal structural homogeneity;</p></li>
-<li><p>The ability of polygons to partition forest structural variability;</p></li>
-<li><p>The correspondence between mapped polygon boundaries and independently detected structural transitions.</p></li>
-</ul>
-</section>
-<section id="introduction_studyarea" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>5</strong> Study area</h1>
-<p>The study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous.</p>
+<section id="sampling-area" class="level2">
+<h2 class="anchored" data-anchor-id="sampling-area">Sampling area</h2>
+<p>In this example, the evaluated forest is located in the province of Ontario, in Canada. Romeo Malette Forest and are located in the middle of the province and is conniferous. Ten smaller squares area of 5 km x 5 km were used to perform subsequent analysis.</p>
 <div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>
-|---------|---------|---------|---------|
-=========================================
-                                          </code></pre>
-</div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/introduction-study-area-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show-base-data-1-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>To position theses area, only actual forest stand (POLYTYPE == “FOR”) have been retain.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-base-data-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>A positive buffer of 500 m and then a negative one of 500 m again enable to merge close forest stand.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-base-data-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>A final inner buffer of approximately 7000 m was use to produce final polygon that allowed to place the center of each area.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-base-data-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>The first area was placed randomly and then the 9 next one were iteratively placed as far as possible of the last placed one. The next figure shows the last placed area in red and the distance raster that enable to fin the farthest position.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-base-data-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>For every area, only actual forest stand (POLYTYPE == “FOR”) were used to perform segmentation.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-base-data-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="segmentation" class="level2">
+<h2 class="anchored" data-anchor-id="segmentation">Segmentation</h2>
+<p>The model “SPL only” was used to perform segmentation parametrization. The metrics used in this model are shown in the follow figures.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-base-data-7-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/introduction-study-area-2.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="calibration_grm_files/figure-html/show-base-data-7-2.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-base-data-7-3.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<p>Finally, the parameters tested are the following ones : 1. The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is : - Small threshold → fine segmentation (many small regions) - Large threshold → coarse segmentation (fewer, larger regions) - This parameter was tested with values ranging from 10 to 100 in increments of 10</p>
+<ol start="2" type="1">
+<li>The weight of spectral homogeneity gives to spectral similarity (pixel values, band means) when deciding whether regions should merge :</li>
+</ol>
+<ul>
+<li>If high → segmentation will mostly respect spectral values</li>
+<li>If low → spectral similarity matters little, other criteria (shape) dominate</li>
+<li>This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1</li>
+</ul>
+<ol start="3" type="1">
+<li>The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :</li>
+</ol>
+<ul>
+<li>If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker</li>
+<li>If low → region boundaries will mostly follow spectral homogeneity</li>
+<li>This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1</li>
+</ul>
+<p>Thus, a total of 1000 paramaters combinaisons was tested.</p>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="analysis" class="level2">
+<h2 class="anchored" data-anchor-id="analysis">Analysis</h2>
+<p>The three performance metrics are the following ones : 1. Symmetric mean absolute percentage error (SMAPE) of polygon density - The value is positive when the segmentation have a higher density than the photo-interpreted forest inventory map and negative when the segmentation have a lower density - In the example above, the SMAPE of the density is 0.17 as the photo-interpreted forest inventory map have a density of 7.25 polygon/km² (1465 polygons) and the segmentation a density of 8.59 polygon/km² (1650 polygons)</p>
+<ol start="2" type="1">
+<li>Overlapping kernel density of the polygon stand area at the pixel level</li>
+</ol>
+<ul>
+<li>This performance metric represent how the distribution of the segmentation polygon stand area suit well the distribution of the photo-interpreted forest inventory polygon area</li>
+</ul>
+<ol start="3" type="1">
+<li>Overlapping kernel density of the polygon stand shape index at the pixel level</li>
+</ol>
+<ul>
+<li>The same way as the last performance metric, this performance metric represent how the distribution of the segmentation polygon stand shape index suit well the distribution of the photo-interpreted forest inventory polygon shape index</li>
+<li>The shape index was computed with smoothed polygon to avoid overestimating the perimeter of polygons</li>
+</ul>
+<p>The assumption behind this analysis is that the automated stand delineations should have the same distribution of polygon area and shape than the photo-interpreted forest inventory polygon and therefore be operationally plausible forest stand.</p>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The results presented here are, as mentionned before, in the Romeo Malette Forest for the model “SPL only” (z_p95 + z_above2 + B6). All the follow process can be made for every forest and every combinaison of metrics. The threshold of the SMAPE is 0.1 which represent more of less 10 % of polygon density variation. All sets of parameters that gave SMAPE lower than -0.1 and higher than 0.1 have been removed.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-figures-and-tables-1-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Figure x Symmetric mean absolute percentage error (SMAPE) of polygon density</p>
+<div style="page-break-after: always;"></div>
+<p>After this step, the optimal parameters was choosen as the one that maximized both the overlap of the areas and the shape index.. The final score was computed as follow : - (0.5 x (1-overlap_area)) + (0.5 x (1-overlap_shape_index)) - the best parameters set was choosen as the lowest final score among all combinaison that had a SMAPE of polygon density of more of less 0.1. In the next figure, the red circle are the best paramaters.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-figures-and-tables-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The next figure shows a example of a segmentation in the Romeo Malette Forest for the model SPL only (z_p95 + z_above2 + B6) with the best parameters as shown in the last figure (threshold of 40, spectral homogeneity of 0.5 and spatial homogeneity of 0.5). There is also a example of a segmentation that was smoothed as mentionned before.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-segmentation-1-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-segmentation-1-2.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-segmentation-1-3.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-segmentation-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="calibration_grm_files/figure-html/show-segmentation-2-2.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
 
 
 </section>
