@@ -554,42 +554,46 @@ The following figure shows an example of segmentation in Romeo Malette Forest us
 #| results: hide
 #| message: false
 #| warning: false
-suppressMessages(
-  sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
-    sf::st_make_valid() %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    sf::st_cast("POLYGON") %>%
-    mutate(area = as.numeric(sf::st_area(.)),
-           perimeter = as.numeric(sf::st_perimeter(.)),
-           perimeter_area_ratio = perimeter/area,
-           shape_index = perimeter / sqrt(pi * area)) %>%
-    filter_if(is.numeric, is.finite)) -> polygon_forest_temp
+# Compute performance metrics
+sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
+  sf::st_make_valid() %>%
+  sf::st_cast("MULTIPOLYGON") %>%
+  sf::st_cast("POLYGON") %>%
+  mutate(area = as.numeric(sf::st_area(.)),
+         perimeter = as.numeric(sf::st_perimeter(.)),
+         perimeter_area_ratio = perimeter/area,
+         shape_index = perimeter / sqrt(pi * area)) %>%
+  filter_if(is.numeric, is.finite) -> polygon_forest_temp
 
+st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50.shp",
+        quiet = T) %>% 
+  sf::st_make_valid() %>%
+  sf::st_cast("MULTIPOLYGON") %>%
+  sf::st_cast("POLYGON") %>%
+  mutate(area = as.numeric(st_area(.)),
+         perimeter = as.numeric(st_perimeter(.)),
+         perimeter_area_ratio = perimeter/area,
+         shape_index = perimeter / sqrt(pi * area)) %>%
+  filter_if(is.numeric, is.finite) -> segmentation 
+
+st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50_smoothed.shp",
+        quiet = T) %>% 
+  sf::st_make_valid() %>%
+  sf::st_cast("MULTIPOLYGON") %>%
+  sf::st_cast("POLYGON") %>%
+  mutate(area = as.numeric(st_area(.)),
+         perimeter = as.numeric(st_perimeter(.)),
+         perimeter_area_ratio = perimeter/area,
+         shape_index = perimeter / sqrt(pi * area)) %>%
+  filter_if(is.numeric, is.finite) -> segmentation_smoothed
+
+# Area in raster
 polygon_forest_temp %>%
   dplyr::select(area) %>%
   terra::rasterize(metrics, field = "area") %>%
   terra::values(na.rm = TRUE) -> polygon_forest_area_raster
 
 polygon_forest_area_raster[is.finite(polygon_forest_area_raster)] -> polygon_forest_area_raster
-
-polygon_forest_temp %>%
-  dplyr::select(shape_index) %>%
-  terra::rasterize(metrics, field = "shape_index") %>%
-  terra::values(na.rm = TRUE) -> polygon_forest_shape_index_raster
-
-polygon_forest_shape_index_raster[is.finite(polygon_forest_shape_index_raster)] -> polygon_forest_shape_index_raster
-
-suppressMessages(
-  st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50.shp",
-          quiet = T) %>% 
-    sf::st_make_valid() %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    sf::st_cast("POLYGON") %>%
-    mutate(area = as.numeric(st_area(.)),
-           perimeter = as.numeric(st_perimeter(.)),
-           perimeter_area_ratio = perimeter/area,
-           shape_index = perimeter / sqrt(pi * area)) %>%
-    filter_if(is.numeric, is.finite)) -> segmentation 
 
 segmentation %>%
   dplyr::select(area) %>%
@@ -598,25 +602,6 @@ segmentation %>%
 
 segmentation_area_raster[is.finite(segmentation_area_raster)] -> segmentation_area_raster
 
-segmentation %>%
-  dplyr::select(shape_index) %>%
-  terra::rasterize(metrics, field = "shape_index") %>%
-  terra::values(na.rm = TRUE) -> segmentation_shape_index_raster
-
-segmentation_shape_index_raster[is.finite(segmentation_shape_index_raster)] -> segmentation_shape_index_raster
-
-suppressMessages(
-  st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50_smoothed.shp",
-          quiet = T) %>% 
-    sf::st_make_valid() %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    sf::st_cast("POLYGON") %>%
-    mutate(area = as.numeric(st_area(.)),
-           perimeter = as.numeric(st_perimeter(.)),
-           perimeter_area_ratio = perimeter/area,
-           shape_index = perimeter / sqrt(pi * area)) %>%
-    filter_if(is.numeric, is.finite)) -> segmentation_smoothed
-
 segmentation_smoothed %>%
   dplyr::select(area) %>%
   terra::rasterize(metrics, field = "area") %>%
@@ -624,12 +609,37 @@ segmentation_smoothed %>%
 
 segmentation_smoothed_area_raster[is.finite(segmentation_smoothed_area_raster)] -> segmentation_smoothed_area_raster
 
+# Area in data frame
+bind_rows(tibble(value = polygon_forest_area_raster, type = "fri"),
+          tibble(value = segmentation_area_raster, type = "grm"),
+          tibble(value = segmentation_smoothed_area_raster, type = "grm_smoothed")) -> area_data_frame
+
+# Shape index in raster
+polygon_forest_temp %>%
+  dplyr::select(shape_index) %>%
+  terra::rasterize(metrics, field = "shape_index") %>%
+  terra::values(na.rm = TRUE) -> polygon_forest_shape_index_raster
+
+polygon_forest_shape_index_raster[is.finite(polygon_forest_shape_index_raster)] -> polygon_forest_shape_index_raster
+
+segmentation %>%
+  dplyr::select(shape_index) %>%
+  terra::rasterize(metrics, field = "shape_index") %>%
+  terra::values(na.rm = TRUE) -> segmentation_shape_index_raster
+
+segmentation_shape_index_raster[is.finite(segmentation_shape_index_raster)] -> segmentation_shape_index_raster
+
 segmentation_smoothed %>%
   dplyr::select(shape_index) %>%
   terra::rasterize(metrics, field = "shape_index") %>%
   terra::values(na.rm = TRUE) -> segmentation_smoothed_shape_index_raster
 
 segmentation_smoothed_shape_index_raster[is.finite(segmentation_smoothed_shape_index_raster)] -> segmentation_smoothed_shape_index_raster
+
+# Shape index in data frame
+bind_rows(tibble(value = polygon_forest_shape_index_raster, type = "fri"),
+          tibble(value = segmentation_shape_index_raster, type = "grm"),
+          tibble(value = segmentation_smoothed_shape_index_raster, type = "grm_smoothed")) -> shape_index_data_frame
 ```
 
 ```{r}
@@ -684,14 +694,14 @@ ggplot() +
 #| message: false
 #| warning: false
 #| fig-cap: "Polygon area (ha) density of photo-interpreted forest inventory polygon and automated stand delineations (not smoothed)."
-ggplot() +
-  geom_density(aes(x = polygon_forest_area_raster/10000, color = "Photo-interpreted forest inventory polygon"),
+area_data_frame %>% 
+  ggplot() +
+  geom_density(aes(x = value/10000,
+                   color = type),
                linewidth = 1) +
-  geom_density(aes(x = segmentation_area_raster/10000, color = "Automated stand delineations"),
-               linewidth = 1) +
-  geom_density(aes(x = segmentation_smoothed_area_raster/10000, color = "Smoothed automated stand delineations"),
-               linewidth = 1) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107")) +
+  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
+                     labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
+  xlim(c(0, 100)) +
   labs(x = "Polygon area (ha)",
        y = "Density") +
   theme_bw() +
@@ -706,14 +716,14 @@ ggplot() +
 #| message: false
 #| warning: false
 #| fig-cap: "Polygon shape index density of photo-interpreted forest inventory polygon and automated stand delineations (smoothed and not smoothed)."
-ggplot() +
-  geom_density(aes(x = polygon_forest_shape_index_raster, color = "Photo-interpreted forest inventory polygon"),
+shape_index_data_frame %>% 
+  ggplot() +
+  geom_density(aes(x = value,
+                   color = type),
                linewidth = 1) +
-  geom_density(aes(x = segmentation_shape_index_raster, color = "Automated stand delineations"),
-               linewidth = 1) +
-  geom_density(aes(x = segmentation_smoothed_shape_index_raster, color = "Smoothed automated stand delineations"),
-               linewidth = 1) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107")) +
+  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
+                     labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
+  xlim(c(0, 20)) +
   labs(x = "Shape index",
        y = "Density") +
   theme_bw() +

@@ -784,8 +784,8 @@ area_data_frame %>%
                    color = type),
                linewidth = 1) +
   scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
-                     labels = c("Photo-interpreted forest inventory polygons", "Automated stand delineations", "Smoothed automated stand delineations")) +
-  xlim(c(0, quantile(segmentation_smoothed_area_raster/10000, probs = 0.99))) +
+                     labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
+  xlim(c(0, 100)) +
   labs(x = "Polygon area (ha)",
        y = "Density") +
   theme_bw() +
@@ -806,8 +806,8 @@ shape_index_data_frame %>%
                    color = type),
                linewidth = 1) +
   scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
-                     labels = c("Photo-interpreted forest inventory polygons", "Automated stand delineations", "Smoothed automated stand delineations")) +
-  xlim(c(0, quantile(polygon_forest_shape_index_raster, probs = 0.99))) +
+                     labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
+  xlim(c(0, 20)) +
   labs(x = "Shape index",
        y = "Density") +
   theme_bw() +

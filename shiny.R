@@ -263,23 +263,38 @@ server <- function(input, output, session) {
                        selected = c("roads", "waterbodies"))
   })
 
-
-
-
-
-
-
-
-
-
-
-
   # 🟠 Compute enhanced forest resources inventory polygons 🟠
   observeEvent(input$run, {
     req(input$name, input$segmentation_metrics, input$summary_metrics)
 
+    # 🟢 Get epsg from dem 🟢
+    metrics_infos_reactive() %>%
+      filter(name == "dem") %>%
+      pull(path) %>%
+      rast() -> epsg_rast
+
+    epsg_rast %>%
+      st_crs() -> epsg
+
+    # 🟢 Read data V1 🟢
+    # Catalog
+    ctg_reactive() %>%
+      st_as_sf() %>%
+      st_transform(epsg) -> ctg
+
+    # 🟢 Conditions 🟢
+    if(!is.null(select_area()$finished)){
+      select_area()$finished %>%
+        st_as_sf() %>%
+        st_transform(epsg) -> extraction_area
+      if(any(st_overlaps(ctg, extraction_area, sparse = FALSE))){
+        showNotification("Subset area is outside of catalog, please place area within catalog or remove it.", type = "message", duration = 15, session = session)
+        return()
+      }
+    }
+
     # 🟢 Create and set wd 🟢
-    paste0(selected_wd_reactive(), "/segmentation/", input$forest, "/automated_", input$name) ->> segmentation_wd
+    paste0(selected_wd_reactive(), "/segmentation/", input$forest, "/automated_", input$name) -> segmentation_wd
     dir.create(segmentation_wd)
 
     # 🟢 Best models for imputation 🟢
@@ -296,15 +311,6 @@ server <- function(input, output, session) {
       strsplit(",") %>%
       unlist() %>%
       unique() -> imputation_metrics
-
-    # 🟢 Get epsg from dem 🟢
-    metrics_infos_reactive() %>%
-      filter(name == "dem") %>%
-      pull(path) %>%
-      rast() -> epsg_rast
-
-    epsg_rast %>%
-      st_crs() -> epsg
 
     # 🟢 Save metadata 🟢
     start <- Sys.time()
@@ -338,19 +344,14 @@ server <- function(input, output, session) {
         append = TRUE,
         sep = "\n")
 
-    # 🟢 Read data 🟢
-    # Catalog
-    ctg_reactive() %>%
-      st_as_sf() %>%
-      st_transform(epsg) -> ctg
-
+    # 🟢 Read data V2 🟢
     # Metrics
     showNotification("Read metrics", type = "message", duration = 15, session = session)
     metrics_infos_reactive() %>%
       filter(name %in% c(imputation_metrics,
                          input$segmentation_metrics,
                          input$summary_metrics,
-                         "z_p95", "z_above2", "slope", "sagawi")) ->> metrics_infos_selected
+                         "z_p95", "z_above2", "slope", "sagawi")) -> metrics_infos_selected
 
     metrics_infos_selected %>%
       pull(name) -> metrics_names
@@ -448,59 +449,49 @@ server <- function(input, output, session) {
 
     # 🟢 Clip data 🟢
     if(!is.null(select_area()$finished)){
+      extraction_area %>%
+        st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
+                 layer = "extraction_area",
+                 quiet = T)
 
-      select_area()$finished %>%
-        st_as_sf() %>%
-        st_transform(epsg) -> extraction_area
+      showNotification("Clip catalog", type = "message", duration = 15, session = session)
+      ctg %>%
+        st_filter(extraction_area) -> ctg
 
-      if(any(st_overlaps(ctg, extraction_area, sparse = FALSE))){
+      showNotification("Clip metrics", type = "message", duration = 15, session = session)
+      metrics %>%
+        crop(extraction_area) %>%
+        mask(extraction_area) -> metrics
 
-        extraction_area %>%
-          st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-                   layer = "extraction_area",
-                   quiet = T)
-
-        showNotification("Clip catalog", type = "message", duration = 15, session = session)
-        ctg %>%
-          st_filter(extraction_area) -> ctg
-
-        showNotification("Clip metrics", type = "message", duration = 15, session = session)
-        metrics %>%
-          crop(extraction_area) %>%
-          mask(extraction_area) -> metrics
-
-        if(!is.null(input$masks)){
-          showNotification("Clip masks", type = "message", duration = 15, session = session)
-          masks %>%
-            st_filter(extraction_area) -> masks
-        }
-
-        showNotification("Clip forest inventory polygons", type = "message", duration = 15, session = session)
-        fri_polygons %>%
-          st_filter(extraction_area) -> fri_polygons
-
-        showNotification("Clip landcover", type = "message", duration = 15, session = session)
-        landcover %>%
-          crop(extraction_area) %>%
-          mask(extraction_area) -> landcover
-
-        showNotification("Clip forest age", type = "message", duration = 15, session = session)
-        forest_age_2019 %>%
-          crop(extraction_area) %>%
-          mask(extraction_area) -> forest_age_2019
-
-        showNotification("Clip forest fire", type = "message", duration = 15, session = session)
-        forest_fire_1985_2020 %>%
-          crop(extraction_area) %>%
-          mask(extraction_area) -> forest_fire_1985_2020
-
-        showNotification("Clip forest harvest", type = "message", duration = 15, session = session)
-        forest_harvest_1985_2020 %>%
-          crop(extraction_area) %>%
-          mask(extraction_area) -> forest_harvest_1985_2020
-      } else {
-        showNotification("Subset area is outside of catalog, whole area will be processed", type = "message", duration = 15, session = session)
+      if(!is.null(input$masks)){
+        showNotification("Clip masks", type = "message", duration = 15, session = session)
+        masks %>%
+          st_filter(extraction_area) -> masks
       }
+
+      showNotification("Clip forest inventory polygons", type = "message", duration = 15, session = session)
+      fri_polygons %>%
+        st_filter(extraction_area) -> fri_polygons
+
+      showNotification("Clip landcover", type = "message", duration = 15, session = session)
+      landcover %>%
+        crop(extraction_area) %>%
+        mask(extraction_area) -> landcover
+
+      showNotification("Clip forest age", type = "message", duration = 15, session = session)
+      forest_age_2019 %>%
+        crop(extraction_area) %>%
+        mask(extraction_area) -> forest_age_2019
+
+      showNotification("Clip forest fire", type = "message", duration = 15, session = session)
+      forest_fire_1985_2020 %>%
+        crop(extraction_area) %>%
+        mask(extraction_area) -> forest_fire_1985_2020
+
+      showNotification("Clip forest harvest", type = "message", duration = 15, session = session)
+      forest_harvest_1985_2020 %>%
+        crop(extraction_area) %>%
+        mask(extraction_area) -> forest_harvest_1985_2020
     } else {
       showNotification("No subset area selected, whole area will be processed", type = "message", duration = 15, session = session)
     }
@@ -589,25 +580,13 @@ server <- function(input, output, session) {
     showNotification(paste0("Done after ", elapsed_time, "! A total of ", nrow(segmentation_data), " polygons created for segmentation named ", input$name, "."), type = "message", duration = NULL, session = session)
   })
 
-
-
-
-
-
-
-
-
-
-
-
-
   # 🟠 Add Segmentation to map 🟠
   observeEvent(input$add_segmentation, {
-    segmentation_wd <- paste0(selected_wd_reactive(), "/segmentations/", input$name)
-    segmentation <- st_read(dsn = paste0(segmentation_wd, "/data.gpkg"),
-                            layer = "segmentation_data",
+    paste0(selected_wd_reactive(), "/segmentation/", input$forest, "/automated_", input$name) -> segmentation_wd
+    st_read(dsn = paste0(segmentation_wd, "/data.gpkg"),
+                            layer = "segmentation_data_imputed",
                             quiet = T) %>%
-      st_transform(4326)
+      st_transform(4326) -> segmentation
 
     make_popup_generic <- function(x) {
       # x = one row of attributes (data.frame)
@@ -632,8 +611,8 @@ server <- function(input, output, session) {
       FUN.VALUE = character(1)
     )
 
-    leafletProxy("map_draw_module") %>%
-      set.view.auto(segmentation) %>%
+    leafletProxy("map_draw_module-map") %>%
+      set_view_auto(segmentation) %>%
       addPolygons(data = segmentation,
                   fillOpacity = 0.05,
                   color = "red",
