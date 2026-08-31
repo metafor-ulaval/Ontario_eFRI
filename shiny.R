@@ -57,7 +57,7 @@ set_view_auto <- function(map,
 
 
 # 🟡🟡 Parameters 🟡🟡 ----
-otb_dir <- "D:/00_Ontario_eFRI/logiciels/OTB-9.1.0-Win64/bin"
+otb_dir <- "D:/00_Ontario_eFRI/10_livrables/softwares/OTB-9.1.0-Win64/bin"
 Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
 Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
 Sys.setenv(GDAL_CACHEMAX = "65536") # 64 GO
@@ -166,7 +166,7 @@ server <- function(input, output, session) {
     radioButtons(
       inputId = "forest",
       label = "Choose the forest where to peform segmentation :",
-      choices = list.files(paste0(te, "/metrics")),
+      choices = list.files(paste0(selected_wd_reactive(), "/metrics")),
       selected = character(0),
       width = "100%",
     )
@@ -176,27 +176,26 @@ server <- function(input, output, session) {
   ctg_reactive <- reactive({
     req(input$forest, selected_wd_reactive())
 
-    st_read(paste0(selected_wd_reactive(), "/shapefiles/", input$forest, "/ctg.shp")) %>%
-      st_buffer(1) %>%
-      st_union()
+    st_read(paste0(selected_wd_reactive(), "/shapefiles/", input$forest, "/ctg.shp"), quiet = TRUE)
   })
 
   # 🟠 Update ctg 🟠
   observe({
     req(ctg_reactive())
 
-    st_transform(ctg_reactive(),
-                 4326) ->> ctg_shp
+    ctg_reactive()%>%
+      st_buffer(1) %>%
+      st_union() %>%
+      st_transform(4326) -> ctg_clean
 
     leafletProxy("map_draw_module-map") %>%
       clearGroup("ctg") %>%
-      addPolygons(data = ctg_shp,
+      addPolygons(data = ctg_clean,
                   group = "ctg",
                   color = "white",
                   weight = 2,
                   fillOpacity = 0) %>%
-      set_view_auto(ctg_shp)
-
+      set_view_auto(ctg_clean)
   })
 
   # 🟠 Read metrics informations 🟠
@@ -280,7 +279,7 @@ server <- function(input, output, session) {
     req(input$name, input$segmentation_metrics, input$summary_metrics)
 
     # 🟢 Create and set wd 🟢
-    segmentation_wd <- paste0(selected_wd_reactive(), "/segmentation/", input$forest, "/automated_", input$name)
+    paste0(selected_wd_reactive(), "/segmentation/", input$forest, "/automated_", input$name) ->> segmentation_wd
     dir.create(segmentation_wd)
 
     # 🟢 Best models for imputation 🟢
@@ -298,18 +297,14 @@ server <- function(input, output, session) {
       unlist() %>%
       unique() -> imputation_metrics
 
-    # 🟢 Get epsg from catalog 🟢
-    epsg <- st_crs(ctg_reactive())
+    # 🟢 Get epsg from dem 🟢
+    metrics_infos_reactive() %>%
+      filter(name == "dem") %>%
+      pull(path) %>%
+      rast() -> epsg_rast
 
-    # 🟢 Extraction area 🟢
-    select_area()$finished %>%
-      st_as_sf() %>%
-      st_transform(epsg$wkt) -> extraction_area
-
-    extraction_area %>%
-      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-               layer = "extraction_area",
-               quiet = T)
+    epsg_rast %>%
+      st_crs() -> epsg
 
     # 🟢 Save metadata 🟢
     start <- Sys.time()
@@ -323,7 +318,7 @@ server <- function(input, output, session) {
         append = TRUE,
         sep = "\n")
 
-    cat(c("Selected summary metrics : ", input$summary_metrics, "----------"),
+    cat(c("Summary metrics : ", input$summary_metrics, "----------"),
         file = paste0(segmentation_wd, "/metadata.txt"),
         append = TRUE,
         sep = "\n")
@@ -344,13 +339,18 @@ server <- function(input, output, session) {
         sep = "\n")
 
     # 🟢 Read data 🟢
+    # Catalog
+    ctg_reactive() %>%
+      st_as_sf() %>%
+      st_transform(epsg) -> ctg
+
     # Metrics
     showNotification("Read metrics", type = "message", duration = 15, session = session)
-    metrics_infos %>%
-      filter(name %in% c(best_models_variables,
+    metrics_infos_reactive() %>%
+      filter(name %in% c(imputation_metrics,
                          input$segmentation_metrics,
                          input$summary_metrics,
-                         "z_p95", "z_above2", "fractional_cover_05_2", "slope", "sagawi")) -> metrics_infos_selected
+                         "z_p95", "z_above2", "slope", "sagawi")) ->> metrics_infos_selected
 
     metrics_infos_selected %>%
       pull(name) -> metrics_names
@@ -358,8 +358,8 @@ server <- function(input, output, session) {
     metrics_infos_selected %>%
       pull(path) %>%
       map(rast) %>%
-      map(project, epsg$wkt, method = "bilinear") %>%
-      map(resample, .[[1]]) %>%
+      map(project, epsg_rast, method = "bilinear") %>%
+      map(resample, epsg_rast) %>%
       rast -> metrics
 
     # Assign metrics names
@@ -367,10 +367,19 @@ server <- function(input, output, session) {
 
     # Masks
     if(!is.null(input$masks)){
-    showNotification("Read masks", type = "message", duration = 15, session = session)
-    paste0(selected_wd_reactive(), "/shp/", input$masks, ".shp") %>%
-      map(vect) %>%
-      map(project, epsg$wkt) -> masks
+      showNotification("Read masks", type = "message", duration = 15, session = session)
+      paste0(selected_wd_reactive(), "/shapefiles/", input$forest, "/", input$masks, ".shp") %>%
+        map_dfr(function(m) {
+          st_read(m, quiet = TRUE) %>%
+            st_transform(epsg) %>%
+            st_geometry() -> x
+
+          if (st_geometry_type(x, by_geometry = FALSE) %in% c("LINESTRING", "MULTILINESTRING")) {
+            st_buffer(x, dist = 20) -> x
+          }
+
+          st_as_sf(x)
+        }) -> masks
     } else {
       showNotification("No masks selected", type = "message", duration = 15, session = session)
       masks <- input$masks
@@ -378,14 +387,14 @@ server <- function(input, output, session) {
 
     # Forest inventory polygons (fri)
     showNotification("Read forest inventory polygons", type = "message", duration = 15, session = session)
-    st_read(paste0(selected_wd_reactive(), "/shp/PolygonForest.shp")) %>%
+    st_read(paste0(selected_wd_reactive(), "/shapefiles/", input$forest, "/PolygonForest.shp"), quiet = TRUE) %>%
       rowid_to_column("id") %>%
-      st_transform(epsg$wkt) -> fri_polygons
+      st_transform(epsg) -> fri_polygons
 
     # Landcover
     showNotification("Read landcover", type = "message", duration = 15, session = session)
-    rast(paste0(selected_wd_reactive(), "/metrics/other/landcover.tif")) %>%
-      terra::project(epsg$wkt, method = "near") -> landcover
+    rast(paste0(selected_wd_reactive(), "/metrics/", input$forest, "/other/landcover.tif")) %>%
+      terra::project(epsg_rast, method = "near") -> landcover
 
     landcover_codes <- c(`1` = "Clear_Open_Water",
                          `2` = "Turbid_Water",
@@ -423,66 +432,84 @@ server <- function(input, output, session) {
 
     # Forest_Age_1985-2020
     showNotification("Read forest age", type = "message", duration = 15, session = session)
-    rast(paste0(selected_wd_reactive(), "/metrics/other/forest_age_2019.tif")) %>%
-      terra::project(epsg$wkt, method = "near") -> forest_age_2019
+    rast(paste0(selected_wd_reactive(), "/metrics/", input$forest, "/other/forest_age_2019.tif")) %>%
+      terra::project(epsg_rast, method = "near") -> forest_age_2019
 
     # Forest_Fire_1985-2020
     showNotification("Read forest fire", type = "message", duration = 15, session = session)
-    rast(paste0(selected_wd_reactive(), "/metrics/other/forest_fire_1985_2020.tif")) %>%
-      terra::project(epsg$wkt, method = "near") -> forest_fire_1985_2020
+    rast(paste0(selected_wd_reactive(), "/metrics/", input$forest, "/other/forest_fire_1985_2020.tif")) %>%
+      terra::project(epsg_rast, method = "near") -> forest_fire_1985_2020
 
     # Forest_Harvest_1985-2020
     showNotification("Read forest harvest", type = "message", duration = 15, session = session)
-    rast(paste0(selected_wd_reactive(), "/metrics/other/forest_harvest_1985_2020.tif")) %>%
-      terra::project(epsg$wkt, method = "near") -> forest_harvest_1985_2020
+    rast(paste0(selected_wd_reactive(), "/metrics/", input$forest, "/other/forest_harvest_1985_2020.tif")) %>%
+      terra::project(epsg_rast, method = "near") -> forest_harvest_1985_2020
 
 
     # 🟢 Clip data 🟢
-    showNotification("Clip catalog", type = "message", duration = 15, session = session)
-    ctg %<>%
-      st_filter(extraction_area)
+    if(!is.null(select_area()$finished)){
 
-    showNotification("Clip metrics", type = "message", duration = 15, session = session)
-    metrics %<>%
-      crop(extraction_area) %>%
-      mask(extraction_area)
+      select_area()$finished %>%
+        st_as_sf() %>%
+        st_transform(epsg) -> extraction_area
 
-    if(!is.null(input$masks)){
-      showNotification("Clip masks", type = "message", duration = 15, session = session)
-      masks %<>%
-        map(crop, extraction_area)
+      if(any(st_overlaps(ctg, extraction_area, sparse = FALSE))){
+
+        extraction_area %>%
+          st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
+                   layer = "extraction_area",
+                   quiet = T)
+
+        showNotification("Clip catalog", type = "message", duration = 15, session = session)
+        ctg %>%
+          st_filter(extraction_area) -> ctg
+
+        showNotification("Clip metrics", type = "message", duration = 15, session = session)
+        metrics %>%
+          crop(extraction_area) %>%
+          mask(extraction_area) -> metrics
+
+        if(!is.null(input$masks)){
+          showNotification("Clip masks", type = "message", duration = 15, session = session)
+          masks %>%
+            st_filter(extraction_area) -> masks
+        }
+
+        showNotification("Clip forest inventory polygons", type = "message", duration = 15, session = session)
+        fri_polygons %>%
+          st_filter(extraction_area) -> fri_polygons
+
+        showNotification("Clip landcover", type = "message", duration = 15, session = session)
+        landcover %>%
+          crop(extraction_area) %>%
+          mask(extraction_area) -> landcover
+
+        showNotification("Clip forest age", type = "message", duration = 15, session = session)
+        forest_age_2019 %>%
+          crop(extraction_area) %>%
+          mask(extraction_area) -> forest_age_2019
+
+        showNotification("Clip forest fire", type = "message", duration = 15, session = session)
+        forest_fire_1985_2020 %>%
+          crop(extraction_area) %>%
+          mask(extraction_area) -> forest_fire_1985_2020
+
+        showNotification("Clip forest harvest", type = "message", duration = 15, session = session)
+        forest_harvest_1985_2020 %>%
+          crop(extraction_area) %>%
+          mask(extraction_area) -> forest_harvest_1985_2020
+      } else {
+        showNotification("Subset area is outside of catalog, whole area will be processed", type = "message", duration = 15, session = session)
+      }
+    } else {
+      showNotification("No subset area selected, whole area will be processed", type = "message", duration = 15, session = session)
     }
-
-    showNotification("Clip forest inventory polygons", type = "message", duration = 15, session = session)
-    fri_polygons %<>%
-      st_filter(extraction_area)
-
-    showNotification("Clip landcover", type = "message", duration = 15, session = session)
-    landcover %<>%
-      crop(extraction_area) %>%
-      mask(extraction_area)
-
-    showNotification("Clip forest age", type = "message", duration = 15, session = session)
-    forest_age_2019 %<>%
-      crop(extraction_area) %>%
-      mask(extraction_area)
-
-    showNotification("Clip forest fire", type = "message", duration = 15, session = session)
-    forest_fire_1985_2020 %<>%
-      crop(extraction_area) %>%
-      mask(extraction_area)
-
-    showNotification("Clip forest harvest", type = "message", duration = 15, session = session)
-    forest_harvest_1985_2020 %<>%
-      crop(extraction_area) %>%
-      mask(extraction_area)
-
 
     # 🟢 Segmentation 🟢
     showNotification("Perform segmentation", type = "message", duration = 15, session = session)
 
     eFRI_segmentation(metrics = metrics[[input$segmentation_metrics]],
-                      masks = masks,
+                      masks = NULL,
                       thresh = input$grm_thresh,
                       spec = input$grm_spec,
                       spat = input$grm_spat,
@@ -490,18 +517,39 @@ server <- function(input, output, session) {
                       clean_nodata = TRUE,
                       output_path = segmentation_wd,
                       output_name = "segmentation",
-                      otb_dir = otb_dir) -> segmentation
+                      otb_dir = otb_dir) ->> segmentation
 
     segmentation %>%
       st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
                layer = "segmentation",
                quiet = T)
 
+    # 🟢 Build attribute table 🟢
+    showNotification("Build attribute table in segmented polygons", type = "message", duration = 15, session = session)
+
+    eFRI_attribute_table(segmentation = segmentation,
+                         metrics = metrics,
+                         summary_metrics = input$summary_metrics,
+                         landcover = landcover,
+                         forest_fire = forest_fire_1985_2020,
+                         forest_harvest = forest_harvest_1985_2020,
+                         forest_age = forest_age_2019) ->> segmentation_data
+
+    # segmentation_data %>%
+    #   dplyr::select(-id_seg, -id) %>%
+    #   rename(HEIGHT = Z_P95,
+    #          CANOPY_COVER = Z_ABOVE2,
+    #          MOISTURE = SAGAWI) -> segmentation_data
+
+    segmentation_data %>%
+      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
+               layer = "segmentation_data",
+               quiet = T)
+
     # 🟢 Imputation 🟢
     showNotification("Peform imputation", type = "message", duration = 15, session = session)
 
-    eFRI_imputation(segmentation = segmentation,
-                    segmentation_id_field = "id",
+    eFRI_imputation(segmentation = segmentation_data,
                     forest_polygon = fri_polygons,
                     metrics = metrics,
                     landcover = landcover,
@@ -512,30 +560,13 @@ server <- function(input, output, session) {
                     forest_year_field = "YRUPD",
                     forest_composition_field = "SPCOMP",
                     forest_type_field = "POLYTYPE",
-                    target_var = best_models$target_var,
-                    knn_var = best_models$knn_vars) -> segmentation_imputed
+                    target_var = imputation_results$target_var,
+                    knn_var = imputation_results$knn_vars) ->> segmentation_data_imputed
 
-    segmentation_imputed %>%
+    segmentation_data_imputed %>%
       st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-               layer = "segmentation_imputed",
+               layer = "segmentation_data_imputed",
                quiet = T)
-
-    # 🟢 Build attribute table 🟢
-    showNotification("Build attribute table in segmented polygons", type = "message", duration = 15, session = session)
-
-    eFRI_attribute_table(segmentation = segmentation_imputed,
-                         metrics = metrics,
-                         summary_metrics = paste0(input$summary_metrics, "_median"),
-                         landcover = landcover,
-                         forest_fire = forest_fire_1985_2020,
-                         forest_harvest = forest_harvest_1985_2020,
-                         forest_age = forest_age_2019) -> segmentation_data
-
-    segmentation_data %>%
-      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-               layer = "segmentation_data",
-               quiet = T)
-
 
     # 🟢 Metadata 🟢
     cat(c("Number of forest polygon created : ", nrow(segmentation_data), "----------"),

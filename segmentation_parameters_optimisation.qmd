@@ -1,0 +1,722 @@
+---
+title: "Appendix A : Segmentation parameters optimisation"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+date: "2026-05-20"
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#| label: libraries
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+library(tidyverse)
+library(tidyterra)
+library(future.apply)
+library(future.callr)
+library(future)
+library(magrittr)
+library(terra)
+library(rmapshaper)
+library(sf)
+library(lasR)
+library(lidR)
+library(lidRmetrics)
+library(plotly)
+library(htmlwidgets)
+library(eFRItools)
+library(basemapR)
+library(patchwork)
+library(maptiles)
+library(scatterplot3d)
+```
+
+```{r}
+#| label: function
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+sample_farthest_point <- function(nb,
+                                  res,
+                                  sampling_area,
+                                  seed) {
+
+  # 1. Validate inputs
+  if (!inherits(sampling_area, "sf")) {
+    stop("Sampling_area must be sf objects.")
+  }
+
+  # 2. Prepare a permanent empty raster template (created ONCE)
+  bbox <- sf::st_bbox(sampling_area)
+
+  rast_template <- terra::rast(
+    xmin  = bbox["xmin"],
+    xmax  = bbox["xmax"],
+    ymin  = bbox["ymin"],
+    ymax  = bbox["ymax"],
+    resolution = res,
+    crs = sf::st_crs(sampling_area)$wkt
+  )
+
+  terra::values(rast_template) <- 1
+
+  # 3. Select the first point randomly
+  set.seed(seed)
+
+  pt <- st_sample(sampling_area, 1, type = "random")
+
+  # 4. Iteratively select farthest points
+  for (i in 1:(nb-1)) {
+
+    # Compute distance raster FROM currently selected points
+    dist_raster <- terra::distance(rast_template, terra::vect(pt))
+
+    # Mask raster
+    dist_raster_masked <- terra::mask(dist_raster, sampling_area)
+
+    # Plot results
+    # plot(dist_raster_masked)
+    # plot(pt, add = T, col = "red", pch = 16)
+
+    # Locate farthest cell location within raster
+    max_cell <- which.max(values(dist_raster_masked))
+    farthest_cell <- rast(dist_raster_masked)
+    values(farthest_cell) <- NA
+    values(farthest_cell)[max_cell] <- 1
+
+    # Randomly sample one point inside this cell
+    farthest_cell_poly <- terra::as.polygons(farthest_cell)
+    farthest_cell_poly <- sf::st_as_sf(farthest_cell_poly)
+    set.seed(seed)
+    new_pt <- st_sample(farthest_cell_poly, 1, type = "random")
+
+    # Plot results
+    # plot(new_pt, add = T, col = "blue", pch = 16)
+
+    pt <- c(pt, new_pt)
+
+  }
+
+  return(pt)
+}
+
+smape <- function(actual, predicted) {
+  (predicted - actual) / ((abs(actual) + abs(predicted)) / 2)
+}
+```
+
+## Introduction
+
+This appendix describes the steps to find the optimal parameters of the Generic Region Merging (GRM) algorithm in the Orfeo ToolBox for automatically delineating operationally plausible forest stands. Photo-interpreted forest inventory maps were used as reference data to determine the optimal parameters. The optimization was performed using the symmetric mean absolute percentage error (SMAPE) of polygon density, as well as the overlapping kernel density of polygon stand area and polygon stand shape index at the pixel level. In this appendix, an example is provided for only one forest management unit and one combination of metrics; however, optimal parameters can be determined for any study area and any combination of metrics.
+
+## Sampling area
+
+Romeo Malette Forest is the forest management unit used for parameter optimization. It is located in Ontario, Canada, and is predominantly coniferous. Ten 5 km × 5 km square areas were used for the subsequent analysis.
+
+```{r}
+#| label: fig-base-data-1
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Romeo Malette Forest with the ten 5 km × 5 km square areas used for segmentation parameters optimisation."
+st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/PolygonForest.shp", quiet = T) -> polygon_forest
+  
+st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/ctg.shp", quiet = T) %>%
+  st_transform(st_crs(polygon_forest)) -> ctg
+
+ctg %>%
+  st_geometry() %>%
+  st_buffer(10) %>%
+  st_union() %>%
+  st_buffer(-10) %>% 
+  st_transform(4326) -> area_clean
+
+sat <- get_tiles(x = st_bbox(area_clean %>% st_buffer(5000)),
+                 provider = "Esri.WorldImagery",
+                 zoom = 11,
+                 crop = TRUE)
+  
+st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_RMF.shp",
+        quiet = T) %>% 
+  st_transform(4326) -> sampling_square
+  
+ggplot() +
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_sf(data = sampling_square, fill = "white") +
+  geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) +  
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+\newpage
+To position these areas, only actual forest stands (POLYTYPE == "FOR") from photo-interpreted forest inventory maps were retained.
+
+```{r}
+#| label: fig-base-data-2
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Photo-interpreted forest inventory maps where polygon are considered forested."
+polygon_forest %>% 
+  filter(POLYTYPE == "FOR") %>%
+  st_geometry() %>%
+  st_as_sf() %>% 
+  st_buffer(1) %>%
+  st_union() %>%
+  st_buffer(-1) %>% 
+  st_as_sf() -> polygon_forest_temp
+
+ggplot() +
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5, lwd = 0) +
+  geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) + 
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+\newpage
+A 500 m buffer followed by a inner 500 m buffer enabled the merging of adjacent forest stands.
+
+```{r}
+#| label: fig-base-data-3
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Forest polygon with a 500 m buffer followed by a inner 500 m buffer."
+polygon_forest_temp %>% 
+  st_buffer(500) %>%
+  st_union() %>%
+  st_buffer(-500)  %>%
+  st_as_sf() -> polygon_forest_temp
+
+ggplot() +
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5) +
+  geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) +  
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+\newpage
+A final inner buffer of approximately 7 km was used to produce final polygons that allowed for the placement of each area's centroid.
+
+```{r}
+#| label: fig-base-data-4
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Forest polygon with a inner 7 km buffer."
+inner_radius <- sqrt(10000^2*2)/2
+
+polygon_forest_temp %>%
+  st_buffer(-inner_radius)  %>%
+  st_as_sf() -> polygon_forest_temp
+
+ggplot() +
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5) +
+  geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) + 
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+\newpage
+The first area was placed randomly, and then the remaining 9 areas were iteratively placed as far as possible from the previously placed areas. The following figure shows the last placed centroid area in red and the distance raster used to identify the farthest possible position.
+
+```{r}
+#| label: fig-base-data-5
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Distance matrix used to place the centroid of 5 km × 5 km square areas. The figure shows the last placed centroid area in red."
+sample_farthest_point(nb = 10,
+                      res = 100,
+                      sampling_area = polygon_forest_temp,
+                      seed = 1) %>%
+  st_as_sf() -> sampling_point
+
+# Create raster
+bbox_temp <- sf::st_bbox(polygon_forest_temp)
+
+rast_template <- terra::rast(
+  xmin  = bbox_temp["xmin"],
+  xmax  = bbox_temp["xmax"],
+  ymin  = bbox_temp["ymin"],
+  ymax  = bbox_temp["ymax"],
+  resolution = 100,
+  crs = sf::st_crs(polygon_forest_temp)$wkt
+)
+
+terra::values(rast_template) <- 1
+
+# Compute distance raster FROM currently selected points
+dist_raster <- terra::distance(rast_template, terra::vect(sampling_point[1:9,]))
+
+# Mask raster
+dist_raster_masked <- terra::mask(dist_raster, polygon_forest_temp)
+
+map_dfr(1:10,
+        function(x){
+          sampling_point[x,] %>%
+            st_buffer(2500) %>%
+            st_as_sf() %>%
+            st_bbox() %>%
+            st_as_sfc() %>%
+            st_as_sf()
+        }) %>%
+  st_as_sf() -> sampling_square
+
+ggplot() +
+  geom_spatraster_rgb(data = sat*1.5) +
+  geom_spatraster(data = (dist_raster_masked %>% terra::project("EPSG:4326", method = "bilinear"))/1000) +
+  scale_fill_continuous(palette = "Viridis", na.value = NA) +
+  geom_sf(data = sampling_square %>% st_transform(4326), fill = "white") +
+  geom_sf(data = sampling_point[1:9,] %>% st_transform(4326), pch = 16) +
+  geom_sf(data = sampling_point[10,] %>% st_transform(4326), color = "red", pch = 16) +
+  geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) +
+  labs(fill = "Distance from first 9 points (km)") +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+\newpage
+For each area, only actual forest stands (POLYTYPE == "FOR") were used for segmentation.
+
+```{r}
+#| label: fig-base-data-6
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Photo-interpreted forest inventory maps where polygon are considered forested and segmentation is therefore performed."
+sampling_square %>% 
+  slice(4) -> sampling_square_temp
+
+sat_sampling_square <- get_tiles(x = st_bbox(sampling_square_temp %>% st_buffer(250)),
+                                 provider = "Esri.WorldImagery",
+                                 zoom = 14,
+                                 crop = TRUE)
+
+sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
+  sf::st_cast("MULTIPOLYGON") %>%
+  sf::st_cast("POLYGON") %>%
+  st_filter(sampling_square_temp) -> polygon_forest_temp
+
+ggplot() +
+  geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = "black", linewidth = 1, alpha = 0.4) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+\newpage
+## Segmentation
+
+The "SPL + S2 red edge" model was used for segmentation parameterization. Theses metrics used in this model are shown in the following figures :
+ * z_p95 → Height of 95th percentiles of returns above 1.3 m
+ * z_above2 → Canopy cover of first returns above 2 m
+ * B6 → Sentinel-2 Vegetation Red Edge 2 (RE2) - 740 nm
+
+```{r}
+#| label: fig-base-data-7
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "First metric used for \"SPL + S2 red edge\" model : z_p95."
+terra::rast("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_RMF.tif") -> metrics
+
+metrics %>%
+  terra::crop(sampling_square_temp %>% st_transform(st_crs(metrics))) %>%
+  terra::mask(sampling_square_temp %>% st_transform(st_crs(metrics))) -> metrics_temp
+
+for(x in c("z_p95", "z_above2", "B6")){
+  ggplot() +
+    geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+    geom_spatraster(data = metrics_temp[[x]]) +
+    scale_fill_whitebox_c(palette = "muted",
+                          labels = scales::label_number(accuracy = 1),
+                          breaks = scales::pretty_breaks(n = 3)) +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    theme_bw() +
+    labs(fill = x) +
+    theme(legend.position = "bottom") -> metric_fig
+  
+  assign(x, metric_fig)
+}
+
+z_p95
+```
+
+```{r}
+#| label: fig-base-data-8
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Second metric used for \"SPL + S2 red edge\" model : z_above2."
+z_above2
+```
+
+```{r}
+#| label: fig-base-data-9
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Third metric used for \"SPL + S2 red edge\" model : Vegetation Red Edge 2 band from Sentinel-2 (B6)."
+B6
+```
+\newpage
+## Parameters
+
+The parameters tested are the following : 
+
+ * The threshold controls the maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :
+
+     * Small threshold → fine segmentation (many small regions)
+     * Large threshold → coarse segmentation (fewer, larger regions)
+     * This parameter was tested with values ranging from 10 to 100 in increments of 10
+
+ * The weight assigned to spectral homogeneity in evaluating spectral similarity (pixel values, band means) when deciding whether regions should merge :
+
+     * If high → segmentation will mostly respect spectral values
+     * If low → spectral similarity matters little, other criteria (shape) dominate
+     * This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1
+
+ * The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :
+
+     * If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker
+     * If low → region boundaries will mostly follow spectral homogeneity
+     * This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1
+
+Thus, a total of 1000 parameters combinations were tested.
+
+\newpage
+## Analysis
+
+The three performance metrics are the following :
+
+1. Symmetric mean absolute percentage error (SMAPE) of polygon density
+ - The value is positive when the segmentation has a higher density than the photo-interpreted forest inventory map and negative when it has a lower density
+ - In the example above, the SMAPE of density is 0.17, as the photo-interpreted forest inventory map has a density of 7.25 polygons/km² (1465 polygons) and the segmentation has a density of 8.59 polygons/km² (1650 polygons)
+
+The following two metrics are computed at the pixel level and are therefore area-weighted.
+
+2. Overlapping kernel density of the polygon stand area at the pixel level
+ - This performance metric represents how well the distribution of segmentation polygon stand areas matches the distribution of photo-interpreted forest inventory polygon areas
+
+3. Overlapping kernel density of the polygon stand shape index at the pixel level
+ - Similarly, this performance metric represents how well the distribution of segmentation polygon stand shape index matches the distribution of photo-interpreted forest inventory polygon shape indices
+ - The shape index was computed using smoothed polygons to avoid overestimating perimeter
+
+The assumption underlying this analysis is that automated stand delineations should have the same distribution of polygon area and shape as photo-interpreted forest inventory polygons and therefore represent operationally plausible forest stands.
+
+\newpage
+## Results
+
+The results presented here are, as mentioned before, for Romeo Malette Forest with the "SPL + S2 red edge" model. The SMAPE threshold is 0.1, which represents approximately 10% variation in polygon density. All sets of parameters that produced SMAPE values outside the range of -0.1 to 0.1 were excluded. 
+
+```{r}
+#| label: fig-1
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Symmetric mean absolute percentage error (SMAPE) of polygon density based on threshold, weight of spectral homogeneity and weight of spatial homogeneity and where SMAPE values outside the range of -0.1 to 0.1 were excluded."
+# Parameters
+dens_threshold <- 0.1
+weight_area <- 1/2
+weight_shape <- 1/2
+
+# Read data
+readRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/results.rds") %>%
+  rename(dens_smape = dens_sspe) %>% 
+  mutate(area_score = overlap_area_raster,
+         shape_score = overlap_shape_smoothed_raster) %>%
+  mutate(final_score = (weight_area*(1-area_score)) + (weight_shape*(1-shape_score))) %>%
+  mutate_at(c("thresh", "spec", "spat"), as.numeric) -> results
+
+# Compute for a specific forest and model and produce figures
+selected_forest <- "RMF"
+selected_model <- "model_F"
+
+results %>%
+  filter(forest == selected_forest) %>%
+  filter(model_name == selected_model) %>%
+  filter(dens_smape >= -dens_threshold & dens_smape <= dens_threshold) %>%
+  mutate(parameters = paste0("thresh", thresh, "_spec", spec*100, "_spat", spat*100)) -> results_temp
+
+# Color scaling
+pal <- colorRampPalette(c("#332288", "#117733", "#882235"))
+col_scaled <- pal(100)[cut(results_temp$dens_smape, breaks = 100)]
+
+# Size scaling
+cex_scaled <- scales::rescale(results_temp$dens_smape, to = c(0.5, 2))
+
+# Plot
+s3d <- scatterplot3d(
+  x = results_temp$thresh,
+  y = results_temp$spec,
+  z = results_temp$spat,
+  color = col_scaled,
+  pch = 16,
+  cex.symbols = cex_scaled,
+  xlab = "Threshold",
+  ylab = "Weight of spectral homogeneity",
+  zlab = "Weight of spatial homogeneity"
+)
+```
+
+\newpage
+
+After this step, the optimal parameters were chosen as those that maximized both the area overlap and the shape index overlap. The final score was computed as follows:
+
+**1 − (overlap_area + overlap_shape_index) / 2**
+
+The best parameter set was chosen as the one with the lowest final score among all combinations with an SMAPE of polygon density of approximately 0.1. In the following figure, the red circles indicate the best parameter sets.
+```{r}
+#| label: fig-2
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Final score polygon density based on threshold, weight of spectral homogeneity and weight of spatial homogeneity and where SMAPE values outside the range of -0.1 to 0.1 were excluded."
+results_temp %>%
+  arrange(final_score) %>%
+  slice(1) %>%
+  dplyr::select(forest, model_name, thresh, spec, spat, overlap_area_raster, overlap_shape_smoothed_raster, n_forest, n_segmentation, dens_smape, final_score) -> best_parameters_temp
+
+local({
+
+# Color scaling
+pal <- colorRampPalette(c("#117733", "#882235"))
+col_scaled <- pal(100)[cut(results_temp$final_score, breaks = 100)]
+
+# Size scaling
+cex_scaled <- scales::rescale(results_temp$final_score, to = c(2, 0.5))
+
+# Plot
+s3d <- scatterplot3d(
+  x = results_temp$thresh,
+  y = results_temp$spec,
+  z = results_temp$spat,
+  color = col_scaled,
+  pch = 16,
+  cex.symbols = cex_scaled,
+  xlab = "Threshold",
+  ylab = "Weight of spectral homogeneity",
+  zlab = "Weight of spatial homogeneity"
+)
+
+i <- which.min(results_temp$final_score)
+
+coords <- s3d$xyz.convert(
+  results_temp$thresh[i],
+  results_temp$spec[i],
+  results_temp$spat[i]
+)
+
+points(coords$x, coords$y, col = "red", pch = 19, cex = 2)
+
+})
+```
+
+The following figure shows an example of segmentation in Romeo Malette Forest using the "SPL + S2 red edge" model with the best parameters from the previous figure (threshold of 40, spectral homogeneity of 0.5, and spatial homogeneity of 0.5). There is also an example of a smoothed segmentation, as mentioned earlier.
+
+```{r}
+#| label: show-segmentation-1
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+suppressMessages(
+  sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
+    sf::st_make_valid() %>%
+    sf::st_cast("MULTIPOLYGON") %>%
+    sf::st_cast("POLYGON") %>%
+    mutate(area = as.numeric(sf::st_area(.)),
+           perimeter = as.numeric(sf::st_perimeter(.)),
+           perimeter_area_ratio = perimeter/area,
+           shape_index = perimeter / sqrt(pi * area)) %>%
+    filter_if(is.numeric, is.finite)) -> polygon_forest_temp
+
+polygon_forest_temp %>%
+  dplyr::select(area) %>%
+  terra::rasterize(metrics, field = "area") %>%
+  terra::values(na.rm = TRUE) -> polygon_forest_area_raster
+
+polygon_forest_area_raster[is.finite(polygon_forest_area_raster)] -> polygon_forest_area_raster
+
+polygon_forest_temp %>%
+  dplyr::select(shape_index) %>%
+  terra::rasterize(metrics, field = "shape_index") %>%
+  terra::values(na.rm = TRUE) -> polygon_forest_shape_index_raster
+
+polygon_forest_shape_index_raster[is.finite(polygon_forest_shape_index_raster)] -> polygon_forest_shape_index_raster
+
+suppressMessages(
+  st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50.shp",
+          quiet = T) %>% 
+    sf::st_make_valid() %>%
+    sf::st_cast("MULTIPOLYGON") %>%
+    sf::st_cast("POLYGON") %>%
+    mutate(area = as.numeric(st_area(.)),
+           perimeter = as.numeric(st_perimeter(.)),
+           perimeter_area_ratio = perimeter/area,
+           shape_index = perimeter / sqrt(pi * area)) %>%
+    filter_if(is.numeric, is.finite)) -> segmentation 
+
+segmentation %>%
+  dplyr::select(area) %>%
+  terra::rasterize(metrics, field = "area") %>%
+  terra::values(na.rm = TRUE) -> segmentation_area_raster
+
+segmentation_area_raster[is.finite(segmentation_area_raster)] -> segmentation_area_raster
+
+segmentation %>%
+  dplyr::select(shape_index) %>%
+  terra::rasterize(metrics, field = "shape_index") %>%
+  terra::values(na.rm = TRUE) -> segmentation_shape_index_raster
+
+segmentation_shape_index_raster[is.finite(segmentation_shape_index_raster)] -> segmentation_shape_index_raster
+
+suppressMessages(
+  st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50_smoothed.shp",
+          quiet = T) %>% 
+    sf::st_make_valid() %>%
+    sf::st_cast("MULTIPOLYGON") %>%
+    sf::st_cast("POLYGON") %>%
+    mutate(area = as.numeric(st_area(.)),
+           perimeter = as.numeric(st_perimeter(.)),
+           perimeter_area_ratio = perimeter/area,
+           shape_index = perimeter / sqrt(pi * area)) %>%
+    filter_if(is.numeric, is.finite)) -> segmentation_smoothed
+
+segmentation_smoothed %>%
+  dplyr::select(area) %>%
+  terra::rasterize(metrics, field = "area") %>%
+  terra::values(na.rm = TRUE) -> segmentation_smoothed_area_raster
+
+segmentation_smoothed_area_raster[is.finite(segmentation_smoothed_area_raster)] -> segmentation_smoothed_area_raster
+
+segmentation_smoothed %>%
+  dplyr::select(shape_index) %>%
+  terra::rasterize(metrics, field = "shape_index") %>%
+  terra::values(na.rm = TRUE) -> segmentation_smoothed_shape_index_raster
+
+segmentation_smoothed_shape_index_raster[is.finite(segmentation_smoothed_shape_index_raster)] -> segmentation_smoothed_shape_index_raster
+```
+
+```{r}
+#| label: fig-segmentation-2
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Photo-interpreted forest inventory polygons."
+ggplot() +
+  geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+  geom_sf(data = polygon_forest_temp %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#1E88E5", linewidth = 1, alpha = 0.5) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+```{r}
+#| label: fig-segmentation-3
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Automated stand delineations."
+ggplot() +
+  geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+  geom_sf(data = segmentation %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#D81B60", linewidth = 1, alpha = 0.5) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+```{r}
+#| label: fig-segmentation-4
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Smoothed automated stand delineations."
+ggplot() +
+  geom_spatraster_rgb(data = sat_sampling_square*1.5) +
+  geom_sf(data = segmentation_smoothed %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#FFC107", linewidth = 1, alpha = 0.5) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+```{r}
+#| label: fig-segmentation-5
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Polygon area (ha) density of photo-interpreted forest inventory polygon and automated stand delineations (not smoothed)."
+ggplot() +
+  geom_density(aes(x = polygon_forest_area_raster/10000, color = "Photo-interpreted forest inventory polygon"),
+               linewidth = 1) +
+  geom_density(aes(x = segmentation_area_raster/10000, color = "Automated stand delineations"),
+               linewidth = 1) +
+  geom_density(aes(x = segmentation_smoothed_area_raster/10000, color = "Smoothed automated stand delineations"),
+               linewidth = 1) +
+  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107")) +
+  labs(x = "Polygon area (ha)",
+       y = "Density") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())
+```
+
+```{r}
+#| label: fig-segmentation-6
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Polygon shape index density of photo-interpreted forest inventory polygon and automated stand delineations (smoothed and not smoothed)."
+ggplot() +
+  geom_density(aes(x = polygon_forest_shape_index_raster, color = "Photo-interpreted forest inventory polygon"),
+               linewidth = 1) +
+  geom_density(aes(x = segmentation_shape_index_raster, color = "Automated stand delineations"),
+               linewidth = 1) +
+  geom_density(aes(x = segmentation_smoothed_shape_index_raster, color = "Smoothed automated stand delineations"),
+               linewidth = 1) +
+  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107")) +
+  labs(x = "Shape index",
+       y = "Density") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())
+```

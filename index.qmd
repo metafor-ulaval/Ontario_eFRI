@@ -11,9 +11,7 @@ date: "2026-05-20"
 ```{r}
 #| label: setup
 #| include: FALSE
-
 knitr::opts_chunk$set(echo = TRUE)
-
 ```
 
 ```{r}
@@ -26,7 +24,9 @@ library(tidyverse)
 library(magrittr)
 library(terra)
 library(tidyterra)
+library(ggspatial)
 library(nngeo)
+library(rmapshaper)
 library(sf)
 library(knitr)
 library(maptiles)
@@ -39,9 +39,11 @@ library(patchwork)
 #| results: hide
 #| message: false
 #| warning: false
-wd <- "D:/00_Ontario_eFRI/10_livrables"
-
-
+wd  <- "D:/00_Ontario_eFRI/10_livrables"
+pal <- c(OVF = "#5B9BD5", RMF = "#A9D18E", DFA = "red")
+lab <- c(OVF = "A) Ottawa Valley Forest",
+         RMF = "B) Romeo Malette Forest",
+         DFA = "Validation area")
 ```
 
 ```{r}
@@ -49,18 +51,18 @@ wd <- "D:/00_Ontario_eFRI/10_livrables"
 #| include: false
 #| message: false
 #| warning: false
-for(forest in c("RMF", "OVF")){
-  st_read(paste0(wd, "/shapefiles/", forest, "/ctg.shp"), quiet = T) %>%
-    st_geometry() %>%
-    st_buffer(100) %>%
-    st_union() %>%
-    st_buffer(-100) %>%
-    st_remove_holes() %>% 
-    st_transform(4326) %>% 
-    st_as_sf() -> ctg
-  
-  assign(forest, ctg)
-}
+canada <- st_read(paste0(wd, "/shapefiles/province_territory/lpr_000b16a_e_simplify.shp"),
+                  quiet = TRUE) %>% 
+  st_transform(3979)
+
+st_read("D:/00_Ontario_eFRI/10_livrables/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp") %>% 
+  filter(FMU_NAME %in% c("Ottawa Valley Forest", "Romeo Malette Forest")) %>% 
+  mutate(site = c("OVF", "RMF")) %>% 
+  st_transform(4326) -> fmu
+
+st_read("D:/00_Ontario_eFRI/01_base_data/drone_flight_areas/drone_flight_areas.shp", quiet = TRUE) %>%
+  filter(!sector %in% c("S5", "S8")) %>%
+  st_transform(4326) -> dfa
 ```
 
 # **1** Project summary {-#project_summary}
@@ -127,30 +129,71 @@ The project developed and applied a validation framework based on three compleme
   * The correspondence between mapped polygon boundaries and independently detected structural transitions.
 
 # **5** Study area {-#introduction_studyarea}
-The study area is located in the province of Ontario, in Canada. Romeo Malette Forest is located in the middle of the province and is therefore coniferous. 
+[ADD TEXT HERE]
 
 ```{r}
-#| label: introduction-study-area
+#| label: fig-study-area
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-for(forest in c("RMF", "OVF")){
-  sat <- get_tiles(x = st_bbox(get(forest) %>% st_buffer(5000)),
-                   provider = "Esri.WorldImagery",
-                   zoom = 11,
-                   crop = TRUE)
+#| fig-cap: "Study area of the forest management units of Ottawa Valley Forest and Romeo Malette Forest, located in Canada and validation areas."
+panel <- function(f, letter) {
+  g <- filter(fmu, site == f)
+  
+  sat <- get_tiles(st_bbox(st_buffer(g, 5000)),
+                   "Esri.WorldImagery", zoom = 11, crop = TRUE)
   
   ggplot() +
-    geom_spatraster_rgb(data = sat) +
-    geom_sf(data = get(forest), color = "white", fill = NA, lwd = 1) +
-    scale_x_continuous(expand = c(0, 0)) +
-    scale_y_continuous(expand = c(0, 0)) +
-    theme_bw() -> figure
-  
-  assign(paste0(forest, "_figure"), figure)
+    geom_spatraster_rgb(data = sat*1.5) +
+    geom_sf(data = g, color = "#FEFE62", fill = NA, linewidth = 1.2) +
+    geom_sf(data = st_centroid(st_filter(dfa, g)), color = pal[["DFA"]],
+            shape = 16, size = 2) +
+    annotate("text", x = -Inf, y = Inf, label = letter, hjust = -0.8, vjust = 1.6,
+             size = 8, colour = "black", fontface = "bold") +    
+    coord_sf(expand = FALSE) + 
+    annotation_scale(location = "br", width_hint = 0.28, style = "ticks",
+                     tick_height = 1, line_width = 2, line_col = "white", 
+                     text_col = "white", text_cex = 1, height = unit(0.15, "cm")) +
+    theme_void()
 }
 
-RMF_figure
-OVF_figure
+A <- panel("OVF", "A")
+
+B <- panel("RMF", "B")
+
+global <- ggplot() +
+  geom_sf(data = canada, fill = "grey88", color = "grey45", linewidth = 0.2) +
+  geom_sf(data = st_centroid(st_transform(fmu, 3979)), aes(color = site),
+          shape = 16, size = 3.5) + 
+  geom_point(data = data.frame(x = NA_real_, y = NA_real_, site = "DFA"),
+             aes(x, y, color = site), shape = 16, size = 3.5, inherit.aes = FALSE) +
+  geom_polygon(data = data.frame(x = NA_real_, y = NA_real_, k = "Forest management unit"),
+                 aes(x, y, linetype = k), fill = NA, color = "#FEFE62", linewidth = 0.8,
+                 inherit.aes = FALSE) +
+  scale_linetype_manual(NULL, values = 1) +
+  scale_color_manual(NULL, values = pal, labels = lab, limits = names(pal)) +
+  coord_sf(crs = st_crs(3979), default_crs = st_crs(4326), expand = FALSE) +
+  scale_x_continuous(breaks = seq(-170, -10, 10)) +
+  scale_y_continuous(breaks = seq(10, 80, 5)) +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        axis.text  = element_text(size = 5, color = "grey30"),
+        panel.grid = element_line(linewidth = 0.2),
+        legend.position     = "bottom",
+        legend.direction    = "vertical",
+        legend.justification = "center",
+        legend.box          = "vertical",
+        legend.box.just     = "left",
+        legend.box.spacing  = unit(4, "pt"),
+        legend.spacing.y    = unit(0, "pt"),
+        legend.background = element_rect(fill = alpha("white", 0.8), color = NA),
+        legend.key        = element_blank(),
+        legend.key.size   = unit(0.55, "cm"),
+        legend.text       = element_text(size = 9),
+        legend.margin     = margin(3, 5, 3, 3))
+
+left <- global / plot_spacer() + plot_layout(heights = c(1, 0.5))
+fig  <- (left | (A / B)) + plot_layout(widths = c(1, 1.3))
+fig
 ```

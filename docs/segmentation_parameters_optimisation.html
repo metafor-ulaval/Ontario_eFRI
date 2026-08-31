@@ -8,7 +8,7 @@
 
 <meta name="dcterms.date" content="2026-05-20">
 
-<title>Project outputs – Ontario eFRI</title>
+<title>Appendix A : Segmentation parameters optimisation – Ontario eFRI</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -101,11 +101,11 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Data and Methods</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="./project_outputs.html" aria-current="page"> 
+    <a class="nav-link" href="./project_outputs.html"> 
 <span class="menu-text">Project Outputs</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./segmentation_parameters_optimisation.html"> 
+    <a class="nav-link active" href="./segmentation_parameters_optimisation.html" aria-current="page"> 
 <span class="menu-text">Appendix A : Segmentation parameters optimisation</span></a>
   </li>  
 </ul>
@@ -124,10 +124,12 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#performance-assessment" id="toc-performance-assessment" class="nav-link active" data-scroll-target="#performance-assessment"><strong>1</strong> Visual comparison of automated stand delineations and photo-interpreted inventory map</a></li>
-  <li><a href="#partitioning-forest-attribute-variability" id="toc-partitioning-forest-attribute-variability" class="nav-link" data-scroll-target="#partitioning-forest-attribute-variability"><strong>2</strong> Partitioning of forest-attribute variability</a></li>
-  <li><a href="#internal-polygon-homogeneity" id="toc-internal-polygon-homogeneity" class="nav-link" data-scroll-target="#internal-polygon-homogeneity"><strong>3</strong> Internal polygon homogeneity</a></li>
-  <li><a href="#correspondence-structural-transition" id="toc-correspondence-structural-transition" class="nav-link" data-scroll-target="#correspondence-structural-transition"><strong>4</strong> Correspondence of stand boundaries with structural transitions</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#sampling-area" id="toc-sampling-area" class="nav-link" data-scroll-target="#sampling-area">Sampling area</a></li>
+  <li><a href="#segmentation" id="toc-segmentation" class="nav-link" data-scroll-target="#segmentation">Segmentation</a></li>
+  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#analysis" id="toc-analysis" class="nav-link" data-scroll-target="#analysis">Analysis</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   </ul>
 </nav>
     </div>
@@ -136,7 +138,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Project outputs</h1>
+<h1 class="title">Appendix A : Segmentation parameters optimisation</h1>
 </div>
 
 
@@ -159,82 +161,310 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="performance-assessment" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>1</strong> Visual comparison of automated stand delineations and photo-interpreted inventory map</h1>
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>This appendix describes the steps to find the optimal parameters of the Generic Region Merging (GRM) algorithm in the Orfeo ToolBox for automatically delineating operationally plausible forest stands. Photo-interpreted forest inventory maps were used as reference data to determine the optimal parameters. The optimization was performed using the symmetric mean absolute percentage error (SMAPE) of polygon density, as well as the overlapping kernel density of polygon stand area and polygon stand shape index at the pixel level. In this appendix, an example is provided for only one forest management unit and one combination of metrics; however, optimal parameters can be determined for any study area and any combination of metrics.</p>
+</section>
+<section id="sampling-area" class="level2">
+<h2 class="anchored" data-anchor-id="sampling-area">Sampling area</h2>
+<p>Romeo Malette Forest is the forest management unit used for parameter optimization. It is located in Ontario, Canada, and is predominantly coniferous. Ten 5 km × 5 km square areas were used for the subsequent analysis.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-1-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1. Romeo Malette Forest with the ten 5 km × 5 km square areas used for segmentation parameters optimisation.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>To position these areas, only actual forest stands (POLYTYPE == “FOR”) from photo-interpreted forest inventory maps were retained.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-2" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-2-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2. Photo-interpreted forest inventory maps where polygon are considered forested.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>A 500 m buffer followed by a inner 500 m buffer enabled the merging of adjacent forest stands.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-3" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-3-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3. Forest polygon with a 500 m buffer followed by a inner 500 m buffer.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>A final inner buffer of approximately 7 km was used to produce final polygons that allowed for the placement of each area’s centroid.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-4" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-4-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-4-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-4-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4. Forest polygon with a inner 7 km buffer.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>The first area was placed randomly, and then the remaining 9 areas were iteratively placed as far as possible from the previously placed areas. The following figure shows the last placed centroid area in red and the distance raster used to identify the farthest possible position.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-5" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-5-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5. Distance matrix used to place the centroid of 5 km × 5 km square areas. The figure shows the last placed centroid area in red.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+<p>For each area, only actual forest stands (POLYTYPE == “FOR”) were used for segmentation.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-6" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-6-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-6-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-6-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6. Photo-interpreted forest inventory maps where polygon are considered forested and segmentation is therefore performed.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="segmentation" class="level2">
+<h2 class="anchored" data-anchor-id="segmentation">Segmentation</h2>
+<p>The “SPL + S2 red edge” model was used for segmentation parameterization. Theses metrics used in this model are shown in the following figures : * z_p95 → Height of 95th percentiles of returns above 1.3 m * z_above2 → Canopy cover of first returns above 2 m * B6 → Sentinel-2 Vegetation Red Edge 2 (RE2) - 740 nm</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-7" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-7-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-7-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-7-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7. First metric used for “SPL + S2 red edge” model : z_p95.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-8" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-8-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-8-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-8-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8. Second metric used for “SPL + S2 red edge” model : z_above2.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-base-data-9" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-base-data-9-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-base-data-9-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-base-data-9-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;9. Third metric used for “SPL + S2 red edge” model : Vegetation Red Edge 2 band from Sentinel-2 (B6).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<p>The parameters tested are the following :</p>
+<ul>
+<li><p>The threshold controls the maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :</p>
+<ul>
+<li>Small threshold → fine segmentation (many small regions)</li>
+<li>Large threshold → coarse segmentation (fewer, larger regions)</li>
+<li>This parameter was tested with values ranging from 10 to 100 in increments of 10</li>
+</ul></li>
+<li><p>The weight assigned to spectral homogeneity in evaluating spectral similarity (pixel values, band means) when deciding whether regions should merge :</p>
+<ul>
+<li>If high → segmentation will mostly respect spectral values</li>
+<li>If low → spectral similarity matters little, other criteria (shape) dominate</li>
+<li>This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1</li>
+</ul></li>
+<li><p>The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :</p>
+<ul>
+<li>If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker</li>
+<li>If low → region boundaries will mostly follow spectral homogeneity</li>
+<li>This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1</li>
+</ul></li>
+</ul>
+<p>Thus, a total of 1000 parameters combinations were tested.</p>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="analysis" class="level2">
+<h2 class="anchored" data-anchor-id="analysis">Analysis</h2>
+<p>The three performance metrics are the following :</p>
+<ol type="1">
+<li>Symmetric mean absolute percentage error (SMAPE) of polygon density</li>
+</ol>
+<ul>
+<li>The value is positive when the segmentation has a higher density than the photo-interpreted forest inventory map and negative when it has a lower density</li>
+<li>In the example above, the SMAPE of density is 0.17, as the photo-interpreted forest inventory map has a density of 7.25 polygons/km² (1465 polygons) and the segmentation has a density of 8.59 polygons/km² (1650 polygons)</li>
+</ul>
+<p>The following two metrics are computed at the pixel level and are therefore area-weighted.</p>
+<ol start="2" type="1">
+<li>Overlapping kernel density of the polygon stand area at the pixel level</li>
+</ol>
+<ul>
+<li>This performance metric represents how well the distribution of segmentation polygon stand areas matches the distribution of photo-interpreted forest inventory polygon areas</li>
+</ul>
+<ol start="3" type="1">
+<li>Overlapping kernel density of the polygon stand shape index at the pixel level</li>
+</ol>
+<ul>
+<li>Similarly, this performance metric represents how well the distribution of segmentation polygon stand shape index matches the distribution of photo-interpreted forest inventory polygon shape indices</li>
+<li>The shape index was computed using smoothed polygons to avoid overestimating perimeter</li>
+</ul>
+<p>The assumption underlying this analysis is that automated stand delineations should have the same distribution of polygon area and shape as photo-interpreted forest inventory polygons and therefore represent operationally plausible forest stands.</p>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The results presented here are, as mentioned before, for Romeo Malette Forest with the “SPL + S2 red edge” model. The SMAPE threshold is 0.1, which represents approximately 10% variation in polygon density. All sets of parameters that produced SMAPE values outside the range of -0.1 to 0.1 were excluded.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-1" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/segmentation_S1_simplified.jpg" class="img-fluid figure-img" width="1500">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-1-1.png" class="img-fluid figure-img" width="672">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1. Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment.
+Figure&nbsp;10. Symmetric mean absolute percentage error (SMAPE) of polygon density based on threshold, weight of spectral homogeneity and weight of spatial homogeneity and where SMAPE values outside the range of -0.1 to 0.1 were excluded.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
+<div style="page-break-after: always;"></div>
+<p>After this step, the optimal parameters were chosen as those that maximized both the area overlap and the shape index overlap. The final score was computed as follows:</p>
+<p><strong>1 − (overlap_area + overlap_shape_index) / 2</strong></p>
+<p>The best parameter set was chosen as the one with the lowest final score among all combinations with an SMAPE of polygon density of approximately 0.1. In the following figure, the red circles indicate the best parameter sets.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-2" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/segmentation_S7_simplified.jpg" class="img-fluid figure-img" width="1500">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-2-1.png" class="img-fluid figure-img" width="672">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2. Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment.
+Figure&nbsp;11. Final score polygon density based on threshold, weight of spectral homogeneity and weight of spatial homogeneity and where SMAPE values outside the range of -0.1 to 0.1 were excluded.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
-</section>
-<section id="partitioning-forest-attribute-variability" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>2</strong> Partitioning of forest-attribute variability</h1>
+<p>The following figure shows an example of segmentation in Romeo Malette Forest using the “SPL + S2 red edge” model with the best parameters from the previous figure (threshold of 40, spectral homogeneity of 0.5, and spatial homogeneity of 0.5). There is also an example of a smoothed segmentation, as mentioned earlier.</p>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-3" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-segmentation-2" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/pve_figure.png" class="img-fluid figure-img" width="649">
+<div aria-describedby="fig-segmentation-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-segmentation-2-1.png" class="img-fluid figure-img" width="672">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3. Performance of automated stand delineations in partitioning forest-attribute variability relative to the photo-interpreted forest inventory map. Cell values are differences in proportion of variance explained (PVE), expressed in percentage points. Positive values indicate greater PVE than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12. Photo-interpreted forest inventory polygons.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
-</section>
-<section id="internal-polygon-homogeneity" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>3</strong> Internal polygon homogeneity</h1>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-4" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-segmentation-3" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-4-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/ih_figure.png" class="img-fluid figure-img" width="649">
+<div aria-describedby="fig-segmentation-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-segmentation-3-1.png" class="img-fluid figure-img" width="672">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-4-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4. Performance of automated stand delineations in improving internal polygon homogeneity relative to the photo-interpreted forest inventory map. Cell values represent the relative change in area-weighted within-polygon standard deviation (wSD), expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate lower within-polygon variability than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;13. Automated stand delineations.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
-</section>
-<section id="correspondence-structural-transition" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>4</strong> Correspondence of stand boundaries with structural transitions</h1>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-5" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-segmentation-4" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/smw_figure.png" class="img-fluid figure-img" width="649">
+<div aria-describedby="fig-segmentation-4-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-segmentation-4-1.png" class="img-fluid figure-img" width="672">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5. Performance of automated stand delineations in improving correspondence of stand boundaries with structural transitions relative to the photo-interpreted forest inventory map. Cell values represent the relative change in correspondence between a stands boundary and a detected structural structure, expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate higher correspondence. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-4-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;14. Smoothed automated stand delineations.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-segmentation-5" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-segmentation-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-segmentation-5-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15. Polygon area (ha) density of photo-interpreted forest inventory polygon and automated stand delineations (not smoothed).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-segmentation-6" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-segmentation-6-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="segmentation_parameters_optimisation_files/figure-html/fig-segmentation-6-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-6-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;16. Polygon shape index density of photo-interpreted forest inventory polygon and automated stand delineations (smoothed and not smoothed).
 </figcaption>
 </figure>
 </div>
