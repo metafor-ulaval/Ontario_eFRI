@@ -116,11 +116,11 @@ smape <- function(actual, predicted) {
 }
 ```
 
-## Introduction
+# **1** Introduction {-#introduction}
 
 This appendix describes the steps to find the optimal parameters of the Generic Region Merging (GRM) algorithm in the Orfeo ToolBox for automatically delineating operationally plausible forest stands. Photo-interpreted forest inventory maps were used as reference data to determine the optimal parameters. The optimization was performed using the symmetric mean absolute percentage error (SMAPE) of polygon density, as well as the overlapping kernel density of polygon stand area and polygon stand shape index at the pixel level. In this appendix, an example is provided for only one forest management unit and one combination of metrics; however, optimal parameters can be determined for any study area and any combination of metrics.
 
-## Sampling area
+# **2** Sampling area {-#sampling-area}
 
 Romeo Malette Forest is the forest management unit used for parameter optimization. It is located in Ontario, Canada, and is predominantly coniferous. Ten 5 km × 5 km square areas were used for the subsequent analysis.
 
@@ -333,7 +333,32 @@ ggplot() +
 ```
 
 \newpage
-## Segmentation
+# **3** Parameters {-#parameters}
+
+The parameters tested are the following : 
+
+ * The threshold controls the maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :
+
+     * Small threshold → fine segmentation (many small regions)
+     * Large threshold → coarse segmentation (fewer, larger regions)
+     * This parameter was tested with values ranging from 10 to 100 in increments of 10
+
+ * The weight assigned to spectral homogeneity in evaluating spectral similarity (pixel values, band means) when deciding whether regions should merge :
+
+     * If high → segmentation will mostly respect spectral values
+     * If low → spectral similarity matters little, other criteria (shape) dominate
+     * This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1
+
+ * The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :
+
+     * If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker
+     * If low → region boundaries will mostly follow spectral homogeneity
+     * This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1
+
+Thus, a total of 1000 parameters combinations were tested.
+
+\newpage
+# **4** Segmentation input {-#segmentation-input}
 
 The "SPL + S2 red edge" model was used for segmentation parameterization. Theses metrics used in this model are shown in the following figures :
  * z_p95 → Height of 95th percentiles of returns above 1.3 m
@@ -392,52 +417,33 @@ z_above2
 B6
 ```
 \newpage
-## Parameters
-
-The parameters tested are the following : 
-
- * The threshold controls the maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :
-
-     * Small threshold → fine segmentation (many small regions)
-     * Large threshold → coarse segmentation (fewer, larger regions)
-     * This parameter was tested with values ranging from 10 to 100 in increments of 10
-
- * The weight assigned to spectral homogeneity in evaluating spectral similarity (pixel values, band means) when deciding whether regions should merge :
-
-     * If high → segmentation will mostly respect spectral values
-     * If low → spectral similarity matters little, other criteria (shape) dominate
-     * This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1
-
- * The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :
-
-     * If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker
-     * If low → region boundaries will mostly follow spectral homogeneity
-     * This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1
-
-Thus, a total of 1000 parameters combinations were tested.
-
-\newpage
-## Analysis
+# **5** Analysis {-#analysis}
 
 The three performance metrics are the following :
 
-1. Symmetric mean absolute percentage error (SMAPE) of polygon density
- - The value is positive when the segmentation has a higher density than the photo-interpreted forest inventory map and negative when it has a lower density
- - In the example above, the SMAPE of density is 0.17, as the photo-interpreted forest inventory map has a density of 7.25 polygons/km² (1465 polygons) and the segmentation has a density of 8.59 polygons/km² (1650 polygons)
+1. Symmetric mean absolute percentage error (SMAPE) of polygon density, determined by this formula :
+
+$$
+SMAPE = \frac{\text{Predicted} - \text{Actual}}{\dfrac{|\text{Actual}| + |\text{Predicted}|}{2}}
+$$
+Where Predicted is the density of the automated stand delineation polygons and Actual if the density of the photo-interpreted forest inventory polygons. The value is positive when the automated stand delineation has a higher density than the photo-interpreted forest inventory map and negative when it has a lower density. In the example above, the SMAPE of density is 0.17, as the photo-interpreted forest inventory map has a density of 7.25 polygons/km² (1465 polygons) and the segmentation has a density of 8.59 polygons/km² (1650 polygons)
 
 The following two metrics are computed at the pixel level and are therefore area-weighted.
 
-2. Overlapping kernel density of the polygon stand area at the pixel level
- - This performance metric represents how well the distribution of segmentation polygon stand areas matches the distribution of photo-interpreted forest inventory polygon areas
+2. Overlapping kernel density of the polygon stand area at the pixel level. This performance metric represents how well the distribution of automated stand delineation polygon stand areas matches the distribution of photo-interpreted forest inventory polygon areas
 
-3. Overlapping kernel density of the polygon stand shape index at the pixel level
- - Similarly, this performance metric represents how well the distribution of segmentation polygon stand shape index matches the distribution of photo-interpreted forest inventory polygon shape indices
- - The shape index was computed using smoothed polygons to avoid overestimating perimeter
+3. Overlapping kernel density of the polygon stand shape index at the pixel level. The shape index in determined by this formula :
+
+$$
+ShapeIndex = \frac{\text{Perimeter}}{2\sqrt{\pi \times \text{Area}}}
+$$
+
+Similarly, this performance metric represents how well the distribution of automated stand delineation polygon stand shape index matches the distribution of photo-interpreted forest inventory polygon shape indices. The shape index was computed using smoothed polygons to avoid overestimating perimeter.
 
 The assumption underlying this analysis is that automated stand delineations should have the same distribution of polygon area and shape as photo-interpreted forest inventory polygons and therefore represent operationally plausible forest stands.
 
 \newpage
-## Results
+# **6** Results {-#results}
 
 The results presented here are, as mentioned before, for Romeo Malette Forest with the "SPL + S2 red edge" model. The SMAPE threshold is 0.1, which represents approximately 10% variation in polygon density. All sets of parameters that produced SMAPE values outside the range of -0.1 to 0.1 were excluded. 
 
@@ -563,7 +569,7 @@ sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/bas
          perimeter = as.numeric(sf::st_perimeter(.)),
          perimeter_area_ratio = perimeter/area,
          shape_index = perimeter / sqrt(pi * area)) %>%
-  filter_if(is.numeric, is.finite) -> polygon_forest_temp
+  filter_if(is.numeric, is.finite) -> polygon_forest_temp # A voir si je peux enlever cette ligne
 
 st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50.shp",
         quiet = T) %>% 
@@ -574,7 +580,7 @@ st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segment
          perimeter = as.numeric(st_perimeter(.)),
          perimeter_area_ratio = perimeter/area,
          shape_index = perimeter / sqrt(pi * area)) %>%
-  filter_if(is.numeric, is.finite) -> segmentation 
+  filter_if(is.numeric, is.finite) -> segmentation # A voir si je peux enlever cette ligne
 
 st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50_smoothed.shp",
         quiet = T) %>% 
@@ -585,7 +591,7 @@ st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segment
          perimeter = as.numeric(st_perimeter(.)),
          perimeter_area_ratio = perimeter/area,
          shape_index = perimeter / sqrt(pi * area)) %>%
-  filter_if(is.numeric, is.finite) -> segmentation_smoothed
+  filter_if(is.numeric, is.finite) -> segmentation_smoothed # A voir si je peux enlever cette ligne
 
 # Area in raster
 polygon_forest_temp %>%

@@ -318,33 +318,15 @@ fmu %>%
   st_transform(4326) %>% 
   st_as_sf() -> forest_4326
 
-fmu %>%
-  st_bbox() %>%
-  st_as_sfc() %>%
-  st_centroid() %>%
-  st_buffer(2500) %>%
-  st_bbox() %>%
-  st_as_sfc() %>% 
-  st_as_sf() -> subset_area
-
-subset_area %>% 
-  st_transform(4326) %>% 
-  st_as_sf() -> subset_area_4326
-
 # Imagery
 sat_forest <- get_tiles(x = st_bbox(forest_4326 %>% st_buffer(5000)),
                         provider = "Esri.WorldImagery",
                         zoom = 11,
                         crop = TRUE)
 
-sat_subset_area <- get_tiles(x = st_bbox(subset_area_4326 %>% st_buffer(100)),
-                             provider = "Esri.WorldImagery",
-                             zoom = 15,
-                             crop = TRUE)
-
 # Read metrics
 metrics_infos %>%
-  filter(name %in% segmentation_metrics) -> metrics_infos_selected
+  filter(name %in% c("vmerch_ha", "qmdbh", "dens", "ba_ha", param_figures$models[[1]])) -> metrics_infos_selected
   
 metrics_infos_selected %>%
   pull(name) -> metrics_names
@@ -354,59 +336,13 @@ metrics_infos_selected %>%
   map(rast) %>%
   map(project, epsg_rast, method = "bilinear") %>%
   map(resample, epsg_rast) %>%
-  rast() %>% 
-  crop(subset_area) -> metrics
+  rast() -> metrics
   
 names(metrics) <- metrics_names # Assign metrics names
 
-# Masks
-list(vect(paste0(wd, "/shapefiles/", param_figures$forest, "/roads.shp")),
-     vect(paste0(wd, "/shapefiles/", param_figures$forest, "/waterbodies.shp"))) %>%
-  map(project, epsg_rast) %>% 
-  map(crop, subset_area) %>% 
-  map(project, subset_area_4326) -> masks_4326
-
-bind_rows(masks_4326[[1]] %>% st_as_sf() %>% st_buffer(20),
-          masks_4326[[2]] %>% st_as_sf()) %>% 
-  st_geometry() %>% 
-  st_as_sf() -> masks_4326_merge
-
-# Segmentation
-st_read(paste0(segmentation_wd, "/data.gpkg"), 
-         layer = paste0(names(param_figures$models), "_data_imputation_clipped"),
-         quiet = T) %>%
-  st_transform(epsg) -> segmentation
-
-segmentation %>% 
-  st_filter(subset_area) %>% 
-  ms_clip(subset_area) %>% 
-  st_transform(4326) -> segmentation_clip_4326
-
-# Segmentation smoothed
-st_read(paste0(segmentation_wd, "/data.gpkg"), 
-         layer = paste0(names(param_figures$models), "_data_imputation_smoothed_clipped"),
-         quiet = T) %>%
-  st_transform(epsg) -> segmentation_smoothed 
-
-segmentation_smoothed  %>% 
-  st_filter(subset_area) %>% 
-  ms_clip(subset_area) %>% 
-  st_transform(4326) -> segmentation_smoothed_clip_4326
-
-# Photo-interpreted polygons
-st_read(paste0(wd, "/shapefiles/", param_figures$forest, "/PolygonForest.shp"), quiet = T) %>%
-  rowid_to_column("id") %>%
-  st_transform(epsg) -> fri_polygons
-
-fri_polygons %>% 
-  st_filter(subset_area) %>% 
-  ms_clip(subset_area) %>% 
-  st_transform(4326) -> fri_polygons_clip_4326
-
 # Landcover
 rast(paste0(wd, "/metrics/", param_figures$forest, "/other/landcover.tif")) %>%
-  terra::project(epsg_rast, method = "near") %>% 
-  crop(subset_area) -> landcover
+  terra::project(epsg_rast, method = "near") -> landcover
 
 landcover_codes <- c(`1` = "Clear open water",
                      `2` = "Turbid_Water",
@@ -444,54 +380,63 @@ levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
 
 # Forest age in 2019
 rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_age_2019.tif")) %>%
-  terra::project("EPSG:4326", method = "near") %>% 
-  crop(subset_area_4326) -> forest_age_2019
+  terra::project("EPSG:4326", method = "near") -> forest_age_2019
 
 # Forest fire between 1985-2020
 rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_fire_1985_2020.tif")) %>%
-  terra::project("EPSG:4326", method = "near") %>% 
-  crop(subset_area_4326) -> forest_fire_1985_2020
+  terra::project("EPSG:4326", method = "near") -> forest_fire_1985_2020
 
 forest_fire_1985_2020[forest_fire_1985_2020 == 0] <- NA
 
 # Forest harvest between 1985-2020
 rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_harvest_1985_2020.tif")) %>%
-  terra::project("EPSG:4326", method = "near") %>% 
-  crop(subset_area_4326) -> forest_harvest_1985_2020
+  terra::project("EPSG:4326", method = "near") -> forest_harvest_1985_2020
 
 forest_harvest_1985_2020[forest_harvest_1985_2020 == 0] <- NA
 ```
 
 # **1** Summary of project methods {-#summary}
-The main steps to produce automated stand delineations are as follows:
+The workflow developed in this project consisted of three main components: automated stand delineation, assignment of forest inventory attributes to the resulting polygons, and performance assessment of the delineations. The main steps are summarized below and described in greater detail in the following sections.
 
-1. Segmentation based on lidar metrics ([section 2](#segmentation))
-2. Construction of the attribute table ([section 3](#attribute_table)):
-3. Extrapolation of variables using a k-nearest neighbor (kNN) imputation algorithm ([section 4](#imputation)): 
+1.Automated stand delineation ([Section 2](#segmentation))
 
-For all the following figures, a restricted area of 5x5 km in Romeo Malette Forest have been selected for easier visualization of input and results. 
+ * Input data
+ * Segmentation algorithm
+ * Optimization of segmentation parameters 
+ * Generation of Forest Management Unit-wide delineations
 
-```{r}
-#| label: fig-study-area-subset
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Restricted area of 5x5 km in Romeo Malette Forest for easier visualization of input and results."
-ggplot() +
-  geom_spatraster_rgb(data = sat_forest*1.5) +
-  geom_sf(data = forest_4326, color = "#FEFE62", fill = NA, lwd = 1) +
-  geom_sf(data = subset_area_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw()
-```
+2.Construction of the polygon attribute table ([Section 3](#attribute_table))
+
+ * Input data
+ * Direct assignment of available forest attributes 
+ * Imputation of additional forest attributes using a k-nearest neighbour (kNN) approach
+
+3.Performance assessment ([section 4](#performance-assessment))
+
+ * Reference forest attribute layers
+ * Assessment of the partitioning of forest-attribute variability 
+ * Assessment of internal polygon homogeneity 
+ * Assessment of the correspondence between delineated boundaries and structural transitions
 
 \newpage
 
-# **2** Segmentation {-#segmentation}
+# **2** Automated stand delineation {-#segmentation}
 
-## **2.1** Segmentation basics {-#segmentation_basics}
+## **2.1** Input data {-#segmentation-data}
+
+Stand delineation requires spatial information that captures meaningful differences in forest conditions while limiting unnecessary redundancy among input layers. Several combinations of remotely sensed variables were therefore evaluated, including structural information derived from single-photon lidar (SPL) and spectral information from Sentinel-2 imagery. The selected input configurations were designed to test the relative contribution of structural and spectral information to automated stand delineation.
+
+### **2.1.1** SPL {-#segmentation-data-spl}
+LiDAR data have been acquired during the month of june and july 2018 with a single-photon LiDAR Leica SPL100. Flightlines were parallel with and overlap of 50 percent. Average point density is 40 points/m². 
+
+### **2.1.2** Sentinel-2 {-#segmentation-data-sentinel2}
+Sentinel-2 metrics were derived from a growing-season composite formed from all available cloud-free images available between 1st of June and August 31st from Sentinel 2A, for the year corresponding the to acquisition of the ALS data. All bands were resampled at 20m spatial resolution to match the resolution of ALS metrics and be aligned on the same grid.
+
+The only band used for models was the Vegetation Red Edge 2 (B6) as it is the one that [...] ?
+
+## **2.2** Segmentation algorithm {-#segmentation-algorithm}
+The selected remote sensing layers were used as inputs to a spatial segmentation algorithm that groups neighbouring pixels with similar characteristics into contiguous objects. The objective was to generate polygons representing relatively homogeneous forest conditions while preserving meaningful spatial transitions in forest structure and composition. The geometry and level of detail of the resulting polygons depend on several segmentation parameters, which were optimized before generating the final delineations.
+
 The first step is to create polygon that will represent homogeneous forest stand. To perform this task, the Generic Region Merging tools from Orfeo ToolBox (OTB) was used. Three method can be used in this tools : Baatz & Schape, Eclidean Distance, and Full Lambda. For this work, the Baatz & Schape criterion method was used. This algorithm is the same used in the Multi-resolution Segmentation by the well known software [eCognition](https://geospatial.trimble.com/fr/products/software/trimble-ecognition) and thus made it freely accessible. This algortihm works by merging iteratively small region together based on dissimilarity of spectral values. There is three parameters that control size and shape of resulting segments : threshold, weight of spectral homogeneity and weight of spatial homogeneity. Here is how these parameters influence segmentation:
 
  * The threshold control maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :
@@ -511,10 +456,23 @@ The first step is to create polygon that will represent homogeneous forest stand
     
 If more details are needed about parameters, eCognition made this [video](https://www.youtube.com/watch?v=tt53hoRAw9Q) to explain parameter selection for their Multi-resolution Segmentation algorithm.
 
+## **2.3** Optimization of segmentation parameters  {-#Segmentation-parameter-optimization}
 Segmentation parameters were calibrated by conducting a [segmentation parameters optimisation](https://metafor-ulaval.github.io/Ontario_eFRI/segmentation_parameters_optimisation.html) to produce polygon comparable with conventional photo-interpreted forest inventory polygons. Comparison were made with stand size and shape distribution, and polygon density. These criteria were used to ensure that automated stand delineations remained operationally plausible and comparable to conventional forest resources inventory maps.
 
-## **2.2** Segmentation inputs {-#segmentation_inputs}
-LiDAR data have been acquired during the month of june and july 2018 with a single-photon LiDAR Leica SPL100. Flightlines were parallel with and overlap of 50 percent. Average point density is 40 points/m². The following metrics with a resolution of 20 meters were used for polygon segmentation :
+Segmentation parameters control the sensitivity of the algorithm to spatial variation in the input data and therefore influence the size, shape, and internal homogeneity of the resulting polygons. Parameter combinations were systematically evaluated within calibration areas to identify configurations that provided an appropriate representation of forest spatial structure. The selected parameters were subsequently used to generate the delineations evaluated in the project. Details of the optimization procedure and tested parameter combinations are provided in Appendix A.
+
+## **2.4** Generation of Forest Management Unit-wide delineations {-#Segmentation-generation}
+Following parameter optimization, the selected segmentation configurations were applied across the full extent of each Forest Management Unit. This produced spatially continuous polygon layers for RMF and OVF using a consistent delineation procedure. The resulting polygons formed the spatial framework to which forest inventory attributes were subsequently assigned.
+
+Here are listed the three segmentation models generated :
+
+ * SPL only (model_B in database) : z_p95 + z_above2 + z_skew
+ * SPL + S2 red edge (model_F in database) : z_p95 + z_above2 + B6
+ * S2 only (model_G in database) : B6 + B8 + B11
+ 
+The metrics used in theses models are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. All kinds of metrics that describes the forest characteristics can be used as input for this algorithm. The metrics used will reflect how the segmented polygons are divided. Thus, if a index such as the topographic wetness index (TWI) is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.
+
+The following metrics with a resolution of 20 meters were used for polygon segmentation visual exemple :
 
  * z_p95 → Height of 95th percentiles of returns above 1.3 m
  * z_above2 → Canopy cover of first returns above 2 m
@@ -529,7 +487,7 @@ LiDAR data have been acquired during the month of june and july 2018 with a sing
 #| fig-cap: "First metric used for \"SPL + S2 red edge\" model : z_p95."
 for(metric in param_figures$models[[1]]){
   ggplot() +
-    geom_spatraster_rgb(data = sat_subset_area*1.5) +
+    geom_spatraster_rgb(data = sat_forest*1.5) +
     geom_spatraster(data = metrics[[metric]]) +
     scale_fill_whitebox_c(palette = "muted",
                           labels = scales::label_number(accuracy = 1),
@@ -566,292 +524,11 @@ z_above2
 B6
 ```
 
-Theses metrics correspond to the "SPL + S2 red edge" segmentation model. Here are listed the three models generated for subsequent analysis :
-
- * SPL only (model_B in database) : z_p95 + z_above2 + z_skew
- * SPL + S2 red edge (model_F in database) : z_p95 + z_above2 + B6
- * S2 only (model_G in database) : B6 + B8 + B11
- 
-These metrics are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. All kinds of metrics that describes the forest characteristics can be used as input for this algorithm. The metrics used will reflect how the segmented polygons are divided. Thus, if a index such as the topographic wetness index (TWI) is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.
-
-## **2.3** Segmentation results {-#segmentation_results}
-The resulting polygons can be expected to represent homogeneous forest stands based on choosen metrics. For the whole Romeo Malette Forest, the segmentation produced 70251 polygons representing forest stands. Overall, the number of polygon produced is quite lower as there is 79094 photo-interpreted forest inventory polygons. It is recommended to perform a smoothing step that can be made later in ArcGIS Pro or any GIS with a smoothing tool that keep the topology of adjacent polygons. The tool use in this case is "Smooth Polygon" of the toolbox "Cartography". The parameters used are as follow :
-
- * algorithm = "PAEK"; 
- * tolerance = 100; 
- * endpoint_option = "FIXED_ENDPOINT" 
- * error_option = "RESOLVE_ERRORS".
- 
-The following figures shows photo-interpreted forest inventory polygons compared with automated stand delineation.
-
-```{r}
-#| label: fig-segmentation-results-1
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Photo-interpreted forest inventory polygons."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = fri_polygons_clip_4326, 
-          color = "#1E88E5", alpha = 0, size = 0.5) +  
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw()
-```
-
-```{r}
-#| label: fig-segmentation-results-2
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Automated stand delineations."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_clip_4326, 
-          color = "#D81B60", alpha = 0, size = 0.5) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw()
-```
-
-```{r}
-#| label: fig-segmentation-results-3
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Smoothed automated stand delineations."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326, 
-          color = "#FFC107", alpha = 0, size = 0.5) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw()
-```
-
-An additional data that can be used in segmentation are masks where there is no forest and therefore polygon can be erased. These are typically waterbodies and roads. 
-
-```{r}
-#| label: fig-segmentation-data-4
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Mask used where segmentation is not performed."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = masks_4326[[1]], 
-          color = "grey", size = 1) +
-  geom_sf(data = masks_4326[[2]], 
-          color = "#4F81BD", fill = "#A6CDE4", size = 0.5) +
-  geom_sf(data = subset_area_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw()
-```
-
-```{r}
-#| label: fig-segmentation-data-5
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Resulting polygon after the masks applications."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326 %>%  ms_erase(masks_4326_merge), 
-          color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw()
-```
-
-The automated stand delineations can be now compared to photo-interpreted forest inventory polygons. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the [segmentation parameters optimisation](https://metafor-ulaval.github.io/Ontario_eFRI/segmentation_parameters_optimisation.html), the difference between distributions are supposed to be minimal and therefore the automated stand delineation should represent operationnaly plausible forest stand that mimic polygons of the photo-interpreted forest inventory polygons.
-
-Area in hectare is use for size and shape index, which is determine by this formula : [perimeter/(2*sqrt(pi*area))] is use to assess shape.
-
-```{r}
-#| label: segmentation-results-4
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-metrics_infos %>% 
-  filter(name == "dem") %>% 
-  pull(path) %>% 
-  rast() -> metric_ref
-
-# Compute performance metrics
-fri_polygons %>% 
-    sf::st_make_valid() %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    sf::st_cast("POLYGON") %>%
-    mutate(area = as.numeric(sf::st_area(.)),
-           perimeter = as.numeric(sf::st_perimeter(.)),
-           perimeter_area_ratio = perimeter/area,
-           shape_index = perimeter / sqrt(pi * area)) %>%
-    filter_if(is.numeric, is.finite) -> polygon_forest_temp
-
-segmentation %>% 
-    sf::st_make_valid() %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    sf::st_cast("POLYGON") %>%
-    mutate(area = as.numeric(sf::st_area(.)),
-           perimeter = as.numeric(sf::st_perimeter(.)),
-           perimeter_area_ratio = perimeter/area,
-           shape_index = perimeter / sqrt(pi * area)) %>%
-    filter_if(is.numeric, is.finite) -> segmentation_temp
-
-segmentation_smoothed %>% 
-    sf::st_make_valid() %>%
-    sf::st_cast("MULTIPOLYGON") %>%
-    sf::st_cast("POLYGON") %>%
-    mutate(area = as.numeric(sf::st_area(.)),
-           perimeter = as.numeric(sf::st_perimeter(.)),
-           perimeter_area_ratio = perimeter/area,
-           shape_index = perimeter / sqrt(pi * area)) %>%
-    filter_if(is.numeric, is.finite) -> segmentation_smoothed_temp
-
-# Area in raster
-polygon_forest_temp %>%
-  dplyr::select(area) %>%
-  terra::rasterize(metric_ref, field = "area") %>%
-  terra::values(na.rm = TRUE) -> polygon_forest_area_raster
-
-polygon_forest_area_raster[is.finite(polygon_forest_area_raster)] -> polygon_forest_area_raster
-
-segmentation_temp %>%
-  dplyr::select(area) %>%
-  terra::rasterize(metric_ref, field = "area") %>%
-  terra::values(na.rm = TRUE) -> segmentation_area_raster
-
-segmentation_area_raster[is.finite(segmentation_area_raster)] -> segmentation_area_raster
-
-segmentation_smoothed_temp %>%
-  dplyr::select(area) %>%
-  terra::rasterize(metric_ref, field = "area") %>%
-  terra::values(na.rm = TRUE) -> segmentation_smoothed_area_raster
-
-segmentation_smoothed_area_raster[is.finite(segmentation_smoothed_area_raster)] -> segmentation_smoothed_area_raster
-
-# Area in data frame
-bind_rows(tibble(value = polygon_forest_area_raster, type = "fri"),
-          tibble(value = segmentation_area_raster, type = "grm"),
-          tibble(value = segmentation_smoothed_area_raster, type = "grm_smoothed")) -> area_data_frame
-
-# Shape index in raster
-polygon_forest_temp %>%
-  dplyr::select(shape_index) %>%
-  terra::rasterize(metric_ref, field = "shape_index") %>%
-  terra::values(na.rm = TRUE) -> polygon_forest_shape_index_raster
-
-polygon_forest_shape_index_raster[is.finite(polygon_forest_shape_index_raster)] -> polygon_forest_shape_index_raster
-
-segmentation_temp %>%
-  dplyr::select(shape_index) %>%
-  terra::rasterize(metric_ref, field = "shape_index") %>%
-  terra::values(na.rm = TRUE) -> segmentation_shape_index_raster
-
-segmentation_shape_index_raster[is.finite(segmentation_shape_index_raster)] -> segmentation_shape_index_raster
-
-segmentation_smoothed_temp %>%
-  dplyr::select(shape_index) %>%
-  terra::rasterize(metric_ref, field = "shape_index") %>%
-  terra::values(na.rm = TRUE) -> segmentation_smoothed_shape_index_raster
-
-segmentation_smoothed_shape_index_raster[is.finite(segmentation_smoothed_shape_index_raster)] -> segmentation_smoothed_shape_index_raster
-
-# Shape index in data frame
-bind_rows(tibble(value = polygon_forest_shape_index_raster, type = "fri"),
-          tibble(value = segmentation_shape_index_raster, type = "grm"),
-          tibble(value = segmentation_smoothed_shape_index_raster, type = "grm_smoothed")) -> shape_index_data_frame
-```
-
-```{r}
-#| label: fig-segmentation-results-5
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Polygon area (ha) density of photo-interpreted forest inventory polygon and smoothed automated stand delineations."
-area_data_frame %>% 
-  ggplot() +
-  geom_density(aes(x = value/10000,
-                   color = type),
-               linewidth = 1) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
-                     labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
-  xlim(c(0, 100)) +
-  labs(x = "Polygon area (ha)",
-       y = "Density") +
-  theme_bw() +
-  theme(legend.position = "bottom",
-        legend.title = element_blank())
-```
-
-```{r}
-#| label: fig-segmentation-results-6
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Polygon shape index density of photo-interpreted forest inventory polygon and smoothed automated stand delineations."
-shape_index_data_frame %>% 
-  ggplot() +
-  geom_density(aes(x = value,
-                   color = type),
-               linewidth = 1) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
-                     labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
-  xlim(c(0, 20)) +
-  labs(x = "Shape index",
-       y = "Density") +
-  theme_bw() +
-  theme(legend.position = "bottom",
-        legend.title = element_blank())
-```
-
 \newpage
 
-# **3** Attribute table {-#attribute_table}
+# **3** Construction of the polygon attribute table {-#attribute-table}
 
-[ADD TEXT HERE TO DESCRIBE RANDOM FOREST ?]
-
-The second step is to build attribute table with all pertinent attributes that forest maps have. 
-
-Here are listed the extracted attributes : 
-
-[ADD TEXT HERE TO DESCRIBE ATTRIBUTES ?]
-
- * Source of data (SOURCE)
- * Year of produced data (YRSOURCE)
- * Area (AREA)
- * Perimeter (PERIMETER)
- * Proportion forested (PROPFORESTED)
- * Most frequent landcover type (POLYTYPE)
- * Most frequent landcover proportion (POLYTYPEPROP)
- * Forest age (AGE)
- * Year of last perturbation (YRDEP)
- * Type of last perturbation (DEPTYPE)
- * Proportion of last perturbation (DEPPROP)
- * Year of most widespread harvest (YRHARVEST)
- * Proportion of most widespread harvest (HARVESTPROP)
- * Year of most widespread forest fire (YRFIRE)
- * Proportion of most widespread forest fire (FIREPROP)
- * Merchantable volume per hectare (VMERCH_HA)
- * Quadratic mean diameter at breast height (QMDBH)
- * Number of stems with DBH > 7.1 cm per ha (DENS)
- * Basal area,	tree cross sectional area (approximated as a circle) at breast height (BA_HA)
- * Height of forest stand based on median z_p95 (HEIGHT)
- * Canopy cover based on median z_above2 (CANOPY_COVER)
- * Median slope (SLOPE)
- * Soil moisture based on SAGA wetness index (MOISTURE)
-
-[WHERE TO DESCRIBE EXTERNAL LAYERS ?]
+## **3.1** Input data {-#attribute-table-data}
 
 Most of the attributes are derived from external layers. The following layers were use :
 
@@ -863,9 +540,9 @@ Most of the attributes are derived from external layers. The following layers we
 #| warning: false
 #| fig-cap: "Landcover from Ontario Land Cover Compilation Version 2.0."
 ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
+  geom_spatraster_rgb(data = sat_forest*1.5) +
   geom_spatraster(data = landcover) +
-  scale_fill_whitebox_d(palette = "muted") +
+  scale_fill_discrete(na.translate = FALSE) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
@@ -876,6 +553,8 @@ ggplot() +
 This layer come from [Ontario Land Cover Compilation Version 2.0](https://opendata.rcmrd.org/documents/7aa998fdf100434da27a41f1c637382c/about). This landcover layer was made from numerous Landsat-7 ETM and Landsat-5 TM satellite images acquired between 1999 and 2011. A mix of supervised and unsupervised classification was use to produce the 27 land cover type.
 
 The following tree layers are part of the [National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada](https://opendata.nfis.org/mapserver/nfis-change_eng.html) and are produced by Canadian Forest Service.
+
+The forest age is generated by [...]
  
 ```{r}
 #| label: fig-eFRI-attibute-table-data-2
@@ -885,7 +564,7 @@ The following tree layers are part of the [National Terrestrial Ecosystem Monito
 #| warning: false
 #| fig-cap: "Forest age in 2019 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
 ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
+  geom_spatraster_rgb(data = sat_forest*1.5) +
   geom_spatraster(data = forest_age_2019) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -896,6 +575,8 @@ ggplot() +
   theme(legend.position = "bottom")
 ```
   
+The forest fire and harvest layers were generated with [...]  
+
 ```{r}
 #| label: fig-eFRI-attibute-table-data-3
 #| echo: false
@@ -904,7 +585,7 @@ ggplot() +
 #| warning: false
 #| fig-cap: "Forest fires from 1985 to 2020 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
 ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
+  geom_spatraster_rgb(data = sat_forest*1.5) +
   geom_spatraster(data = forest_fire_1985_2020) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -923,7 +604,7 @@ ggplot() +
 #| warning: false
 #| fig-cap: "Forest harvests from 1985 to 2020 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
 ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
+  geom_spatraster_rgb(data = sat_forest*1.5) +
   geom_spatraster(data = forest_harvest_1985_2020) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -934,268 +615,203 @@ ggplot() +
   theme(legend.position = "bottom")
 ```
 
-## **3.1** Attribute table results {-#attribute_table_results}
-
-[KEEP THE NEXT FIGURE ? ADD MORE ? ADD TEXT ?]
-
-The next figures show what can look like some of theses attributes.
+The four following layers come from [...]
 
 ```{r}
-#| label: fig-eFRI-attibut-table-results-1
+#| label: fig-eFRI-attibute-table-data-5
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Forest age"
+#| fig-cap: "Merchantable volume per hectare (m³/ha)."
 ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326, aes(fill = AGE)) + 
-  labs(fill = "Forest age") +
-  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
+  geom_spatraster_rgb(data = sat_forest*1.5) +
+  geom_spatraster(data = metrics[["vmerch_ha"]]) +
+  scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
+  labs(fill = "Merchantable volume per hectare (m\u00b3/ha)") +
   theme(legend.position = "bottom")
 ```
 
 ```{r}
-#| label: fig-eFRI-attibut-table-results-2
+#| label: fig-eFRI-attibute-table-data-6
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Year of last perturbation"
+#| fig-cap: "Quadratic mean diameter at breast height (cm)."
 ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326, aes(fill = YRDEP)) + 
-  labs(fill = "Year of last perturbation") +
-  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
+  geom_spatraster_rgb(data = sat_forest*1.5) +
+  geom_spatraster(data = metrics[["qmdbh"]]) +
+  scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
+  labs(fill = "Quadratic mean diameter at breast height (cm)") +
   theme(legend.position = "bottom")
 ```
 
 ```{r}
-#| label: fig-eFRI-attibut-table-results-3
+#| label: fig-eFRI-attibute-table-data-7
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Merchantable volume per hectare"
+#| fig-cap: "Number of stems with DBH > 7.1 cm per ha."
 ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326, aes(fill = VMERCH_HA)) + 
-  labs(fill = "Merchantable volume per hectare") +
-  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
+  geom_spatraster_rgb(data = sat_forest*1.5) +
+  geom_spatraster(data = metrics[["dens"]]) +
+  scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
+  labs(fill = "Number of stems with DBH > 7.1 cm per ha") +
   theme(legend.position = "bottom")
 ```
 
 ```{r}
-#| label: fig-eFRI-attibut-table-results-4
+#| label: fig-eFRI-attibute-table-data-8
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Quadratic mean diameter at breast height"
+#| fig-cap: "Basal area (m²/ha), tree cross sectional area (approximated as a circle) at breast height."
 ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326, aes(fill = QMDBH)) + 
-  labs(fill = "Quadratic mean diameter at breast height") +
-  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
+  geom_spatraster_rgb(data = sat_forest*1.5) +
+  geom_spatraster(data = metrics[["ba_ha"]]) +
+  scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
+  labs(fill = "Basal area (m\u00b2/ha), tree cross sectional area\n(approximated as a circle) at breast height") +
   theme(legend.position = "bottom")
 ```
 
-```{r}
-#| label: fig-eFRI-attibut-table-results-5
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Height of forest stand based on median z_p95"
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326, aes(fill = HEIGHT)) + 
-  labs(fill = "Height of forest stand based on median z_p95") +
-  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
-                        breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw() +
-  theme(legend.position = "bottom")
-```
+## **3.2** Direct assignment of available forest attributes {-#attribute-table-assignment}
 
-```{r}
-#| label: fig-eFRI-attibut-table-results-6
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Median slope"
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326, aes(fill = SLOPE)) + 
-  labs(fill = "Median slope") +
-  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
-                        breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw() +
-  theme(legend.position = "bottom")
-```
+Extraction and aggregation of forest attributes from available geospatial datasets
 
-```{r}
-#| label: fig-eFRI-attibut-table-results-7
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Soil moisture based on SAGA wetness index"
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area*1.5) +
-  geom_sf(data = segmentation_smoothed_clip_4326, aes(fill = MOISTURE)) + 
-  labs(fill = "Soil moisture based on SAGA wetness index") +
-  scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
-                        breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw() +
-  theme(legend.position = "bottom")
-```
-\newpage
+The second step is to build attribute table with all pertinent attributes that forest maps have. 
 
-# **4** Imputation {-#imputation}
+Here are listed the extracted attributes that lies for each polygons of automated stand polygons : 
 
-## **4.1** Imputation basics {-#imputation_basics}
+ * Source of data (SOURCE) → eFRI for enhance Forest Ressources Inventory;
+ 
+ * Year of produced data (YRSOURCE) → Current year, 2026 for available automated stand delineation;
+ 
+ * Area (AREA) → Area (m²);
+ 
+ * Perimeter (PERIMETER) → Perimeter (m);
+ 
+ * Proportion forested (PROPFORESTED) → Proportion (%) of polygon that are forested based on landcover raster where theses class are considered forest ones : Sparse Treed, Treed Upland, Deciduous Treed, Mixed Treed, Coniferous Treed, Plantations Treed Cultivated, Hedge Rows and Tallgrass Woodland;
+ 
+ * Most frequent landcover type (POLYTYPE) → The most frequent landcover class based on landcover raster;
+ 
+ * Most frequent landcover proportion (POLYTYPEPROP) → The proportion (%) of the most frequent landcover class based on landcover raster;
+ 
+ * Forest age (AGE) → Mean forest age (year) at year of produced data based on a forest age raster layer;
+ 
+ * Year of last perturbation (YRDEP) → Year of the last perturbation where at least 80 % of polygon stand was affected;
+ 
+ * Type of last perturbation (DEPTYPE) → Type of perturbation : FIRE or HARVEST;
+ 
+ * Proportion of last perturbation (DEPPROP) → Proportion (%) of the last perturbation;
+ 
+ * Year of most widespread harvest (YRHARVEST) → Year where a harvest covered the largest proportion of stand polygon;
+ 
+ * Proportion of most widespread harvest (HARVESTPROP) → Proportion (%) of the harvest at the year where it covered the largest proportion of stand polygon;
+ 
+ * Year of most widespread forest fire (YRFIRE) → Year where a fire covered the largest proportion of stand polygon;
+ 
+ * Proportion of most widespread forest fire (FIREPROP) → Proportion (%) of the fire at the year where it covered the largest proportion of stand polygon;
+ 
+ * Merchantable volume per hectare (VMERCH_HA) → Merchantable volume (m³/ha)
+ 
+ * Quadratic mean diameter at breast height (QMDBH) → Quadratic mean diameter at breast height (cm)
+ 
+ * Number of stems (DENS) → Number of stems with DBH > 7.1 cm per ha
+ 
+ * Basal area per hectare (BA_HA) → Basal area (m²/ha), tree cross sectional area (approximated as a circle) at breast height 
+ 
+ * Height of forest stand (HEIGHT) → Height (m) of forest stand based on median z_p95
+ 
+ * Canopy cover (CANOPY_COVER) → Canopy cover based on median z_above2
+ 
+ * Median slope (SLOPE) → Median slope (%)
+ 
+ * Soil moisture (MOISTURE) → Soil moisture based on SAGA wetness index
+ 
+## **3.3** Imputation using a k-nearest neighbour (kNN) approach {-#imputation}
+
 Some attributes can't be directly extracted from a raster layer containing the information. For example, there is still no layer describing tree species across Ontario. For this task, [k-nearest neighbor (kNN) imputation](https://www.sciencedirect.com/science/article/pii/S0034425721001954?via%3Dihub) can be used to infer what would be some attributes. This widely used method use similarity between variables from two different datasets. In order to fill a missing data, the algorithm identifies the k most similar observations based on distance of common variables. The missing values are then estimated using the corresponding values from these neighbors, often by taking their mean (for numerical variables) or mode (for categorical variables).
 
 To identify the most suitable metrics for kNN imputation, a performance analysis was conducted using all possible combinations of five uncorrelated metrics. The combinaison with the highest accuracy was retain as the one using the best metrics. This analysis was done for each variable being imputed and each forest. This analysis evaluated, for each combination, how accurately the imputed values matched the observed values of the photo-interpreted forest inventory polygons. First of all, polygons intersecting a fire or a harvest whose year falls between the year of photo-interpretation and the year of LiDAR acquisition were removed. Indeed the photo-intepreted polygons no longer describe what the LiDAR metrics saw. Secondly, only forested polygon were retain by applying four filters. The polygons where column "POLYTYPE" was "FOR" were retain, where the proportion forested was higher than 50 % based on [landcover raster]((https://opendata.rcmrd.org/documents/7aa998fdf100434da27a41f1c637382c/about)), where the z_p95 was higher or equal than 5 m and where pz_above2 was higher or equal than 0,5. Finally, to filter correlated metrics, clustering was performed with of a threshold of 0,8. For every metric of a cluster, a one-way ANOVA was run with the imputed variable in order to keep the metric with the highest F-value inside each cluster. Depending of the variable being imputed, 7865 or 9633 combinations of five metrics were tested. Therefore, the optimal combination of metrics depends on the specific variable being imputed. In addition, for each of these 5 metrics, the X and Y coordinates of polygon centroid have been used for the imputation.
 
-## **4.2** Imputation results {-#imputation_results}
-The table below shows the combinations and their accuracy for each imputed variables in Romeo Malette Forest.
-
-```{r}
-#| label: tbl-imputation-results-1
-#| echo: false
-#| message: false
-#| warning: false
-#| tbl-cap: "Imputation combinations and their accuracy for the tree imputed variables in Romeo Malette Forest"
-imputation_results %>% 
-  mutate(accuracy = round(accuracy*100, 2))  %>% 
-  mutate(target_var = case_when(target_var == "SP_NO_1" ~ "Leading species",
-                                target_var == "SP_NO_2" ~ "Second species",
-                                target_var == "FUNCTIONAL_GROUP_3" ~ "Three functional group class")) %>% 
-  mutate(target_var = factor(target_var, 
-                             levels = c("Leading species",
-                                        "Second species",
-                                        "Three functional group class"))) %>% 
-  arrange(target_var) %>% 
-  dplyr::select("Target variable" = "target_var",
-                "Used metrics" = "knn_vars",
-                "Accuracy (%)" = "accuracy") -> best_models_clean
-
-knitr::kable(best_models_clean)
-``` 
-
-The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial gorup class shown below.
-
-[PUT THE NEXT FIGURE VERTICALLY ?]
-
-```{r}
-#| label: fig-imputation-results-2
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Imputation results for three functional group class compared with photo-interpreted forest inventory maps"
-fri_polygons_clip_4326 %>% 
-  mutate_species_prop(col_name = "SPCOMP") %>% 
-  mutate_species_order(col_name = "SPCOMP") %>% 
-  mutate_forest_type() %>% 
-  mutate_functional_group(functional_group_5 = FALSE) %>%
-  dplyr::select(FUNCTIONAL_GROUP_3) %>% 
-  mutate(type = "Photo-interpreted inventory polygons") -> imputation_data_1
-
-segmentation_clip_4326 %>% 
-  dplyr::select(FUNCTIONAL_GROUP_3) %>% 
-  mutate(type = "Automated stand delineation") -> imputation_data_2
-
-bind_rows(imputation_data_1,
-          imputation_data_2) -> imputation_data
-
-ggplot() +
-  geom_sf(data = imputation_data, aes(fill = FUNCTIONAL_GROUP_3)) + 
-  facet_wrap(~type) +
-  labs(fill = "Three functional group class") +
-  theme_bw() +
-  theme(legend.position = "bottom")
-``` 
-
-\newpage
-
-# **5** Performance assessment {-#performance-assessment} 
-
-## **5.1** Methods {-#methods}
-
+# **4** Performance assessment {-#performance-assessment} 
 In an inventory setting, useful delineations should produce units that are internally homogeneous with respect to key forest attributes, distinct from neighbouring units, and delimited in ways that correspond to real structural changes across the landscape. Existing studies have shown that remotely sensed segmentation can generate relatively homogeneous units, but fewer have evaluated these complementary properties together, particularly in direct comparison with conventional photo-interpreted forest inventory maps. 
 
 Rather than focusing solely on within-unit homogeneity, we also examine whether delineations partition structural variability effectively and whether their mapped limits correspond to independently detected structural transitions. Such an evaluation is especially relevant if Automated stand delineations are to complement, or partially replace, conventional photo-interpreted inventory maps while offering gains in consistency, reproducibility, and update frequency.
 
 In section, we evaluate the performance of automated stand delineations derived from multiple remotely sensed data sources relative to conventional photo-interpreted forest inventory maps. Using high-resolution spatial forest attributes as an independent reference, we assess whether alternative delineation approaches produce structurally homogeneous stands, partition forest landscapes into distinct structural units, and correspond to independently detected structural transitions. The analysis is intended to determine whether Automated stand delineations can provide a practical and objective basis for updating stand boundaries in operational forest inventories. 
 
-Spatial forest attributes were generated using a Random Forest models calibrated with field inventory plots. The models were generated using LiDAR data independent of that used to produce the segmentations. This data was collected in the field using a drone. The forest attributes are at a resolution of 1 m. A "buffered area" approach was used to produce them, meaning the metrics required for the models were calculated at a resolution of 1 m, but using a 20 m by 20 m moving window. The  are as follow :
+The next three analysis were conducted within the restricted 50-ha validation area to ensure independency of result. The figure of the study area show the 50-ha validation areas within each Forest Managenemnt Unit.
+
+## **4.1** Reference forest attribute layers {-#methods-reference-forest-attribute}
+Spatial forest attributes layers were generated using a Random Forest models calibrated with field inventory plots (Breiman, 2001; White et al., 2013; Cosenza et al., 2021). Independent Random Forest models were calibrated for each of the 8 validations area and each of the forest attributes. It had been assumed that theses areas have distinct structural and composition relationships (REF). The following modeled forest attributes were chosen to represent complementary dimensions of stand structure :
 
 * Merchantable volume
 * Stem density
 * Quadratic mean diameter at breast height (QMDBH)
+
+Models were generated using different LiDAR data of the one used to produce the automated stand delineations. This independant LiDAR data was collected in the field using a drone. Models were calibrated with ULS-derived metrics extracted over a circular 400 m² area at the location of each plot. To avoid using colinear metrics and limit model complexity, the 35 ULS initial selected metrics were grouped using an unsupervised clustering. One metric per cluster was choose yielding 18 candidate metrics. 
+
+Random forest importance was computed with a 5-fold cross-validation framework repeated 10 times. Metrics were iteratively removed based on their permutation-based importance. At each iteration and before the elimitation of the least important variable, RMSE of the model was computed. The final selected model was to one with the lowest cross-validated RMSE.
+
+The final model was applied wall-to-wall within each validation area. A buffered area-based approach was used to produce metrics required for the models (Roussel 2026; Roussel et al., 2020). With this method, metrics are calculated at a resolution of 1 m, but using a 20 m by 20 m moving window. The size of the windows allows to keep consistency between the LiDAR predictors and the field plot metrics used to calibrate the random forest models. The buffered area-based approach allows to produced detailed forest attributes as input in the performance assessment. The forest attributes used for the performance assessment were therefore at a resolution of 1 m.
     
-An additional attribute is the canopy height which is described by the z_p90.
+An additional attribute was the canopy height which was described by the z_p90.
 
-Specifically, we aimed to:
+## **4.2** Partitioning of forest-attribute variability {-#partitioning-forest-attribute-variability}
+The proportion of variance explained (PVE) evaluates how well the segmentation partitions the landscape by comparing the variability within each resulting polygon to the total variability across the sector :
 
-1.	Partitioning of forest-attribute variability
+$$
+PVE = 1 - \frac{SS_{\text{within}}}{SS_{\text{total}}}
+$$
 
-Evaluate the extent to which different delineations partition forest landscapes into distinct structural units, capturing spatial variability in forest attributes.
-This metric evaluates how well the segmentation partitions the landscape by comparing the variability within each resulting polygon to the total variability across the sector. For each polygon created by the segmentation, SSE is the sum of squared deviations between the pixel values it contains and that polygon's own mean, while SST is the sum of squared deviations between all pixel values across the sector and the sector's global mean, giving R² = 1 − SSE/SST. A higher R² indicates that the polygons produced by the segmentation better explain the spatial variability of the sector, reflecting a stronger partitioning of the landscape into distinct, internally homogeneous units.
+For each polygon created by the segmentation, SSwithin is the sum of squared deviations between the pixel values it contains and that polygon's own mean, while SStotal is the sum of squared deviations between all pixel values across the sector and the sector's global mean. A higher PVE indicates that the polygons produced by the segmentation better explain the spatial variability of the sector, reflecting a stronger partitioning of the landscape into distinct, internally homogeneous units. It evaluate the extent to which different delineations partition forest landscapes into distinct structural units, capturing spatial variability in forest attributes. 
 
-2.	Internal polygon homogeneity
+## **4.3** Internal polygon homogeneity {-#internal-polygon-homogeneity}
+The area-weighted mean of within-polygon standard deviations (wSD) assesses the internal homogeneity of polygons by computing the area-weighted average of the standard deviation of each predicted attribute across all stands, calculated as the sum of each stand's area multiplied by its standard deviation, divided by the total area :
 
-Assess the internal structural homogeneity of stands produced by alternative delineation inputs, including photo-interpreted forest inventory maps and automated delineations derived from LiDAR and satellite imagery. This metric assesses the internal homogeneity of stands by computing the area-weighted average of the standard deviation of each predicted attribute across all stands, calculated as the sum of each stand's area multiplied by its standard deviation, divided by the total area. A lower weighted standard deviation indicates that stands are more internally uniform, with less variability in predicted attribute values within their boundaries.
+$$
+wSD_v = \left| \frac{\sum_{i=1}^{n} a_i \times SD_i}{\sum_{i=1}^{n} a_i} \right|
+$$
+
+A lower weighted standard deviation indicates that stands are more internally uniform, with less variability in predicted attribute values within their boundaries. It assess the internal structural homogeneity of stands produced.
     
-3.	Correspondence of stand boundaries with structural transitions
+## **4.4** Correspondence of stand boundaries with structural transitions {-#correspondence-structural-transition}
+This analysis allows to assess the spatial accuracy of mapped boundaries by comparing them with independently detected structural transitions in forest attributes. A split moving window analysis was used to detect structural transitions from different high-resolution reference forest-attribute metrics. The metrics evaluated was canopy height described by z_p90, merchantable volume per hectare, quadratic mean diameter and stem density. This analysis detect spatial transition using a centered two-sided moving window along a transect. By comparing each side of the window, it is possible to highlight dissimilarity between each side. Locations where the dissimilarity is high are identified as potential transitions. These transitions can be used as an independent reference against which mapped boundaries from each delineation approach were compared. The F1-score was used for accuracy assessment.
 
-Assess how well stand limits produced by each delineation correspond to independently detected structural transitions in forest attributes. 
+The F1-score can be computed as follows :
 
-Regarding the study area of RMF showed at figure X, these three analysis were conducted within the restricted area of drone flight to ensure independency of result. The figure x show the drone flight areas within study area.
+$$
+F_1 = \frac{2 \times \text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}
+$$
 
-```{r}
-#| label: drone-flight-area-subset
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Drone flight areas within Romeo Malette forest where the analysis have been conducted"
-st_read(paste0(wd, "/shapefiles/drone_flight_areas/drone_flight_areas.shp"),
-        quiet = TRUE) %>%
-  filter(!sector %in% c("S5", "S8")) %>% 
-  filter(forest == "RMF") %>% 
-  st_transform(4326) -> dfa
+The F1-score summarized the balance between precision and recall :
 
-ggplot() +
-  geom_spatraster_rgb(data = sat_forest) +
-  geom_sf(data = forest_4326, color = "white", fill = NA, lwd = 1) +
-  geom_sf(data = dfa, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw()
-```
+$$
+\text{Precision} = \frac{\text{True Positive}}{\text{True Positive} + \text{False Positive}}
+$$
+
+$$
+\text{Recall} = \frac{\text{True Positive}}{\text{True Positive} + \text{False Negative}}
+$$
+
+In order to compute precision and recall a value of 1 m was used as the spatial matching tolerance between automated polygon boundaries and potential transitions. True positives are automated polygon boundaries that matched a potential transitions, False positive are actual automated polygon boundaries where no potential transitions have been found and False negative are detected potential transitions where no automated polygon boundaries was mapped.

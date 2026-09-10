@@ -72,6 +72,35 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -124,10 +153,23 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#performance-assessment" id="toc-performance-assessment" class="nav-link active" data-scroll-target="#performance-assessment"><strong>1</strong> Visual comparison of automated stand delineations and photo-interpreted inventory map</a></li>
-  <li><a href="#partitioning-forest-attribute-variability" id="toc-partitioning-forest-attribute-variability" class="nav-link" data-scroll-target="#partitioning-forest-attribute-variability"><strong>2</strong> Partitioning of forest-attribute variability</a></li>
-  <li><a href="#internal-polygon-homogeneity" id="toc-internal-polygon-homogeneity" class="nav-link" data-scroll-target="#internal-polygon-homogeneity"><strong>3</strong> Internal polygon homogeneity</a></li>
-  <li><a href="#correspondence-structural-transition" id="toc-correspondence-structural-transition" class="nav-link" data-scroll-target="#correspondence-structural-transition"><strong>4</strong> Correspondence of stand boundaries with structural transitions</a></li>
+  <li><a href="#segmentation-results" id="toc-segmentation-results" class="nav-link active" data-scroll-target="#segmentation-results"><strong>1</strong> Automated stand delineation</a></li>
+  <li><a href="#segmentation-results-fmu" id="toc-segmentation-results-fmu" class="nav-link" data-scroll-target="#segmentation-results-fmu"><strong>1.1</strong> Delineation products at the Forest Management Unit scale</a></li>
+  <li><a href="#segmentation-results-example" id="toc-segmentation-results-example" class="nav-link" data-scroll-target="#segmentation-results-example"><strong>1.2</strong> Additionnal parameters</a></li>
+  <li><a href="#attribute-table-results" id="toc-attribute-table-results" class="nav-link" data-scroll-target="#attribute-table-results"><strong>2</strong> Example of the final attributed polygon dataset</a>
+  <ul class="collapse">
+  <li><a href="#attribute-table-results-imputation" id="toc-attribute-table-results-imputation" class="nav-link" data-scroll-target="#attribute-table-results-imputation"><strong>2.1</strong> Imputation results</a></li>
+  </ul></li>
+  <li><a href="#performance-assessment" id="toc-performance-assessment" class="nav-link" data-scroll-target="#performance-assessment"><strong>3</strong> Performance of automated stand delineations</a>
+  <ul class="collapse">
+  <li><a href="#performance-assessment-visual" id="toc-performance-assessment-visual" class="nav-link" data-scroll-target="#performance-assessment-visual"><strong>3.1</strong> Visual comparison of automated stand delineations</a></li>
+  <li><a href="#partitioning-forest-attribute-variability" id="toc-partitioning-forest-attribute-variability" class="nav-link" data-scroll-target="#partitioning-forest-attribute-variability"><strong>3.2</strong> Partitioning of forest-attribute variability</a></li>
+  <li><a href="#internal-polygon-homogeneity" id="toc-internal-polygon-homogeneity" class="nav-link" data-scroll-target="#internal-polygon-homogeneity"><strong>3.3</strong> Internal polygon homogeneity</a></li>
+  <li><a href="#correspondence-structural-transition" id="toc-correspondence-structural-transition" class="nav-link" data-scroll-target="#correspondence-structural-transition"><strong>3.4</strong> Correspondence of stand boundaries with structural transitions</a></li>
+  </ul></li>
+  <li><a href="#final-polygon" id="toc-final-polygon" class="nav-link" data-scroll-target="#final-polygon"><strong>3</strong> Final polygon-based eFRI products and tools</a></li>
+  <li><a href="#interactive-tool" id="toc-interactive-tool" class="nav-link" data-scroll-target="#interactive-tool"><strong>4</strong> Interactive automated stand delineation tool</a></li>
+  <li><a href="#additionnal-data" id="toc-additionnal-data" class="nav-link" data-scroll-target="#additionnal-data"><strong>5</strong> Additionnal data</a></li>
   </ul>
 </nav>
     </div>
@@ -159,17 +201,428 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="performance-assessment" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>1</strong> Visual comparison of automated stand delineations and photo-interpreted inventory map</h1>
+<section id="segmentation-results" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>1</strong> Automated stand delineation</h1>
+<p>In this section and the <a href="#attribute-table-results">next one</a>, the “SPL + S2 red edge” segmentation model was use. As a reminder, the metrics used for this model are theses one : z_p95 + z_above2 + B6. There is a visual example of the metrics used in the <a href="#segmentation-results-example">section 1.2</a>. For both the Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF), distribution of area and shape index will be showed for the whole Forest Management Unit scale (in yellow in the figure 1 and 2). Furthermore, a visual example of resulting automated stand delineation that was smoothed in ArcGIS will be shown for a closer subset area (in red in the figure 1 and 2). The restricted area of 5x5 km allows for easier visualization.</p>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-study-area-subset-rmf" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div aria-describedby="fig-study-area-subset-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-study-area-subset-rmf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-study-area-subset-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1. Restricted area of 5x5 km in Romeo Malette Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-study-area-subset-ovf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-study-area-subset-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-study-area-subset-ovf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-study-area-subset-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2. Restricted area of 5x5 km in Ottawa Valley Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="segmentation-results-fmu" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>1.1</strong> Delineation products at the Forest Management Unit scale</h1>
+<p>The next two figures provide an overview of the resulting delineation products for RMF and OVF in the restricted areas of 5x5 km.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-segmentation-exemple-rmf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-segmentation-exemple-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-segmentation-exemple-rmf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-exemple-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3. Smoothed automated stand delineations for the Forest Management Unit of Romeo Malette Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-segmentation-exemple-ovf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-segmentation-exemple-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-segmentation-exemple-ovf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-exemple-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4. Smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>As a comparative, the next two figures shows the photo-interpreted forest inventory polygons for theses two Forest Management Units.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-fri-exemple-rmf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-fri-exemple-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-fri-exemple-rmf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fri-exemple-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5. Photo-interpreted forest inventory polygons for the Forest Management Unit of Romeo Malette Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-fri-exemple-ovf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-fri-exemple-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-fri-exemple-ovf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fri-exemple-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6. Photo-interpreted forest inventory polygons for the Forest Management Unit of Ottawa Valley Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The resulting polygons can be expected to represent homogeneous forest stands based on choosen metrics. For the whole Romeo Malette Forest, the segmentation produced 70879 polygons representing forest stands. Overall, the number of polygon produced is slightly lower as there is 79094 photo-interpreted forest inventory polygons. For the Ottawa Valley Forest, a total of 51486 polygons was generated by the automated stand delineations which is also lower than than the 68169 photo-interpreted forest inventory polygons.</p>
+<p>The automated stand delineations can be now compared to photo-interpreted forest inventory polygons for the whole Forest Management Units. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the <a href="https://metafor-ulaval.github.io/Ontario_eFRI/segmentation_parameters_optimisation.html">segmentation parameters optimisation</a>, the difference between distributions are supposed to be minimal and therefore the automated stand delineation should represent operationally plausible forest stand that mimic polygons of the photo-interpreted forest inventory polygons.</p>
+<p>Area in hectare is use for size and shape index is use to assess polygon shape. The shape index is determine by this formula :</p>
+<p><span class="math display">\[
+ShapeIndex = \frac{\text{Perimeter}}{2\sqrt{\pi \times \text{Area}}}
+\]</span></p>
+<p>The density plot were computed at the pixel level and are therefore area-weighted.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-density-area-rmf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-density-area-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-density-area-rmf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-density-area-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7. Polygon area (ha) density of photo-interpreted forest inventory polygon and smoothed automated stand delineations for the Forest Management Unit of Romeo Malette Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-density-shape-rmf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-density-shape-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-density-shape-rmf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-density-shape-rmf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8. Polygon shape index density of photo-interpreted forest inventory polygon and smoothed automated stand delineations for the Forest Management Unit of Romeo Malette Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-density-area-ovf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-density-area-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-density-area-ovf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-density-area-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;9. Polygon area (ha) density of photo-interpreted forest inventory polygon and smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-density-shape-ovf" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-density-shape-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-density-shape-ovf-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-density-shape-ovf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10. Polygon shape index density of photo-interpreted forest inventory polygon and smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="segmentation-results-example" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>1.2</strong> Additionnal parameters</h1>
+<p>It is recommended to perform a smoothing step that can be made later in ArcGIS Pro or any GIS with a smoothing tool that keep the topology of adjacent polygons. The tool use in this case is “Smooth Polygon” of the toolbox “Cartography”. The parameters used are as follow :</p>
+<ul>
+<li>algorithm = “PAEK”;</li>
+<li>tolerance = 100;</li>
+<li>endpoint_option = “FIXED_ENDPOINT”</li>
+<li>error_option = “RESOLVE_ERRORS”.</li>
+</ul>
+<p>The next figure shows automated stand delineation before smoothing.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-segmentation-non-smoothed" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-segmentation-non-smoothed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-segmentation-non-smoothed-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-non-smoothed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11. Automated stand delineations.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>With smoothing, the polygons looks more natural and the border seems to better mimic the edges of actual forest stands.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-segmentation-smoothed" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-segmentation-smoothed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-segmentation-smoothed-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-smoothed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12. Smoothed automated stand delineations.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>An additional data that can be used in automated stand delineation are masks where there is no forest and therefore the segmentation is not performed. These are typically waterbodies and roads.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-segmentation-masks" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-segmentation-masks-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-segmentation-masks-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-masks-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;13. Mask used where segmentation is not performed.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Here is the resulting automated stand delineation when the masks are considered. It is important to note that the Generic Region Merging algorithm is extremely sensitive to any parameters change. Every slightly input change will drastically change the resulting polygons, even a slightly bigger extent where the algorithm is run. This is the reason why the polygons in the figure x are different from the one at the figure x, even if parameters and metrics as input are the same.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-segmentation-masks-applied" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-segmentation-masks-applied-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-segmentation-masks-applied-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-segmentation-masks-applied-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;14. Resulting polygon after the masks applications.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="attribute-table-results" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>2</strong> Example of the final attributed polygon dataset</h1>
+<p>In addition to producing automated stand delineations, the project generated attributed polygon datasets intended to support forest inventory applications. Each polygon is associated with forest attributes obtained directly from available geospatial datasets or estimated using the procedures described in the Data and Methods section.</p>
+<p>Figure X illustrates the structure of the final dataset for an example stand. *Tes exemples de valeurs par polygone avec palette couleur • Une capture d’écran ArcGIS/QGIS avec le produit polygonal. • Un polygone sélectionné. • Sa table attributaire visible.</p>
+<p>The next figures show what can look like some of theses attributes.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-eFRI-attibut-forest-age" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-eFRI-attibut-forest-age-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-eFRI-attibut-forest-age-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-forest-age-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15. Forest age
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-eFRI-attibut-last-perturbation" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-eFRI-attibut-last-perturbation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-eFRI-attibut-last-perturbation-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-last-perturbation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;16. Year of last perturbation
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-eFRI-attibut-vmerch" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-eFRI-attibut-vmerch-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-eFRI-attibut-vmerch-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-vmerch-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;17. Merchantable volume per hectare
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-eFRI-attibut-qmbdh" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-eFRI-attibut-qmbdh-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-eFRI-attibut-qmbdh-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-qmbdh-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;18. Quadratic mean diameter at breast height
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-eFRI-attibut-height" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-eFRI-attibut-height-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-eFRI-attibut-height-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-height-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;19. Height of forest stand based on median z_p95
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-eFRI-attibut-slope" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-eFRI-attibut-slope-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-eFRI-attibut-slope-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-slope-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;20. Median slope
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-eFRI-attibut-moisture" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-eFRI-attibut-moisture-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-eFRI-attibut-moisture-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-moisture-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;21. Soil moisture based on SAGA wetness index
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<section id="attribute-table-results-imputation" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="attribute-table-results-imputation"><strong>2.1</strong> Imputation results</h2>
+<p>The table below shows the combinations and their accuracy for each imputed variables in Romeo Malette Forest.</p>
+<div class="cell">
+<div id="tbl-imputation-results" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-imputation-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1. Imputation combinations and their accuracy for the tree imputed variables in Romeo Malette Forest
+</figcaption>
+<div aria-describedby="tbl-imputation-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 55%">
+<col style="width: 13%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Target variable</th>
+<th style="text-align: left;">Used metrics</th>
+<th style="text-align: right;">Accuracy (%)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Leading species</td>
+<td style="text-align: left;">fractional_cover_05_2,z_above2,z_p90,z_skew,DVI,X,Y</td>
+<td style="text-align: right;">66.65</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Second species</td>
+<td style="text-align: left;">dem,fractional_cover_05_2,z_above2,z_p90,DVI,X,Y</td>
+<td style="text-align: right;">36.73</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Three functional group class</td>
+<td style="text-align: left;">dem,sagawi,z_p90,z_skew,DVI,X,Y</td>
+<td style="text-align: right;">73.92</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial group class shown below.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-imputation-segmentation" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-imputation-segmentation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-imputation-segmentation-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-imputation-segmentation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;22. Three functional group class of photo-interpreted forest inventory maps
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-imputation-fri" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-imputation-fri-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-imputation-fri-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-imputation-fri-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23. Imputation results for three functional group
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+</section>
+</section>
+<section id="performance-assessment" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>3</strong> Performance of automated stand delineations</h1>
+<section id="performance-assessment-visual" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="performance-assessment-visual"><strong>3.1</strong> Visual comparison of automated stand delineations</h2>
+<p>Polygon boundaries are overlaid on the high-resolution forest-attribute layers used for performance assessment, allowing visual comparison of how the different delineations partition spatial variation in canopy height, merchantable volume, and stem density.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-visualisation-s1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-visualisation-s1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="figures/segmentation_S1_simplified.jpg" class="img-fluid figure-img" width="1500">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1. Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-visualisation-s1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;24. Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment.
 </figcaption>
 </figure>
 </div>
@@ -177,69 +630,94 @@ Figure&nbsp;1. Example validation area showing the photo-interpreted forest inve
 </div>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-2" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-visualisation-s7" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div aria-describedby="fig-visualisation-s7-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="figures/segmentation_S7_simplified.jpg" class="img-fluid figure-img" width="1500">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2. Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-visualisation-s7-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;25. Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
 </section>
-<section id="partitioning-forest-attribute-variability" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>2</strong> Partitioning of forest-attribute variability</h1>
+<section id="partitioning-forest-attribute-variability" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="partitioning-forest-attribute-variability"><strong>3.2</strong> Partitioning of forest-attribute variability</h2>
+<p>The proportion of variance explained (PVE) was used to assess how effectively each delineation partitioned spatial variability in the reference forest attributes. Higher PVE indicates that a greater proportion of the landscape-level variability is represented by differences among polygons.</p>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-3" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-pve" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div aria-describedby="fig-pve-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="figures/pve_figure.png" class="img-fluid figure-img" width="649">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3. Performance of automated stand delineations in partitioning forest-attribute variability relative to the photo-interpreted forest inventory map. Cell values are differences in proportion of variance explained (PVE), expressed in percentage points. Positive values indicate greater PVE than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pve-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;26. Performance of automated stand delineations in partitioning forest-attribute variability relative to the photo-interpreted forest inventory map. Cell values are differences in proportion of variance explained (PVE), expressed in percentage points. Positive values indicate greater PVE than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
 </section>
-<section id="internal-polygon-homogeneity" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>3</strong> Internal polygon homogeneity</h1>
+<section id="internal-polygon-homogeneity" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="internal-polygon-homogeneity"><strong>3.3</strong> Internal polygon homogeneity</h2>
+<p>Internal polygon homogeneity was assessed using the area-weighted mean within-polygon standard deviation (wSD) of the reference forest attributes. Lower values indicate greater structural homogeneity within delineated polygons.</p>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-4" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-ih" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-4-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div aria-describedby="fig-ih-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="figures/ih_figure.png" class="img-fluid figure-img" width="649">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-4-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4. Performance of automated stand delineations in improving internal polygon homogeneity relative to the photo-interpreted forest inventory map. Cell values represent the relative change in area-weighted within-polygon standard deviation (wSD), expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate lower within-polygon variability than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ih-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;27. Performance of automated stand delineations in improving internal polygon homogeneity relative to the photo-interpreted forest inventory map. Cell values represent the relative change in area-weighted within-polygon standard deviation (wSD), expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate lower within-polygon variability than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
 </section>
-<section id="correspondence-structural-transition" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>4</strong> Correspondence of stand boundaries with structural transitions</h1>
+<section id="correspondence-structural-transition" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="correspondence-structural-transition"><strong>3.4</strong> Correspondence of stand boundaries with structural transitions</h2>
+<p>The spatial correspondence between mapped stand boundaries and independently detected structural transitions was evaluated using precision, recall, and F1-score. This analysis assesses the extent to which delineated boundaries coincide with changes in forest structure identified directly from the high-resolution reference layers.</p>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-5" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-smw" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div aria-describedby="fig-smw-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="figures/smw_figure.png" class="img-fluid figure-img" width="649">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5. Performance of automated stand delineations in improving correspondence of stand boundaries with structural transitions relative to the photo-interpreted forest inventory map. Cell values represent the relative change in correspondence between a stands boundary and a detected structural structure, expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate higher correspondence. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-smw-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;28. Performance of automated stand delineations in improving correspondence of stand boundaries with structural transitions relative to the photo-interpreted forest inventory map. Cell values represent the relative change in correspondence between a stands boundary and a detected structural structure, expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate higher correspondence. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
+</section>
+</section>
+<section id="final-polygon" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>3</strong> Final polygon-based eFRI products and tools</h1>
+<p>The final polygon-based eFRI products developed through the project are available below for both Forest Management Units. The datasets include the automated stand delineations and associated polygon-level forest attributes. An interactive application is also provided to facilitate visualization and exploration of the project outputs. <a href="téléchargement du produit final">Romeo Malette Forest</a></p>
+<ul>
+<li>éventuellement métadonnées / description des champs.</li>
+</ul>
+<p><a href="téléchargement du produit final">Ottawa Valley Forest</a></p>
+<ul>
+<li>métadonnées / description des champs.</li>
+</ul>
+</section>
+<section id="interactive-tool" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>4</strong> Interactive automated stand delineation tool</h1>
+<p>• lien vers la Shiny app • une phrase expliquant ce qu’elle permet de faire.</p>
+</section>
+<section id="additionnal-data" class="level1 unnumbered">
+<h1 class="unnumbered"><strong>5</strong> Additionnal data</h1>
+<ul>
+<li>Lien vers le code ou la documentation technique</li>
+</ul>
 
 
 </section>

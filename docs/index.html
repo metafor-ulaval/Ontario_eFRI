@@ -124,11 +124,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#project_summary" id="toc-project_summary" class="nav-link active" data-scroll-target="#project_summary"><strong>1</strong> Project summary</a></li>
-  <li><a href="#project_context" id="toc-project_context" class="nav-link" data-scroll-target="#project_context"><strong>2</strong> Project context</a></li>
-  <li><a href="#previous_work" id="toc-previous_work" class="nav-link" data-scroll-target="#previous_work"><strong>3</strong> Previous work</a></li>
-  <li><a href="#project_objectives" id="toc-project_objectives" class="nav-link" data-scroll-target="#project_objectives"><strong>4</strong> Project objectives</a></li>
-  <li><a href="#introduction_studyarea" id="toc-introduction_studyarea" class="nav-link" data-scroll-target="#introduction_studyarea"><strong>5</strong> Study area</a></li>
+  <li><a href="#project-summary" id="toc-project-summary" class="nav-link active" data-scroll-target="#project-summary"><strong>1</strong> Project summary</a></li>
+  <li><a href="#project-context" id="toc-project-context" class="nav-link" data-scroll-target="#project-context"><strong>2</strong> Project context</a></li>
+  <li><a href="#previous-work" id="toc-previous-work" class="nav-link" data-scroll-target="#previous-work"><strong>3</strong> Previous work</a></li>
+  <li><a href="#project-objectives" id="toc-project-objectives" class="nav-link" data-scroll-target="#project-objectives"><strong>4</strong> Project objectives</a></li>
+  <li><a href="#introduction-study-area" id="toc-introduction-study-area" class="nav-link" data-scroll-target="#introduction-study-area"><strong>5</strong> Study area</a></li>
   </ul>
 </nav>
     </div>
@@ -160,11 +160,11 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="project_summary" class="level1 unnumbered">
+<section id="project-summary" class="level1 unnumbered">
 <h1 class="unnumbered"><strong>1</strong> Project summary</h1>
 <p>Forest managers increasingly have access to detailed, wall-to-wall information on forest structure, but operational planning still relies largely on stand polygons. This project developed and tested an automated framework for transforming LiDAR-derived enhanced forest inventory data into forest stands that can be used in operational inventory and planning. Applied in the Romeo Malette and Ottawa Valley forest management units, the workflow combines automated stand delineation, extraction of LiDAR-derived forest attributes, integration of disturbance and age information, and flexible attribution of species composition. The project produced new stand delineations, an open-source implementation of the workflow, and a comparative assessment of polygon quality based on structural homogeneity, representation of forest variability, and correspondence with independently detected structural transitions.</p>
 </section>
-<section id="project_context" class="level1 unnumbered">
+<section id="project-context" class="level1 unnumbered">
 <h1 class="unnumbered"><strong>2</strong> Project context</h1>
 <p>Forest inventory systems rely on spatially explicit information to describe forest conditions and support forest management planning. In operational inventories, this information is typically organized within stand polygons, which provide the spatial units used to summarize attributes such as volume, tree density, canopy structure, species composition, age, and disturbance history. The usefulness of these products therefore depends not only on the accuracy of the forest attributes themselves, but also on the relevance of the spatial units used to represent and aggregate them. In Ontario, conventional Forest Resources Inventory products have historically relied on aerial photo-interpretation to delineate relatively homogeneous forest stands and assign interpreted attributes. This approach remains central to forest management planning, but it is time-consuming, partly subjective, and difficult to update frequently across large forest management units. As forest conditions change through harvesting, natural disturbance, succession, and stand development, there is a growing need for more consistent, reproducible, and updateable approaches to stand delineation and attribution.</p>
 <p>Recent investments in airborne single photon LiDAR provide an opportunity to modernize this workflow. Ontario’s Forest Resources Inventory leaf-on LiDAR program provides SPL data and derived products to support FRI development, including canopy height models, terrain models, forest inventory raster metrics, and forest inventory attributes. These datasets can be used to describe forest structure wall-to-wall and to support polygon-based inventory products that are more consistent with current forest conditions.</p>
@@ -172,7 +172,7 @@ ul.task-list li input[type="checkbox"] {
 <p>This project, funded by the Knowledge Transfer and Tool Development (KTTD) of the Forestry Futures Trust Ontario, was designed to refine and operationalize an automated polygon-based inventory framework that integrates LiDAR-derived enhanced forest inventory attributes, conventional FRI information, and additional disturbance and attribution layers. The project builds on previous open-source tools developed to integrate photo-interpreted and LiDAR-derived forest attributes into a polygonal forest inventory framework.</p>
 <!-- The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available [here](https://github.com/metafor-ulaval/eFRItools). All the functions can be used for other purposes that concern automated stand delineations and forest attribute characterization. -->
 </section>
-<section id="previous_work" class="level1 unnumbered">
+<section id="previous-work" class="level1 unnumbered">
 <h1 class="unnumbered"><strong>3</strong> Previous work</h1>
 <p>The previous Forestry Futures Trust project, led by the University of British Columbia in collaboration with GreenFirst Forest Products, the Ontario Ministry of Natural Resources and Forestry, and Université Laval, developed an open-source framework to integrate photo-interpreted and airborne LiDAR-derived attributes into a polygonal forest inventory. That work addressed a practical operational question: how can area-based LiDAR estimates, produced as raster layers, be aggregated into inventory polygons that remain compatible with strategic and tactical forest management needs?</p>
 <p>The project demonstrated that Generic Region Merging segmentation could be used to generate new polygons from LiDAR-derived forest attributes, producing stand-like units that were more consistent with current forest structure than older FRI polygons in some areas. It also developed an imputation workflow to transfer interpreted attributes from existing FRI polygons to newly generated polygons, allowing the new polygon layer to retain information not directly predicted from LiDAR, such as species composition and age.</p>
@@ -185,7 +185,7 @@ ul.task-list li input[type="checkbox"] {
 </ul>
 <p>A central remaining question was how to evaluate the quality of the resulting polygons. Previous work showed that automated stand delineation could generate structurally homogeneous units, but an operational validation framework also needs to ask whether polygons effectively partition forest variability and whether their boundaries correspond to real changes in forest structure. These criteria guided the validation component of the present project.</p>
 </section>
-<section id="project_objectives" class="level1 unnumbered">
+<section id="project-objectives" class="level1 unnumbered">
 <h1 class="unnumbered"><strong>4</strong> Project objectives</h1>
 <p>The general objective of this project was to refine an automated stand delineation and attribution framework so that it can better support operational forest inventory modernization in Ontario.</p>
 <p>More specifically, the project aimed to:</p>
@@ -215,7 +215,7 @@ ul.task-list li input[type="checkbox"] {
 <li><p>The correspondence between mapped polygon boundaries and independently detected structural transitions.</p></li>
 </ul>
 </section>
-<section id="introduction_studyarea" class="level1 unnumbered">
+<section id="introduction-study-area" class="level1 unnumbered">
 <h1 class="unnumbered"><strong>5</strong> Study area</h1>
 <p>[ADD TEXT HERE]</p>
 <div class="cell">
