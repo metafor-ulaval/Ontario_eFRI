@@ -336,8 +336,8 @@ ggplot() +
 ```
 
 # **1.1**	Delineation products at the Forest Management Unit scale {-#segmentation-results-fmu}
-The next two figures provide an overview of the resulting delineation products for RMF and OVF in the restricted areas of 5x5 km.
 
+The next figure provide an overview of the resulting smoothed automated stand delineation for RMF in the restricted areas of 5x5 km.
 ```{r}
 #| label: fig-segmentation-exemple-rmf
 #| echo: false
@@ -355,25 +355,7 @@ ggplot() +
   theme_bw()
 ```
 
-```{r}
-#| label: fig-segmentation-exemple-ovf
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
-  geom_sf(data = segmentation_smoothed_ovf_clip_4326, 
-          color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_ovf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_bw()
-```
-
-As a comparative, the next two figures shows the photo-interpreted forest inventory polygons for theses two Forest Management Units.
-
+As a comparative, the next figure shows the photo-interpreted forest inventory polygons.
 ```{r}
 #| label: fig-fri-exemple-rmf
 #| echo: false
@@ -386,6 +368,25 @@ ggplot() +
   geom_sf(data = fri_polygons_rmf_clip_4326, 
           color = "#1E88E5", alpha = 0, size = 0.5) + 
   geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw()
+```
+
+And here is the smoothed automated stand delineation and photo-interpreted forest inventory polygons for the Forest Management Unit of Ottawa Valley Forest.
+
+```{r}
+#| label: fig-segmentation-exemple-ovf
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+#| fig-cap: "Smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest."
+ggplot() +
+  geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
+  geom_sf(data = segmentation_smoothed_ovf_clip_4326, 
+          color = "#FFC107", alpha = 0, size = 0.5) +
+  geom_sf(data = subset_area_ovf_4326, color = "red", fill = NA, lwd = 1) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw()

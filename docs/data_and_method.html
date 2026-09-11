@@ -223,13 +223,13 @@ window.Quarto = {
 <ul>
 <li>Input data</li>
 <li>Direct assignment of available forest attributes</li>
-<li>Imputation of additional forest attributes using a k-nearest neighbour (kNN) approach</li>
+<li>Imputation using a k-nearest neighbour (kNN) approach</li>
 </ul>
 <p>3.Performance assessment (<a href="#performance-assessment">section 4</a>)</p>
 <ul>
 <li>Reference forest attribute layers</li>
-<li>Assessment of the partitioning of forest-attribute variability</li>
-<li>Assessment of internal polygon homogeneity</li>
+<li>Partitioning of forest-attribute variability</li>
+<li>Internal polygon homogeneity</li>
 <li>Assessment of the correspondence between delineated boundaries and structural transitions</li>
 </ul>
 <div style="page-break-after: always;"></div>
@@ -241,7 +241,7 @@ window.Quarto = {
 <p>Stand delineation requires spatial information that captures meaningful differences in forest conditions while limiting unnecessary redundancy among input layers. Several combinations of remotely sensed variables were therefore evaluated, including structural information derived from single-photon lidar (SPL) and spectral information from Sentinel-2 imagery. The selected input configurations were designed to test the relative contribution of structural and spectral information to automated stand delineation.</p>
 <section id="segmentation-data-spl" class="level3 unnumbered">
 <h3 class="unnumbered anchored" data-anchor-id="segmentation-data-spl"><strong>2.1.1</strong> SPL</h3>
-<p>LiDAR data have been acquired during the month of june and july 2018 with a single-photon LiDAR Leica SPL100. Flightlines were parallel with and overlap of 50 percent. Average point density is 40 points/m².</p>
+<p>LiDAR data have been acquired during the month of june and july 2018 with a single-photon LiDAR Leica SPL100. Flightlines were parallel with and overlap of 50 percent. Average point density is 40 points/m². All metrics was computed at a resolution of 20 meters with the package lidR and lasR.</p>
 </section>
 <section id="segmentation-data-sentinel2" class="level3 unnumbered">
 <h3 class="unnumbered anchored" data-anchor-id="segmentation-data-sentinel2"><strong>2.1.2</strong> Sentinel-2</h3>
@@ -286,8 +286,7 @@ window.Quarto = {
 <li>SPL + S2 red edge (model_F in database) : z_p95 + z_above2 + B6</li>
 <li>S2 only (model_G in database) : B6 + B8 + B11</li>
 </ul>
-<p>The metrics used in theses models are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. All kinds of metrics that describes the forest characteristics can be used as input for this algorithm. The metrics used will reflect how the segmented polygons are divided. Thus, if a index such as the topographic wetness index (TWI) is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.</p>
-<p>The following metrics with a resolution of 20 meters were used for polygon segmentation visual exemple :</p>
+<p>The next tree figures represent the metrics used in the “SPL + S2 red edge” model and their meaning :</p>
 <ul>
 <li>z_p95 → Height of 95th percentiles of returns above 1.3 m</li>
 <li>z_above2 → Canopy cover of first returns above 2 m</li>
@@ -335,7 +334,7 @@ Figure&nbsp;3. Third metric used for “SPL + S2 red edge” model : Vegetation 
 </div>
 </div>
 </div>
-<div style="page-break-after: always;"></div>
+<p>The metrics used in theses models are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. All kinds of metrics that describes the forest characteristics can be used as input for this algorithm. The metrics used will reflect how the segmented polygons are divided. Thus, if a index such as the topographic wetness index (TWI) is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics. </p>
 </section>
 </section>
 <section id="attribute-table" class="level1 unnumbered">
@@ -359,7 +358,7 @@ Figure&nbsp;4. Landcover from Ontario Land Cover Compilation Version 2.0.
 </div>
 <p>This layer come from <a href="https://opendata.rcmrd.org/documents/7aa998fdf100434da27a41f1c637382c/about">Ontario Land Cover Compilation Version 2.0</a>. This landcover layer was made from numerous Landsat-7 ETM and Landsat-5 TM satellite images acquired between 1999 and 2011. A mix of supervised and unsupervised classification was use to produce the 27 land cover type.</p>
 <p>The following tree layers are part of the <a href="https://opendata.nfis.org/mapserver/nfis-change_eng.html">National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada</a> and are produced by Canadian Forest Service.</p>
-<p>The forest age is generated by […]</p>
+<p>The forest age provides a 30-m resolution forest age map of Canada (2019 as reference), derived from Landsat time series (disturbance detection, surface reflectance composites, forest structure) and MODIS Gross Primary Production. Age is estimated via a hierarchical approach: direct detection from mapped disturbances (highest accuracy), spectral recovery modeling informed by forest succession where disturbance timing is inferred rather than observed, and inverted allometric equations calibrated against realized height and growth-and-yield models where no disturbance evidence exists (86.6% of area). Stands &gt;150 years old are aggregated into a single old-growth class. See <a href="https://www.sciencedirect.com/science/article/pii/S0034425723000809?via%3Dihub">Maltman et al.&nbsp;(2023)</a> for full methodology and NFI validation.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-eFRI-attibute-table-data-2" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -374,7 +373,7 @@ Figure&nbsp;5. Forest age in 2019 from National Terrestrial Ecosystem Monitoring
 </div>
 </div>
 </div>
-<p>The forest fire and harvest layers were generated with […]</p>
+<p>The forest fire and harvest layers maps the year of greatest disturbance for each pixel across Canada’s 650-million-hectare forested ecosystems, covering 35 years (1985-2020) at 30-m resolution. It’s built from an automated, spatially consistent Landsat time-series pipeline for detecting stand-replacing disturbances, from <a href="https://www.tandfonline.com/doi/full/10.1080/17538947.2016.1187673">Hermosilla et al.&nbsp;(2016)</a>.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-eFRI-attibute-table-data-3" class="quarto-float quarto-figure quarto-figure-center anchored">
