@@ -716,11 +716,11 @@ Here are listed the extracted attributes that lies for each polygons of automate
  
  * Forest age (AGE) → Mean forest age (year) at year of produced data based on a forest age raster layer;
  
- * Year of last perturbation (YRDEP) → Year of the last perturbation where at least 80 % of polygon stand was affected;
+ * Year of last disturbance (YRDEP) → Year of the last disturbance where at least 80 % of polygon stand was affected;
  
- * Type of last perturbation (DEPTYPE) → Type of perturbation : FIRE or HARVEST;
+ * Type of last disturbance (DEPTYPE) → Type of disturbance : FIRE or HARVEST;
  
- * Proportion of last perturbation (DEPPROP) → Proportion (%) of the last perturbation;
+ * Proportion of last disturbance (DEPPROP) → Proportion (%) of the last disturbance;
  
  * Year of most widespread harvest (YRHARVEST) → Year where a harvest covered the largest proportion of stand polygon;
  

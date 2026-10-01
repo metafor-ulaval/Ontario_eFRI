@@ -847,17 +847,17 @@ ggplot() +
 ```
 
 ```{r}
-#| label: fig-eFRI-attibut-last-perturbation
+#| label: fig-eFRI-attibut-last-disturbance
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Year of last perturbation"
+#| fig-cap: "Year of last disturbance"
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = YRDEP)) + 
   geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
-  labs(fill = "Year of last perturbation") +
+  labs(fill = "Year of last disturbance") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
   scale_x_continuous(expand = c(0, 0)) +
