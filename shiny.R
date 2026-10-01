@@ -158,6 +158,7 @@ server <- function(input, output, session) {
     wd_value()
   })
 
+  # Directory displayed in text
   output$selected_wd <- renderText({
     if (is.null(wd_value())) "No directory selected" else wd_value()
   })
@@ -166,11 +167,6 @@ server <- function(input, output, session) {
   otb_dir_reactive <- reactive({
     req(selected_wd_reactive())
     paste0(selected_wd_reactive(), "/softwares/OTB-9.1.0-Win64/bin")
-  })
-
-  # Directory displayed in text
-  output$selected_wd <- renderText({
-    selected_wd_reactive()
   })
 
   # 🟢 Map initialisation 🟢
@@ -324,7 +320,7 @@ server <- function(input, output, session) {
     metrics_infos_reactive() %>%
       filter(name == "dem") %>%
       pull(path) %>%
-      rast() ->> epsg_rast
+      rast() -> epsg_rast
 
     epsg_rast %>%
       st_crs() -> epsg
@@ -339,8 +335,8 @@ server <- function(input, output, session) {
     if(!is.null(select_area()$finished)){
       select_area()$finished %>%
         st_as_sf() %>%
-        st_transform(epsg) ->> extraction_area
-      if(!any(st_overlaps(ctg, extraction_area, sparse = FALSE))){
+        st_transform(epsg) -> extraction_area
+      if(!any(st_intersects(ctg, extraction_area, sparse = FALSE))){
         showNotification("Subset area is outside of catalog, please place area within catalog or remove it.", type = "message", duration = 15, session = session)
         return()
       }
