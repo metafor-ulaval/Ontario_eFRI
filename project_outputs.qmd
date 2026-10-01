@@ -1113,6 +1113,7 @@ Overall, the three criteria lead to consistent conclusions. Automated stand deli
 
 # **4** Final polygon-based eFRI products and tools {-#final-polygon}
 The final polygon-based eFRI products developed through the project are available below for both Forest Management Units. The datasets include the automated stand delineations and associated polygon-level forest attributes. An interactive application is also provided to facilitate visualization and exploration of the project outputs.
+
 [Romeo Malette Forest](téléchargement du produit final)
 
  * éventuellement métadonnées / description des champs.
@@ -1121,9 +1122,6 @@ The final polygon-based eFRI products developed through the project are availabl
 
  * métadonnées / description des champs.
 
-# **5** Interactive automated stand delineation tool {-#interactive-tool}
-•	lien vers la Shiny app
-•	une phrase expliquant ce qu'elle permet de faire. 
+# **5** Additionnal data {-#additionnal-data}
 
-# **6** Additionnal data {-#additionnal-data}
--	Lien vers le code ou la documentation technique
+-	Que mettre comme ducmentation technique?
