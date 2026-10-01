@@ -13,6 +13,12 @@ if not exist "%RSCRIPT%" (
   exit /b 1
 )
 
+rem Give R its home folder: otherwise R asks Windows for the Documents folder,
+rem which can be returned with a wrong encoding when it contains accents
+rem (e.g. OneDrive - Universite Laval) and makes the background computation fail
+set "HOME=%USERPROFILE%"
+set "R_USER=%USERPROFILE%"
+
 rem Only use the packages shipped with the portable R
 set "R_LIBS="
 set "R_LIBS_USER=%APP_DIR%\R-portable\library"

@@ -5,3 +5,4 @@
 # Shiny app binaries (shipped in the deliverable, not versioned)
 app/R-portable/
 app/softwares/
+app/logs/

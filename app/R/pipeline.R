@@ -1,16 +1,15 @@
 # 🟡🟡 eFRI pipeline 🟡🟡 ----
 # This file is sourced in a background R process launched by app.R (callr::r_bg).
 # Everything printed with cat() goes to the log file of the segmentation.
-# The current step is written in a progress file read by the app every second.
+# The current step is written in the log file, where the app reads it every second.
 
 
 
 
 
 # 🟡🟡 Functions 🟡🟡 ----
-# 🌐 Write current step in progress file 🌐
-write_progress <- function(progress_file, step, n_steps, message) {
-  writeLines(c(step, n_steps, message), progress_file)
+# 🌐 Write current step in log file 🌐
+write_progress <- function(step, n_steps, message) {
   cat(paste0("\n==== Step ", step, "/", n_steps, " : ", message, " ====\n"))
 }
 
@@ -85,6 +84,9 @@ run_efri_pipeline <- function(p) {
   Sys.setenv(OTB_MEMORY_AVAILABLE = p$ram_mb)
   Sys.setenv(GDAL_CACHEMAX = p$gdal_cache_mb)
 
+  # No progress bars in the log file
+  terra::terraOptions(progress = 0)
+
   segmentation_wd <- p$segmentation_wd
   metadata_file <- paste0(segmentation_wd, "/metadata.txt")
 
@@ -151,7 +153,7 @@ run_efri_pipeline <- function(p) {
   }
 
   # 🟢 Read metrics 🟢
-  write_progress(p$progress_file, 1, n_steps, "Read metrics")
+  write_progress(1, n_steps, "Read metrics")
 
   metrics_infos %>%
     filter(name %in% c(p$segmentation_metrics,
@@ -167,7 +169,7 @@ run_efri_pipeline <- function(p) {
   names(metrics) <- pull(metrics_infos_selected, name)
 
   # 🟢 Read vector data 🟢
-  write_progress(p$progress_file, 2, n_steps, "Read catalog, masks and forest inventory polygons")
+  write_progress(2, n_steps, "Read catalog, masks and forest inventory polygons")
 
   # Catalog
   read_vector_in_area(paste0(p$wd, "/shapefiles/", p$forest, "/ctg.shp"), epsg, extraction_area) -> ctg
@@ -195,7 +197,7 @@ run_efri_pipeline <- function(p) {
     rowid_to_column("id") -> fri_polygons
 
   # 🟢 Read landcover, forest age and disturbances 🟢
-  write_progress(p$progress_file, 3, n_steps, "Read landcover, forest age, forest fire and forest harvest")
+  write_progress(3, n_steps, "Read landcover, forest age, forest fire and forest harvest")
 
   read_raster_on_template(paste0(p$wd, "/metrics/", p$forest, "/other/landcover.tif"),
                           template, extraction_area_vect, method = "near") -> landcover
@@ -244,7 +246,7 @@ run_efri_pipeline <- function(p) {
                           template, extraction_area_vect, method = "near") -> forest_harvest_1985_2020
 
   # 🟢 Segmentation 🟢
-  write_progress(p$progress_file, 4, n_steps, "Perform segmentation")
+  write_progress(4, n_steps, "Perform segmentation")
 
   eFRI_segmentation(metrics = metrics[[p$segmentation_metrics]],
                     masks = masks,
@@ -263,7 +265,7 @@ run_efri_pipeline <- function(p) {
              quiet = TRUE)
 
   # 🟢 Build attribute table 🟢
-  write_progress(p$progress_file, 5, n_steps, "Build attribute table of segmented polygons")
+  write_progress(5, n_steps, "Build attribute table of segmented polygons")
 
   eFRI_attribute_table(segmentation = segmentation,
                        metrics = metrics,
@@ -285,7 +287,7 @@ run_efri_pipeline <- function(p) {
              quiet = TRUE)
 
   # 🟢 Imputation 🟢
-  write_progress(p$progress_file, 6, n_steps, "Perform imputation")
+  write_progress(6, n_steps, "Perform imputation")
 
   eFRI_imputation(segmentation = segmentation_data,
                   forest_polygon = fri_polygons,
@@ -302,7 +304,7 @@ run_efri_pipeline <- function(p) {
                   knn_var = imputation_results$knn_vars) -> segmentation_data_imputed
 
   # 🟢 Write outputs and metadata 🟢
-  write_progress(p$progress_file, 7, n_steps, "Write outputs")
+  write_progress(7, n_steps, "Write outputs")
 
   segmentation_data_imputed %>%
     st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),

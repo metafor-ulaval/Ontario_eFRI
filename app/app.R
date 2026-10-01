@@ -85,6 +85,34 @@ desktop_mode <- Sys.getenv("EFRI_DESKTOP") == "1"
 
 n_steps <- 7
 
+# One log file per launch of the app, in app/logs
+log_dir <- paste0(app_dir, "/logs")
+dir.create(log_dir, showWarnings = FALSE)
+app_log_file <- paste0(log_dir, "/eFRI_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".log")
+
+write_log <- function(...) {
+  cat(paste0(format(Sys.time(), "%H:%M:%S"), " ", paste0(...), "\n"), file = app_log_file, append = TRUE)
+}
+
+# Run an action, writing any error and its call stack in the log instead of stopping the app
+run_logged <- function(action_name, session, expr, on_error = NULL) {
+  tryCatch(
+    withCallingHandlers(expr, error = function(e) {
+      if (inherits(e, "shiny.silent.error")) return() # req() stops silently, it is not an error
+      write_log("ERROR in ", action_name, " : ", conditionMessage(e), "\nCall stack :\n",
+                paste0("  ", vapply(sys.calls(), function(x) paste(deparse(x, nlines = 1), collapse = ""), character(1)), collapse = "\n"))
+    }),
+    error = function(e) {
+      if (inherits(e, "shiny.silent.error")) stop(e)
+      if (!is.null(on_error)) on_error()
+      showNotification(paste0("Unexpected error in ", action_name, " : ", conditionMessage(e), " See the log in ", app_log_file, "."),
+                       type = "error", duration = NULL, session = session)
+      NULL
+    })
+}
+
+write_log("App started | R ", R.version$major, ".", R.version$minor, " | app folder : ", app_dir, " | working directory : ", if (is.null(default_wd)) "none" else default_wd)
+
 
 
 
@@ -315,7 +343,20 @@ server <- function(input, output, session) {
   }
 
   # 🟠 Compute enhanced forest resources inventory polygons 🟠
-  observeEvent(input$run, {
+  observeEvent(input$run, run_logged("Compute", session, on_error = function() {
+    # Remove the output folder if nothing was written in it, and reset the buttons
+    segmentation_wd <- paste0(isolate(selected_wd_reactive()), "/segmentation/", isolate(input$forest), "/automated_", isolate(input$name))
+    if (dir.exists(segmentation_wd) && length(list.files(segmentation_wd)) == 0) unlink(segmentation_wd, recursive = TRUE)
+    if (!is.null(isolate(run_state$process)) && isolate(run_state$process)$is_alive()) isolate(run_state$process)$kill_tree()
+    stop_run()
+  }, {
+
+    write_log("Compute clicked | forest : ", input$forest, " | name : ", input$name,
+              " | segmentation metrics : ", paste(input$segmentation_metrics, collapse = ", "),
+              " | summary metrics : ", paste(input$summary_metrics, collapse = ", "),
+              " | masks : ", paste(input$masks, collapse = ", "),
+              " | thresh / spec / spat : ", input$grm_thresh, " / ", input$grm_spec, " / ", input$grm_spat,
+              " | subset area drawn : ", !is.null(select_area()$finished))
 
     # 🟢 Condition 0 🟢
     if(!is.null(run_state$process)){
@@ -410,16 +451,22 @@ server <- function(input, output, session) {
       showNotification("No subset area selected, the whole forest management unit will be processed. This can take a long time.", type = "warning", duration = 30, session = session)
     }
 
+    if(!is.null(extraction_area)){
+      write_log("Subset area | features : ", nrow(extraction_area), " | bbox : ", paste(round(sf::st_bbox(extraction_area)), collapse = ", "),
+                " | columns : ", paste(names(extraction_area), collapse = ", "))
+    }
+
     # 🟢 Create wd 🟢
     dir.create(segmentation_wd, recursive = TRUE)
+    write_log("Output folder created : ", segmentation_wd)
 
     # 🟢 Launch computation in background 🟢
     memory <- memory_budget()
+    write_log("Memory (MB) | OTB : ", memory$ram_mb, " | GDAL cache : ", memory$gdal_cache_mb)
 
     params <- list(wd = selected_wd_reactive(),
                    forest = input$forest,
                    segmentation_wd = segmentation_wd,
-                   progress_file = paste0(segmentation_wd, "/progress.txt"),
                    segmentation_metrics = input$segmentation_metrics,
                    summary_metrics = input$summary_metrics,
                    masks = input$masks,
@@ -439,6 +486,7 @@ server <- function(input, output, session) {
                                      stdout = paste0(segmentation_wd, "/log.txt"),
                                      stderr = "2>&1",
                                      supervise = TRUE)
+    write_log("Background computation started | pid : ", run_state$process$get_pid())
 
     run_state$segmentation_wd <- segmentation_wd
     run_state$name <- input$name
@@ -448,19 +496,21 @@ server <- function(input, output, session) {
     shinyjs::disable("run")
     shinyjs::show("cancel")
     shinyjs::show("run_log")
-  })
+  }))
 
   # 🟠 Follow background computation 🟠
-  observe({
+  observe(run_logged("Follow computation", session, on_error = stop_run, {
     req(run_state$process)
     invalidateLater(1000)
 
-    progress_file <- paste0(run_state$segmentation_wd, "/progress.txt")
-    if(file.exists(progress_file)){
-      progress <- readLines(progress_file, warn = FALSE)
-      if(length(progress) == 3){
-        run_state$progress$set(value = as.numeric(progress[1]) - 0.5,
-                               message = paste0("Step ", progress[1], "/", progress[2], " : ", progress[3]))
+    # Last step written in the log file of the segmentation (==== Step 1/7 : Read metrics ====)
+    log_file <- paste0(run_state$segmentation_wd, "/log.txt")
+    if(file.exists(log_file)){
+      steps <- grep("^==== Step [0-9]+/[0-9]+ : .* ====$", readLines(log_file, warn = FALSE), value = TRUE)
+      if(length(steps) != 0){
+        step <- as.numeric(sub("^==== Step ([0-9]+)/.*$", "\\1", tail(steps, 1)))
+        run_state$progress$set(value = step - 0.5,
+                               message = gsub("^==== | ====$", "", tail(steps, 1)))
       }
     }
 
@@ -474,15 +524,17 @@ server <- function(input, output, session) {
           file = paste0(run_state$segmentation_wd, "/metadata.txt"),
           append = TRUE,
           sep = "\n")
+      write_log("Computation failed : ", message)
       showNotification(paste0("The computation failed : ", message, " See log.txt in the output folder for details."),
                        type = "error", duration = NULL, session = session)
     } else {
+      write_log("Computation done | polygons : ", result$n_polygons, " | elapsed time : ", result$elapsed_time)
       showNotification(paste0("Done after ", result$elapsed_time, ". A total of ", result$n_polygons, " polygons created for segmentation named ", run_state$name, "."),
                        type = "message", duration = NULL, session = session)
     }
 
     stop_run()
-  })
+  }))
 
   # 🟠 Last lines of the log 🟠
   output$run_log <- renderText({
@@ -500,6 +552,7 @@ server <- function(input, output, session) {
 
     run_state$process$kill_tree()
     unlink(run_state$segmentation_wd, recursive = TRUE)
+    write_log("Computation cancelled : ", run_state$segmentation_wd)
     showNotification(paste0("Computation of segmentation named ", run_state$name, " cancelled."), type = "message", duration = 15, session = session)
 
     stop_run()
