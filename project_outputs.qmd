@@ -301,7 +301,7 @@ fri_polygons_ovf %>%
 ```
 
 # **1** Automated stand delineation {-#segmentation-results}
-In this section and the [next one](#attribute-table-results), the "SPL + S2 red edge" segmentation model was use. As a reminder, the metrics used for this model are theses one : z_p95 + z_above2 + B6. There is a visual example of the metrics used in the [section 1.2](#segmentation-results-example). For both the Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF), distribution of area and shape index will be showed for the whole Forest Management Unit scale (in yellow in the figure 1 and 2). Furthermore, a visual example of resulting automated stand delineation that was smoothed in ArcGIS will be shown for a closer subset area (in red in the figure 1 and 2). The restricted area of 5x5 km allows for easier visualization.
+In this section and the [next one](#attribute-table-results), the "SPL + S2 red edge" segmentation model was use. As a reminder, the metrics used for this model are theses one : z_p95 + z_above2 + B6. There is a visual example of the metrics used in the [section 2.4 of Data and Methods](data_and_method.qmd#Segmentation-generation). For both the Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF), distribution of area and shape index will be showed for the whole Forest Management Unit scale (in yellow in the figure 1 and 2). Furthermore, a visual example of resulting automated stand delineation that was smoothed in ArcGIS will be shown for a closer subset area (in red in the figure 1 and 2). The restricted area of 5x5 km allows for easier visualization.
 
 ```{r}
 #| label: fig-study-area-subset-rmf
@@ -335,7 +335,7 @@ ggplot() +
   theme_bw()
 ```
 
-# **1.1**	Delineation products at the Forest Management Unit scale {-#segmentation-results-fmu}
+## **1.1**	Delineation products at the Forest Management Unit scale {-#segmentation-results-fmu}
 
 The next figure provide an overview of the resulting smoothed automated stand delineation for RMF in the restricted areas of 5x5 km.
 ```{r}
@@ -729,7 +729,7 @@ shape_index_data_frame %>%
         legend.title = element_blank())
 ```
 
-# **1.2** Additionnal parameters {-#segmentation-results-example}
+## **1.2** Additionnal parameters {-#segmentation-results-example}
 It is recommended to perform a smoothing step that can be made later in ArcGIS Pro or any GIS with a smoothing tool that keep the topology of adjacent polygons. The tool use in this case is "Smooth Polygon" of the toolbox "Cartography". The parameters used are as follow :
 
  * algorithm = "PAEK"; 
@@ -1099,7 +1099,7 @@ The spatial correspondence between mapped stand boundaries and independently det
 knitr::include_graphics("figures/smw_figure.png")
 ```
 
-# **3** Final polygon-based eFRI products and tools {-#final-polygon}
+# **4** Final polygon-based eFRI products and tools {-#final-polygon}
 The final polygon-based eFRI products developed through the project are available below for both Forest Management Units. The datasets include the automated stand delineations and associated polygon-level forest attributes. An interactive application is also provided to facilitate visualization and exploration of the project outputs.
 [Romeo Malette Forest](téléchargement du produit final)
 
@@ -1109,9 +1109,9 @@ The final polygon-based eFRI products developed through the project are availabl
 
  * métadonnées / description des champs.
 
-# **4** Interactive automated stand delineation tool {-#interactive-tool}
+# **5** Interactive automated stand delineation tool {-#interactive-tool}
 •	lien vers la Shiny app
 •	une phrase expliquant ce qu'elle permet de faire. 
 
-# **5** Additionnal data {-#additionnal-data}
+# **6** Additionnal data {-#additionnal-data}
 -	Lien vers le code ou la documentation technique
