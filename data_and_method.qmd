@@ -219,7 +219,7 @@ for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
                     clean_nodata = TRUE,
                     output_path = segmentation_wd,
                     output_name = names(param$models),
-                    otb_dir = "D:/00_Ontario_eFRI/00_logiciels/OTB-9.1.0-Win64/bin") -> segmentation
+                    otb_dir = otb_dir) -> segmentation
 
   segmentation %>%
     st_write(paste0(segmentation_wd, "/data.gpkg"),

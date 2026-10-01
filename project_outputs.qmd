@@ -148,7 +148,7 @@ metrics_infos_selected_rmf %>%
   map(project, epsg_rast_rmf, method = "bilinear") %>%
   map(resample, epsg_rast_rmf) %>%
   rast() %>% 
-  crop(subset_area) -> metrics_rmf
+  crop(subset_area_rmf) -> metrics_rmf
   
 names(metrics_rmf) <- metrics_names # Assign metrics names
 
@@ -416,7 +416,7 @@ The automated stand delineations can be now compared to photo-interpreted forest
 Area in hectare is use for size and shape index is use to assess polygon shape. The shape index is determine by this formula :
 
 $$
-ShapeIndex = \frac{\text{Perimeter}}{2\sqrt{\pi \times \text{Area}}}
+ShapeIndex = \frac{\text{Perimeter}}{\sqrt{\pi \times \text{Area}}}
 $$
 
 The density plot were computed at the pixel level and are therefore area-weighted.
@@ -728,6 +728,7 @@ shape_index_data_frame %>%
   theme(legend.position = "bottom",
         legend.title = element_blank())
 ```
+
 # **1.2** Additionnal parameters {-#segmentation-results-example}
 It is recommended to perform a smoothing step that can be made later in ArcGIS Pro or any GIS with a smoothing tool that keep the topology of adjacent polygons. The tool use in this case is "Smooth Polygon" of the toolbox "Cartography". The parameters used are as follow :
 
@@ -994,7 +995,7 @@ knitr::kable(best_models_clean)
 The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial group class shown below.
 
 ```{r}
-#| label: fig-imputation-segmentation
+#| label: fig-imputation-fri
 #| echo: false
 #| results: hide
 #| message: false
@@ -1019,12 +1020,12 @@ ggplot() +
 ``` 
 
 ```{r}
-#| label: fig-imputation-fri
+#| label: fig-imputation-segmentation
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Imputation results for three functional group"
+#| fig-cap: "Three functional group class of automated stand delineations"
 segmentation_smoothed_rmf_clip_4326 %>% 
   dplyr::select(FUNCTIONAL_GROUP_3) -> imputation_data_2
 
