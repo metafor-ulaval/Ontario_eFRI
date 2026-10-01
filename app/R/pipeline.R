@@ -68,7 +68,10 @@ read_vector_in_area <- function(path,
 run_efri_pipeline <- function(p) {
 
   suppressPackageStartupMessages({
-    library(tidyverse)
+    library(dplyr)
+    library(purrr)
+    library(stringr)
+    library(tibble)
     library(magrittr)
     library(sf)
     library(terra)
