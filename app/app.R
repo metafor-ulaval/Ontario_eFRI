@@ -2,17 +2,13 @@
 library(shiny)
 library(shinyjs)
 library(shinyBS)
-library(shinyFiles)
 library(leaflet)
-library(leaflet.extras)
 library(tidyverse)
 library(magrittr)
-library(rmapshaper)
 library(sf)
 library(terra)
 library(mapedit)
-#library(knitr)
-library(exactextractr)
+library(callr)
 # pak::pak("metafor-ulaval/eFRItools")
 library(eFRItools)
 
@@ -52,15 +48,39 @@ set_view_auto <- function(map,
   return(zoomed_map)
 }
 
+# 🌐 Memory given to OTB and GDAL, based on the memory available on the computer 🌐
+memory_budget <- function(fraction = 0.6) {
+  avail_mb <- ps::ps_system_memory()$avail / 1024^2
+  ram_mb <- max(floor(avail_mb * fraction), 1024)
+
+  list(ram_mb = ram_mb,
+       gdal_cache_mb = floor(ram_mb / 4))
+}
+
+# 🌐 Find OTB, first in the app folder, then in the working directory 🌐
+find_otb_dir <- function(app_dir, wd) {
+  c(paste0(app_dir, "/softwares/OTB-9.1.0-Win64/bin"),
+    paste0(wd, "/softwares/OTB-9.1.0-Win64/bin")) %>%
+    keep(dir.exists) %>%
+    head(1)
+}
+
 
 
 
 
 # 🟡🟡 Parameters 🟡🟡 ----
-Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
-Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
-Sys.setenv(GDAL_CACHEMAX = "65536") # 64 GO
+# The app folder is the folder of this file (shiny::runApp sets it as working directory)
+app_dir <- normalizePath(getwd(), winslash = "/")
 
+# When the app is inside the deliverable folder, the deliverable folder is the default working directory
+default_wd <- normalizePath(paste0(app_dir, "/.."), winslash = "/")
+if (!all(dir.exists(paste0(default_wd, c("/metrics", "/shapefiles"))))) default_wd <- NULL
+
+# When launched with the launcher, closing the browser stops the app
+desktop_mode <- Sys.getenv("EFRI_DESKTOP") == "1"
+
+n_steps <- 7
 
 
 
@@ -102,6 +122,8 @@ ui <- fluidPage(
                             # Action button to show plots and compute statistics
                             textInput("name", "Choose output name :", ""),
                             actionButton("run", "Compute enhanced forest resources inventory polygons"),
+                            hidden(actionButton("cancel", "Cancel computation", class = "btn-danger")),
+                            hidden(verbatimTextOutput("run_log")),
                             actionButton("add_segmentation", "Add enhanced forest resources inventory polygons to map")))
       )
     ),
@@ -132,7 +154,7 @@ server <- function(input, output, session) {
   # 🟣 = Action button components
 
   # 🟠 Working directory via the native OS dialog 🟠
-  wd_value <- reactiveVal(NULL)
+  wd_value <- reactiveVal(default_wd)
 
   observeEvent(input$wd_browse, {
     start_dir <- if (is.null(wd_value())) "" else wd_value()
@@ -161,12 +183,6 @@ server <- function(input, output, session) {
   # Directory displayed in text
   output$selected_wd <- renderText({
     if (is.null(wd_value())) "No directory selected" else wd_value()
-  })
-
-  # 🟠 OTB dir 🟠
-  otb_dir_reactive <- reactive({
-    req(selected_wd_reactive())
-    paste0(selected_wd_reactive(), "/softwares/OTB-9.1.0-Win64/bin")
   })
 
   # 🟢 Map initialisation 🟢
@@ -280,8 +296,29 @@ server <- function(input, output, session) {
                        selected = c("roads", "waterbodies"))
   })
 
+  # 🟠 Background computation state 🟠
+  run_state <- reactiveValues(process = NULL,
+                              progress = NULL,
+                              segmentation_wd = NULL,
+                              name = NULL)
+
+  stop_run <- function() {
+    if (!is.null(run_state$progress)) run_state$progress$close()
+    run_state$process <- NULL
+    run_state$progress <- NULL
+    shinyjs::enable("run")
+    shinyjs::hide("cancel")
+    shinyjs::hide("run_log")
+  }
+
   # 🟠 Compute enhanced forest resources inventory polygons 🟠
   observeEvent(input$run, {
+
+    # 🟢 Condition 0 🟢
+    if(!is.null(run_state$process)){
+      showNotification("A computation is already running.", type = "message", duration = 15, session = session)
+      return()
+    }
 
     # 🟢 Condition 1 🟢
     if(is.null(wd_value())){
@@ -301,6 +338,12 @@ server <- function(input, output, session) {
       return()
     }
 
+    # 🟢 Condition 3b 🟢
+    if(!grepl("^[A-Za-z0-9_-]+$", input$name)){
+      showNotification("Output name can only contain letters (without accents), numbers, '-' and '_'.", type = "message", duration = 15, session = session)
+      return()
+    }
+
     # 🟢 Set wd 🟢
     paste0(selected_wd_reactive(), "/segmentation/", input$forest, "/automated_", input$name) -> segmentation_wd
 
@@ -316,310 +359,150 @@ server <- function(input, output, session) {
       return()
     }
 
+    # 🟢 Condition 5b 🟢
+    if(!isTruthy(input$grm_thresh) || input$grm_thresh <= 0){
+      showNotification("Threshold must be greater than 0.", type = "message", duration = 15, session = session)
+      return()
+    }
+
+    if(!isTruthy(input$grm_spec) || input$grm_spec <= 0 || input$grm_spec > 1 ||
+       !isTruthy(input$grm_spat) || input$grm_spat <= 0 || input$grm_spat > 1){
+      showNotification("Weights of spectral and spatial homogeneity must be greater than 0 and lower or equal to 1.", type = "message", duration = 15, session = session)
+      return()
+    }
+
+    # 🟢 Condition 6 🟢
+    otb_dir <- find_otb_dir(app_dir, selected_wd_reactive())
+    if(length(otb_dir) == 0){
+      showNotification("Orfeo ToolBox (OTB-9.1.0-Win64) was not found in the softwares folder.", type = "error", duration = 15, session = session)
+      return()
+    }
+
     # 🟢 Get epsg from dem 🟢
     metrics_infos_reactive() %>%
       filter(name == "dem") %>%
       pull(path) %>%
-      rast() -> epsg_rast
-
-    epsg_rast %>%
+      rast() %>%
       st_crs() -> epsg
 
-    # 🟢 Read data 1 🟢
-    # Catalog
-    ctg_reactive() %>%
-      st_as_sf() %>%
-      st_transform(epsg) -> ctg
-
-    # 🟢 Conditions 6 🟢
+    # 🟢 Condition 7 🟢
+    extraction_area <- NULL
     if(!is.null(select_area()$finished)){
       select_area()$finished %>%
         st_as_sf() %>%
         st_transform(epsg) -> extraction_area
+
+      ctg_reactive() %>%
+        st_transform(epsg) -> ctg
+
       if(!any(st_intersects(ctg, extraction_area, sparse = FALSE))){
         showNotification("Subset area is outside of catalog, please place area within catalog or remove it.", type = "message", duration = 15, session = session)
         return()
       }
+    } else {
+      showNotification("No subset area selected, the whole forest management unit will be processed. This can take a long time.", type = "warning", duration = 30, session = session)
     }
 
     # 🟢 Create wd 🟢
     dir.create(segmentation_wd, recursive = TRUE)
 
-    # 🟢 Best models for imputation 🟢
-    list.files(paste0(selected_wd_reactive(), "/analysis/imputation"), pattern = paste0("results_", input$forest), full.names = T) %>%
-      map_dfr(function(x){
-        read.csv(x) %>%
-          arrange(desc(accuracy)) %>%
-          slice_max(accuracy, n = 1)
-      }) -> imputation_results
+    # 🟢 Launch computation in background 🟢
+    memory <- memory_budget()
 
-    imputation_results %>%
-      pull(knn_vars) %>%
-      str_remove(",X,Y") %>%
-      strsplit(",") %>%
-      unlist() %>%
-      unique() -> imputation_metrics
+    params <- list(wd = selected_wd_reactive(),
+                   forest = input$forest,
+                   segmentation_wd = segmentation_wd,
+                   progress_file = paste0(segmentation_wd, "/progress.txt"),
+                   segmentation_metrics = input$segmentation_metrics,
+                   summary_metrics = input$summary_metrics,
+                   masks = input$masks,
+                   thresh = input$grm_thresh,
+                   spec = input$grm_spec,
+                   spat = input$grm_spat,
+                   extraction_area = extraction_area,
+                   otb_dir = otb_dir,
+                   ram_mb = memory$ram_mb,
+                   gdal_cache_mb = memory$gdal_cache_mb)
 
-    # 🟢 Save metadata 🟢
-    start <- Sys.time()
-    cat(c("Start time : ", as.character(start), "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
+    run_state$process <- callr::r_bg(function(app_dir, p) {
+                                       source(paste0(app_dir, "/R/pipeline.R"))
+                                       run_efri_pipeline(p)
+                                     },
+                                     args = list(app_dir = app_dir, p = params),
+                                     stdout = paste0(segmentation_wd, "/log.txt"),
+                                     stderr = "2>&1",
+                                     supervise = TRUE)
 
-    cat(c("Segmentation metrics : ", input$segmentation_metrics, "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
+    run_state$segmentation_wd <- segmentation_wd
+    run_state$name <- input$name
+    run_state$progress <- shiny::Progress$new(session, min = 0, max = n_steps)
+    run_state$progress$set(value = 0, message = "Starting computation")
 
-    cat(c("Summary metrics : ", input$summary_metrics, "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
+    shinyjs::disable("run")
+    shinyjs::show("cancel")
+    shinyjs::show("run_log")
+  })
 
-    cat(c("EPSG : ", epsg$input, "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
+  # 🟠 Follow background computation 🟠
+  observe({
+    req(run_state$process)
+    invalidateLater(1000)
 
-    cat(c("Segmentation parameters : ", paste0("thresh = ", input$grm_thresh, " / spec = ", input$grm_spec, " / spat = ", input$grm_spat), "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
-
-    cat(c("Segmentation masks : ", paste0(input$masks, collapse = ", "), "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
-
-    # 🟢 Read data 2 🟢
-    # Metrics
-    showNotification("Read metrics.", type = "message", duration = 15, session = session)
-    metrics_infos_reactive() %>%
-      filter(name %in% c(input$segmentation_metrics,
-                         imputation_metrics,
-                         input$summary_metrics,
-                         "z_p95", "z_above2", "slope", "sagawi")) -> metrics_infos_selected
-
-    metrics_infos_selected %>%
-      pull(name) -> metrics_names
-
-    metrics_infos_selected %>%
-      pull(path) %>%
-      map(rast) %>%
-      map(project, epsg_rast, method = "bilinear") %>%
-      map(resample, epsg_rast) %>%
-      rast -> metrics
-
-    # Assign metrics names
-    names(metrics) <- metrics_names
-
-    # Masks
-    if(!is.null(input$masks)){
-      showNotification("Read masks.", type = "message", duration = 15, session = session)
-
-      paste0(selected_wd_reactive(), "/shapefiles/", input$forest, "/", input$masks, ".shp") %>%
-        map(terra::vect) %>%
-        map(terra::project, epsg_rast) -> masks
-
-    } else {
-      showNotification("No masks selected.", type = "message", duration = 15, session = session)
-      masks <- input$masks
-    }
-
-    # Forest inventory polygons (fri)
-    showNotification("Read forest inventory polygons.", type = "message", duration = 15, session = session)
-    st_read(paste0(selected_wd_reactive(), "/shapefiles/", input$forest, "/PolygonForest.shp"), quiet = TRUE) %>%
-      rowid_to_column("id") %>%
-      st_transform(epsg) -> fri_polygons
-
-    # Landcover
-    showNotification("Read landcover.", type = "message", duration = 15, session = session)
-    rast(paste0(selected_wd_reactive(), "/metrics/", input$forest, "/other/landcover.tif")) %>%
-      terra::project(epsg_rast, method = "near") -> landcover
-
-    landcover_codes <- c(`1` = "Clear_Open_Water",
-                         `2` = "Turbid_Water",
-                         `3` = "Shoreline",
-                         `4` = "Mudflats",
-                         `5` = "Marsh",
-                         `6` = "Swamp",
-                         `7` = "Fen",
-                         `8` = "Bog",
-                         `10` = "Heath",
-                         `11` = "Sparse_Treed",
-                         `12` = "Treed_Upland",
-                         `13` = "Deciduous_Treed",
-                         `14` = "Mixed_Treed",
-                         `15` = "Coniferous_Treed",
-                         `16` = "Plantations_Treed_Cultivated",
-                         `17` = "Hedge_Rows",
-                         `18` = "Disturbance",
-                         `19` = "Open_Cliff_Talus",
-                         `20` = "Alvar",
-                         `21` = "Sand_Barren_Dune",
-                         `22` = "Open_Tallgrass_Prairie",
-                         `23` = "Tallgrass_Savannah",
-                         `24` = "Tallgrass_Woodland",
-                         `25` = "Sand_Gravel_Mine_Tailings_Extraction",
-                         `26` = "Bedrock",
-                         `27` = "Communit_Infrastructure",
-                         `28` = "Agriculture_Undifferentiated_Rural_Land_Use",
-                         `157` = "Other",
-                         `247` = "Cloud_Shadow")
-
-    # Attach levels (lookup table)
-    levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
-                                    class = unname(landcover_codes))
-
-    # Forest_Age_1985-2020
-    showNotification("Read forest age", type = "message", duration = 15, session = session)
-    rast(paste0(selected_wd_reactive(), "/metrics/", input$forest, "/other/forest_age_2019.tif")) %>%
-      terra::project(epsg_rast, method = "near") -> forest_age_2019
-
-    # Forest_Fire_1985-2020
-    showNotification("Read forest fire", type = "message", duration = 15, session = session)
-    rast(paste0(selected_wd_reactive(), "/metrics/", input$forest, "/other/forest_fire_1985_2020.tif")) %>%
-      terra::project(epsg_rast, method = "near") -> forest_fire_1985_2020
-
-    # Forest_Harvest_1985-2020
-    showNotification("Read forest harvest", type = "message", duration = 15, session = session)
-    rast(paste0(selected_wd_reactive(), "/metrics/", input$forest, "/other/forest_harvest_1985_2020.tif")) %>%
-      terra::project(epsg_rast, method = "near") -> forest_harvest_1985_2020
-
-
-    # 🟢 Clip data 🟢
-    if(!is.null(select_area()$finished)){
-      extraction_area %>%
-        st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-                 layer = "extraction_area",
-                 quiet = T)
-
-      showNotification("Clip catalog.", type = "message", duration = 15, session = session)
-      ctg %>%
-        st_filter(extraction_area) -> ctg
-
-      showNotification("Clip metrics.", type = "message", duration = 15, session = session)
-      metrics %>%
-        crop(extraction_area) %>%
-        mask(extraction_area) -> metrics
-
-      if(!is.null(input$masks)){
-        showNotification("Clip masks.", type = "message", duration = 15, session = session)
-        masks %>%
-          map(terra::crop, terra::vect(extraction_area)) %>%
-          map(terra::mask, terra::vect(extraction_area)) -> masks
+    progress_file <- paste0(run_state$segmentation_wd, "/progress.txt")
+    if(file.exists(progress_file)){
+      progress <- readLines(progress_file, warn = FALSE)
+      if(length(progress) == 3){
+        run_state$progress$set(value = as.numeric(progress[1]) - 0.5,
+                               message = paste0("Step ", progress[1], "/", progress[2], " : ", progress[3]))
       }
-
-      showNotification("Clip forest inventory polygons.", type = "message", duration = 15, session = session)
-      fri_polygons %>%
-        st_filter(extraction_area) -> fri_polygons
-
-      showNotification("Clip landcover.", type = "message", duration = 15, session = session)
-      landcover %>%
-        crop(extraction_area) %>%
-        mask(extraction_area) -> landcover
-
-      showNotification("Clip forest age.", type = "message", duration = 15, session = session)
-      forest_age_2019 %>%
-        crop(extraction_area) %>%
-        mask(extraction_area) -> forest_age_2019
-
-      showNotification("Clip forest fire.", type = "message", duration = 15, session = session)
-      forest_fire_1985_2020 %>%
-        crop(extraction_area) %>%
-        mask(extraction_area) -> forest_fire_1985_2020
-
-      showNotification("Clip forest harvest.", type = "message", duration = 15, session = session)
-      forest_harvest_1985_2020 %>%
-        crop(extraction_area) %>%
-        mask(extraction_area) -> forest_harvest_1985_2020
-    } else {
-      showNotification("No subset area selected, whole area will be processed.", type = "message", duration = 15, session = session)
     }
 
-    # 🟢 Segmentation 🟢
-    showNotification("Perform segmentation.", type = "message", duration = 15, session = session)
+    if(run_state$process$is_alive()) return()
 
-    eFRI_segmentation(metrics = metrics[[input$segmentation_metrics]],
-                      masks = masks,
-                      thresh = input$grm_thresh,
-                      spec = input$grm_spec,
-                      spat = input$grm_spat,
-                      method = "bs",
-                      clean_nodata = TRUE,
-                      output_path = segmentation_wd,
-                      output_name = "segmentation",
-                      otb_dir = otb_dir_reactive()) -> segmentation
+    result <- tryCatch(run_state$process$get_result(), error = function(e) e)
 
-    segmentation %>%
-      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-               layer = "segmentation",
-               quiet = T)
+    if(inherits(result, "error")){
+      message <- if (!is.null(result$parent)) conditionMessage(result$parent) else conditionMessage(result)
+      cat(c("Failed : ", message),
+          file = paste0(run_state$segmentation_wd, "/metadata.txt"),
+          append = TRUE,
+          sep = "\n")
+      showNotification(paste0("The computation failed : ", message, " See log.txt in the output folder for details."),
+                       type = "error", duration = NULL, session = session)
+    } else {
+      showNotification(paste0("Done after ", result$elapsed_time, ". A total of ", result$n_polygons, " polygons created for segmentation named ", run_state$name, "."),
+                       type = "message", duration = NULL, session = session)
+    }
 
-    # 🟢 Build attribute table 🟢
-    showNotification("Build attribute table in segmented polygons.", type = "message", duration = 15, session = session)
+    stop_run()
+  })
 
-    eFRI_attribute_table(segmentation = segmentation,
-                         metrics = metrics,
-                         summary_metrics = unique(c(input$summary_metrics, "z_p95", "z_above2", "slope", "sagawi")),
-                         landcover = landcover,
-                         forest_fire = forest_fire_1985_2020,
-                         forest_harvest = forest_harvest_1985_2020,
-                         forest_age = forest_age_2019) -> segmentation_data
+  # 🟠 Last lines of the log 🟠
+  output$run_log <- renderText({
+    req(run_state$process)
+    invalidateLater(1000)
 
-    segmentation_data %>%
-      dplyr::select(-id_seg, -id) %>%
-      rename(HEIGHT = Z_P95,
-             CANOPY_COVER = Z_ABOVE2,
-             MOISTURE = SAGAWI) -> segmentation_data
+    log_file <- paste0(run_state$segmentation_wd, "/log.txt")
+    if(!file.exists(log_file)) return("")
+    paste(tail(readLines(log_file, warn = FALSE), 8), collapse = "\n")
+  })
 
-    segmentation_data %>%
-      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-               layer = "segmentation_data",
-               quiet = T)
+  # 🟣 Cancel computation 🟣
+  observeEvent(input$cancel, {
+    req(run_state$process)
 
-    # 🟢 Imputation 🟢
-    showNotification("Peform imputation.", type = "message", duration = 15, session = session)
+    run_state$process$kill_tree()
+    unlink(run_state$segmentation_wd, recursive = TRUE)
+    showNotification(paste0("Computation of segmentation named ", run_state$name, " cancelled."), type = "message", duration = 15, session = session)
 
-    eFRI_imputation(segmentation = segmentation_data,
-                    forest_polygon = fri_polygons,
-                    metrics = metrics,
-                    landcover = landcover,
-                    forest_fire = forest_fire_1985_2020,
-                    forest_harvest = forest_harvest_1985_2020,
-                    ctg = ctg,
-                    lidar_year_field = "Fl_Cr_Y",
-                    forest_year_field = "YRUPD",
-                    forest_composition_field = "SPCOMP",
-                    forest_type_field = "POLYTYPE",
-                    target_var = imputation_results$target_var,
-                    knn_var = imputation_results$knn_vars) -> segmentation_data_imputed
+    stop_run()
+  })
 
-    segmentation_data_imputed %>%
-      st_write(dsn = paste0(segmentation_wd, "/data.gpkg"),
-               layer = "segmentation_data_imputed",
-               quiet = T)
-
-    # 🟢 Metadata 🟢
-    cat(c("Number of forest polygon created : ", nrow(segmentation_data), "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
-
-    end <- Sys.time()
-    cat(c("End time : ", as.character(end), "----------"),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
-
-    elapsed_time <- sub("Time difference of ", "", capture.output(difftime(end, start)))
-    cat(c("Elapsed time : ", elapsed_time),
-        file = paste0(segmentation_wd, "/metadata.txt"),
-        append = TRUE,
-        sep = "\n")
-
-    showNotification(paste0("Done after ", elapsed_time, ". A total of ", nrow(segmentation_data), " polygons created for segmentation named ", input$name, "."), type = "message", duration = NULL, session = session)
+  # 🟠 Stop computation (and app in desktop mode) when the browser is closed 🟠
+  session$onSessionEnded(function() {
+    process <- isolate(run_state$process)
+    if (!is.null(process) && process$is_alive()) process$kill_tree()
+    if (desktop_mode) stopApp()
   })
 
   # 🟠 Add Segmentation to map 🟠
@@ -647,16 +530,25 @@ server <- function(input, output, session) {
     paste0(selected_wd_reactive(), "/segmentation/", input$forest, "/automated_", input$name) -> segmentation_wd
 
     # 🟢 Condition 4 🟢
-    if(!file.exists(paste0(segmentation_wd, "/data.gpkg"))){
+    if(!dir.exists(segmentation_wd)){
       showNotification("This segmentation doesn't exist.", type = "message", duration = 15, session = session)
       return()
     }
 
-    st_layers(paste0(segmentation_wd, "/data.gpkg")) %>%
-      as_tibble() %>%
-      pull(name) -> layer_names
-
     # 🟢 Condition 5 🟢
+    metadata_file <- paste0(segmentation_wd, "/metadata.txt")
+    metadata <- if (file.exists(metadata_file)) readLines(metadata_file, warn = FALSE) else character(0)
+    failed <- which(metadata == "Failed : ")
+
+    if(length(failed) != 0){
+      showNotification(paste0("This segmentation failed : ", paste(metadata[-seq_len(failed[1])], collapse = " ")),
+                       type = "error", duration = NULL, session = session)
+      return()
+    }
+
+    # 🟢 Condition 6 🟢
+    layer_names <- if (file.exists(paste0(segmentation_wd, "/data.gpkg"))) st_layers(paste0(segmentation_wd, "/data.gpkg"))$name else character(0)
+
     if(!any(layer_names == "segmentation_data_imputed")){
       showNotification("This segmentation is not completed.", type = "message", duration = 15, session = session)
       return()

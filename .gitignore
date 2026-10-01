@@ -1,3 +1,7 @@
 /.quarto/
 **/*.quarto_ipynb
 .Rproj.user
+
+# Shiny app binaries (shipped in the deliverable, not versioned)
+app/R-portable/
+app/softwares/
