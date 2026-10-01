@@ -1002,8 +1002,8 @@ The map below shows the imputed three functional group class (softwood, hardwood
 #| warning: false
 #| fig-cap: "Three functional group class of photo-interpreted forest inventory maps"
 fri_polygons_rmf_clip_4326 %>% 
-  mutate_species_prop(col_name = "SPCOMP") %>% 
-  mutate_species_order(col_name = "SPCOMP") %>% 
+  mutate_species_prop(column_name = "SPCOMP") %>% 
+  mutate_species_order(column_name = "SPCOMP") %>% 
   mutate_forest_type() %>% 
   mutate_functional_group(functional_group_5 = FALSE) %>%
   dplyr::select(FUNCTIONAL_GROUP_3) -> imputation_data_1

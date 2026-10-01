@@ -255,8 +255,7 @@ run_efri_pipeline <- function(p) {
                     spat = p$spat,
                     method = "bs",
                     clean_nodata = TRUE,
-                    output_path = segmentation_wd,
-                    output_name = "segmentation",
+                    ofile = paste0(segmentation_wd, "/segmentation.tif"),
                     otb_dir = p$otb_dir) -> segmentation
 
   segmentation %>%
@@ -296,12 +295,12 @@ run_efri_pipeline <- function(p) {
                   forest_fire = forest_fire_1985_2020,
                   forest_harvest = forest_harvest_1985_2020,
                   ctg = ctg,
-                  lidar_year_field = "Fl_Cr_Y",
-                  forest_year_field = "YRUPD",
-                  forest_composition_field = "SPCOMP",
-                  forest_type_field = "POLYTYPE",
-                  target_var = imputation_results$target_var,
-                  knn_var = imputation_results$knn_vars) -> segmentation_data_imputed
+                  lidar_year_column = "Fl_Cr_Y",
+                  forest_year_column = "YRUPD",
+                  forest_composition_column = "SPCOMP",
+                  forest_type_column = "POLYTYPE",
+                  target_variables = imputation_results$target_var,
+                  knn_variables = imputation_results$knn_vars) -> segmentation_data_imputed
 
   # 🟢 Write outputs and metadata 🟢
   write_progress(7, n_steps, "Write outputs")

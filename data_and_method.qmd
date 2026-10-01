@@ -217,8 +217,7 @@ for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
                     spat = segmentation_parameters$spat,
                     method = "bs",
                     clean_nodata = TRUE,
-                    output_path = segmentation_wd,
-                    output_name = names(param$models),
+                    ofile = paste0(segmentation_wd, "/", names(param$models), ".tif"),
                     otb_dir = otb_dir) -> segmentation
 
   segmentation %>%
@@ -254,12 +253,12 @@ for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
                   forest_fire = forest_fire_1985_2020,
                   forest_harvest = forest_harvest_1985_2020,
                   ctg = ctg,
-                  lidar_year_field = "Fl_Cr_Y",
-                  forest_year_field = "YRUPD",
-                  forest_composition_field = "SPCOMP",
-                  forest_type_field = "POLYTYPE",
-                  target_var = imputation_results$target_var,
-                  knn_var = imputation_results$knn_vars) -> segmentation_data_imputation
+                  lidar_year_column = "Fl_Cr_Y",
+                  forest_year_column = "YRUPD",
+                  forest_composition_column = "SPCOMP",
+                  forest_type_column = "POLYTYPE",
+                  target_variables = imputation_results$target_var,
+                  knn_variables = imputation_results$knn_vars) -> segmentation_data_imputation
   
   segmentation_data_imputation %>% 
     st_write(paste0(segmentation_wd, "/data.gpkg"), 
