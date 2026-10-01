@@ -1044,7 +1044,7 @@ ggplot() +
 
 # **3** Performance of automated stand delineations {-#performance-assessment}
 ## **3.1** Visual comparison of automated stand delineations {-#performance-assessment-visual}
-Polygon boundaries are overlaid on the high-resolution forest-attribute layers used for performance assessment, allowing visual comparison of how the different delineations partition spatial variation in canopy height, merchantable volume, and stem density.
+In the next two figures polygon boundaries are overlaid on the high-resolution forest-attribute layers used for performance assessment, allowing visual comparison of how the different delineations partition spatial variation in canopy height, merchantable volume, and stem density. Also, a imagery have been used in the first row to compare with real colors the stand polygons.
 ```{r}
 #| label: fig-visualisation-s1
 #| echo: false
