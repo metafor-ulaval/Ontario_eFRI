@@ -1054,6 +1054,8 @@ Polygon boundaries are overlaid on the high-resolution forest-attribute layers u
 knitr::include_graphics("figures/segmentation_S1_simplified.jpg")
 ```
 
+@fig-visualisation-s1 shows a closed-canopy area where structural transitions are mostly gradual. The delineations based on SPL metrics ("SPL only" and "SPL + S2 red edge") closely follow the patch of tall, high-volume forest in the north-east and separate it from the lower and less stocked stands in the south. The photo-interpreted polygons and the "S2 only" delineation capture the same general pattern, but several of their boundaries cross gradients of canopy height and merchantable volume rather than following them. Stem density shows little contrast in this area (approximately 1500 to 1900 stems/ha), so none of the delineations is strongly structured by this attribute.
+
 ```{r}
 #| label: fig-visualisation-s7
 #| echo: false
@@ -1062,6 +1064,8 @@ knitr::include_graphics("figures/segmentation_S1_simplified.jpg")
 #| fig-cap: "Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment."
 knitr::include_graphics("figures/segmentation_S7_simplified.jpg")
 ```
+
+@fig-visualisation-s7 shows a contrasted landscape where open, low vegetation areas alternate with tall, dense stands. In this situation, the main transitions are captured by all delineations, including the photo-interpreted map. The delineations based on SPL metrics further subdivide the forested areas according to differences in canopy height and merchantable volume, for example by isolating the high-volume stand on the west side from the lower stands surrounding it. The "S2 only" delineation mainly follows the spectral contrast between open and forested areas and tends to group stands that differ in structure into larger polygons.
 
 ## **3.2** Partitioning of forest-attribute variability {-#partitioning-forest-attribute-variability}
 The proportion of variance explained (PVE) was used to assess how effectively each delineation partitioned spatial variability in the reference forest attributes. Higher PVE indicates that a greater proportion of the landscape-level variability is represented by differences among polygons.
@@ -1075,6 +1079,8 @@ The proportion of variance explained (PVE) was used to assess how effectively ea
 knitr::include_graphics("figures/pve_figure.png")
 ```
 
+As shown in @fig-pve, the two delineations based on SPL metrics explained more of the variability of the reference forest attributes than the photo-interpreted map in nearly all cases. Gains were larger in OVF, ranging from +3.5 to +9.2 percentage points, with the largest improvements for canopy height and QMDBH. In RMF, the "SPL only" delineation provided consistent gains (+2.3 to +6.8 percentage points), while the "SPL + S2 red edge" delineation performed similarly to the photo-interpreted map (-2.2 to +1.2 percentage points). In contrast, the "S2 only" delineation systematically explained less variability than the photo-interpreted map, with losses of 9.6 to 26.8 percentage points. Spectral information alone is therefore not sufficient to partition forest structure, whereas structural information from SPL is the main driver of the gains observed.
+
 ## **3.3** Internal polygon homogeneity {-#internal-polygon-homogeneity}
 Internal polygon homogeneity was assessed using the area-weighted mean within-polygon standard deviation (wSD) of the reference forest attributes. Lower values indicate greater structural homogeneity within delineated polygons.
 
@@ -1087,6 +1093,8 @@ Internal polygon homogeneity was assessed using the area-weighted mean within-po
 knitr::include_graphics("figures/ih_figure.png")
 ```
 
+The results for internal homogeneity (@fig-ih) closely mirror those obtained for PVE. In OVF, both delineations based on SPL metrics produced polygons that were more homogeneous than the photo-interpreted ones for all attributes, with reductions of wSD between 4.6 % and 8.6 %. In RMF, the "SPL only" delineation also improved homogeneity for all attributes (+3.0 % to +8.6 %), the largest gain being for merchantable volume, while the "SPL + S2 red edge" delineation remained close to the photo-interpreted map (-1.4 % to +1.8 %). The "S2 only" delineation produced markedly more variable polygons in both Forest Management Units (-11.3 % to -27.4 %).
+
 ## **3.4** Correspondence of stand boundaries with structural transitions {-#correspondence-structural-transition}
 The spatial correspondence between mapped stand boundaries and independently detected structural transitions was evaluated using precision, recall, and F1-score. This analysis assesses the extent to which delineated boundaries coincide with changes in forest structure identified directly from the high-resolution reference layers.
 
@@ -1098,6 +1106,10 @@ The spatial correspondence between mapped stand boundaries and independently det
 #| fig-cap: "Performance of automated stand delineations in improving correspondence of stand boundaries with structural transitions relative to the photo-interpreted forest inventory map. Cell values represent the relative change in correspondence between a stands boundary and a detected structural structure, expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate higher correspondence. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter."
 knitr::include_graphics("figures/smw_figure.png")
 ```
+
+The correspondence between stand boundaries and structural transitions (@fig-smw) shows the largest differences between Forest Management Units. In OVF, the delineations based on SPL metrics strongly improved the correspondence with detected transitions, particularly for canopy height (+29.5 % and +34.1 %) and QMDBH (+27.9 % and +35.9 %). The "SPL + S2 red edge" delineation performed best for three of the four attributes. In RMF, improvements were limited: the "SPL only" delineation improved correspondence for merchantable volume (+12.8 %) but was close to the photo-interpreted map for the other attributes, and the "SPL + S2 red edge" delineation showed slightly poorer correspondence for merchantable volume (-5.9 %) and stem density (-8.6 %). The "S2 only" delineation had poorer correspondence than the photo-interpreted map in both Forest Management Units, with the largest losses in OVF (-18.6 % to -30.1 %).
+
+Overall, the three criteria lead to consistent conclusions. Automated stand delineations based on SPL metrics performed as well as or better than the photo-interpreted forest inventory map, with clear gains in OVF and more modest gains in RMF. The "SPL only" model was the most consistent across Forest Management Units, while adding the Sentinel-2 red edge band improved boundary correspondence in OVF but not in RMF. Delineations based only on Sentinel-2 imagery performed systematically worse than the photo-interpreted map and are not recommended for structural stand delineation.
 
 # **4** Final polygon-based eFRI products and tools {-#final-polygon}
 The final polygon-based eFRI products developed through the project are available below for both Forest Management Units. The datasets include the automated stand delineations and associated polygon-level forest attributes. An interactive application is also provided to facilitate visualization and exploration of the project outputs.
