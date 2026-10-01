@@ -60,7 +60,7 @@ library(reticulate)
 Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
 Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
 Sys.setenv(GDAL_CACHEMAX = "65536") # 64 GO
-otb_dir <- "D:/00_Ontario_eFRI/10_livrables/softwares/OTB-9.1.0-Win64/bin"
+otb_dir <- "D:/00_Ontario_eFRI/10_livrables/app/softwares/OTB-9.1.0-Win64/bin"
 
 use_python("C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe", required = TRUE)
 arcpy <- import("arcpy")
