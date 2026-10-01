@@ -110,15 +110,15 @@ ui <- fluidPage(
                             uiOutput("summary_metrics_list"), # Peut-être mettre un min et un max a cocher
                             uiOutput("masks_list"),
                             strong("Choose generic region merging parameters :"),
-                            numericInput("grm_thresh", "Threshold", 47),
+                            numericInput("grm_thresh", "Threshold (0-100)", 50, min = 0, max = 100, step = 1),
                             # strong("Maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is"),
                             # "Small threshold → fine segmentation (many small regions).",
                             # "Large threshold → coarse segmentation (fewer, larger regions).",
-                            numericInput("grm_spec", "Weight of spectral homogeneity", 0.6),
+                            numericInput("grm_spec", "Weight of spectral homogeneity (0-1)", 0.5, min = 0, max = 1, step = 0.1),
                             # strong("Weight given to spectral similarity (pixel values, band means) when deciding whether regions should merge."),
                             # "If high → segmentation will mostly respect spectral values.",
                             # "If low → spectral similarity matters little, other criteria (shape) dominate.",
-                            numericInput("grm_spat", "Weight of spatial homogeneity", 0.6),
+                            numericInput("grm_spat", "Weight of spatial homogeneity (0-1)", 0.5, min = 0, max = 1, step = 0.1),
                             # strong("Weight given to shape similarity (compactness and smoothness) when deciding whether regions should merge."),
                             # "If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker.",
                             # "If low → region boundaries will mostly follow spectral homogeneity.",
@@ -251,7 +251,7 @@ server <- function(input, output, session) {
         dplyr::filter(resolution == 20) %>%
         dplyr::filter(type %in% c("lidar", "dendro", "sentinel2")) %>%
         dplyr::pull(name),
-      selected = c("z_p95", "z_above2", "B6"),
+      selected = c("z_p95", "z_above2", "z_skew"),
       multiple = TRUE,
       width = "100%",
       options = list(
@@ -363,14 +363,18 @@ server <- function(input, output, session) {
     }
 
     # 🟢 Condition 5b 🟢
-    if(!isTruthy(input$grm_thresh) || input$grm_thresh <= 0){
-      showNotification("Threshold must be greater than 0.", type = "message", duration = 15, session = session)
+    if(!isTruthy(input$grm_thresh) || input$grm_thresh <= 0 || input$grm_thresh > 100){
+      showNotification("Threshold must be greater than 0 and lower or equal to 100.", type = "message", duration = 15, session = session)
       return()
     }
 
-    if(!isTruthy(input$grm_spec) || input$grm_spec <= 0 || input$grm_spec > 1 ||
-       !isTruthy(input$grm_spat) || input$grm_spat <= 0 || input$grm_spat > 1){
-      showNotification("Weights of spectral and spatial homogeneity must be greater than 0 and lower or equal to 1.", type = "message", duration = 15, session = session)
+    if(!isTruthy(input$grm_spec) || input$grm_spec <= 0 || input$grm_spec > 1){
+      showNotification("Weight of spectral homogeneity must be greater than 0 and lower or equal to 1.", type = "message", duration = 15, session = session)
+      return()
+    }
+
+    if(!isTruthy(input$grm_spat) || input$grm_spat <= 0 || input$grm_spat > 1){
+      showNotification("Weight of spatial homogeneity must be greater than 0 and lower or equal to 1.", type = "message", duration = 15, session = session)
       return()
     }
 

@@ -282,7 +282,7 @@ for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
 #| message: false
 #| warning: false
 # Parameters
-param_figures <- params[3,]
+param_figures <- params[1,]
 segmentation_metrics <- param_figures$models[[1]]
 
 segmentation_wd <- paste0(wd, "/segmentation/", param_figures$forest, "/", names(param_figures$models))
@@ -470,11 +470,11 @@ Here are listed the three segmentation models generated :
  * SPL + S2 red edge (model_F in database) : z_p95 + z_above2 + B6
  * S2 only (model_G in database) : B6 + B8 + B11
  
-The next tree figures represent the metrics used in the "SPL + S2 red edge" model and their meaning :
+The next three figures represent the metrics used in the "SPL only" model, which was retained to produce the final automated stand delineations, and their meaning :
 
  * z_p95 → Height of 95th percentiles of returns above 1.3 m
  * z_above2 → Canopy cover of first returns above 2 m
- * B6 → Sentinel-2 Vegetation Red Edge 2 (RE2) - 740 nm
+ * z_skew → Skewness of returns above 1.3 m
  
 ```{r}
 #| label: fig-segmentation-data-1
@@ -482,7 +482,7 @@ The next tree figures represent the metrics used in the "SPL + S2 red edge" mode
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "First metric used for \"SPL + S2 red edge\" model : z_p95."
+#| fig-cap: "First metric used for \"SPL only\" model : z_p95."
 for(metric in param_figures$models[[1]]){
   ggplot() +
     geom_spatraster_rgb(data = sat_forest*1.5) +
@@ -508,7 +508,7 @@ z_p95
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Second metric used for \"SPL + S2 red edge\" model : z_above2."
+#| fig-cap: "Second metric used for \"SPL only\" model : z_above2."
 z_above2
 ```
 
@@ -518,8 +518,8 @@ z_above2
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Third metric used for \"SPL + S2 red edge\" model : Vegetation Red Edge 2 band from Sentinel-2 (B6)."
-B6
+#| fig-cap: "Third metric used for \"SPL only\" model : skewness of returns above 1.3 m (z_skew)."
+z_skew
 ```
  
 The metrics used in theses models are only one example of what can be used, but it is important to note that other metrics can be used for segmentation. All kinds of metrics that describes the forest characteristics can be used as input for this algorithm. The metrics used will reflect how the segmented polygons are divided. Thus, if a index such as the topographic wetness index (TWI) is used, the polygons will tend to separate forest stands with contrasting spectral signatures from this indice. For effective segmentation, it is recommended to use metrics that provide different informations. A correlation matrix or principal component analysis (PCA) can be used to see relationships between metrics.

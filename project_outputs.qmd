@@ -75,7 +75,7 @@ params <- expand.grid(forests = forests,
 #| warning: false
 # RMF
 # Parameters
-param_figures_rmf <- params[3,]
+param_figures_rmf <- params[1,]
 segmentation_metrics <- param_figures_rmf$models[[1]]
 
 segmentation_wd_rmf <- paste0(wd, "/segmentation/", param_figures_rmf$forest, "/", names(param_figures_rmf$models))
@@ -210,7 +210,7 @@ fri_polygons_rmf %>%
 
 # OVF
 # Parameters
-param_figures_ovf <- params[4,]
+param_figures_ovf <- params[2,]
 segmentation_metrics <- param_figures_ovf$models[[1]]
 
 segmentation_wd_ovf <- paste0(wd, "/segmentation/", param_figures_ovf$forest, "/", names(param_figures_ovf$models))
@@ -301,7 +301,7 @@ fri_polygons_ovf %>%
 ```
 
 # **1** Automated stand delineation {-#segmentation-results}
-In this section and the [next one](#attribute-table-results), the "SPL + S2 red edge" segmentation model was use. As a reminder, the metrics used for this model are theses one : z_p95 + z_above2 + B6. There is a visual example of the metrics used in the [section 2.4 of Data and Methods](data_and_method.qmd#Segmentation-generation). For both the Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF), distribution of area and shape index will be showed for the whole Forest Management Unit scale (in yellow in the figure 1 and 2). Furthermore, a visual example of resulting automated stand delineation that was smoothed in ArcGIS will be shown for a closer subset area (in red in the figure 1 and 2). The restricted area of 5x5 km allows for easier visualization.
+In this section and the [next one](#attribute-table-results), the "SPL only" segmentation model was used, as it is the model retained to produce the final automated stand delineations. As a reminder, the metrics used for this model are these ones : z_p95 + z_above2 + z_skew. There is a visual example of the metrics used in the [section 2.4 of Data and Methods](data_and_method.qmd#Segmentation-generation). For both the Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF), distribution of area and shape index will be showed for the whole Forest Management Unit scale (in yellow in the figure 1 and 2). Furthermore, a visual example of resulting automated stand delineation that was smoothed in ArcGIS will be shown for a closer subset area (in red in the figure 1 and 2). The restricted area of 5x5 km allows for easier visualization.
 
 ```{r}
 #| label: fig-study-area-subset-rmf
@@ -1109,7 +1109,7 @@ knitr::include_graphics("figures/smw_figure.png")
 
 The correspondence between stand boundaries and structural transitions (@fig-smw) shows the largest differences between Forest Management Units. In OVF, the delineations based on SPL metrics strongly improved the correspondence with detected transitions, particularly for canopy height (+29.5 % and +34.1 %) and QMDBH (+27.9 % and +35.9 %). The "SPL + S2 red edge" delineation performed best for three of the four attributes. In RMF, improvements were limited: the "SPL only" delineation improved correspondence for merchantable volume (+12.8 %) but was close to the photo-interpreted map for the other attributes, and the "SPL + S2 red edge" delineation showed slightly poorer correspondence for merchantable volume (-5.9 %) and stem density (-8.6 %). The "S2 only" delineation had poorer correspondence than the photo-interpreted map in both Forest Management Units, with the largest losses in OVF (-18.6 % to -30.1 %).
 
-Overall, the three criteria lead to consistent conclusions. Automated stand delineations based on SPL metrics performed as well as or better than the photo-interpreted forest inventory map, with clear gains in OVF and more modest gains in RMF. The "SPL only" model was the most consistent across Forest Management Units, while adding the Sentinel-2 red edge band improved boundary correspondence in OVF but not in RMF. Delineations based only on Sentinel-2 imagery performed systematically worse than the photo-interpreted map and are not recommended for structural stand delineation.
+Overall, the three criteria lead to consistent conclusions. Automated stand delineations based on SPL metrics performed as well as or better than the photo-interpreted forest inventory map, with clear gains in OVF and more modest gains in RMF. The "SPL only" model was the most consistent across Forest Management Units, while adding the Sentinel-2 red edge band improved boundary correspondence in OVF but not in RMF. Delineations based only on Sentinel-2 imagery performed systematically worse than the photo-interpreted map and are not recommended for structural stand delineation. Based on these results, the "SPL only" model was retained to produce the final automated stand delineations of both Forest Management Units.
 
 # **4** Final polygon-based eFRI products and tools {-#final-polygon}
 The final polygon-based eFRI products developed through the project are available below for both Forest Management Units. The datasets include the automated stand delineations and associated polygon-level forest attributes. An interactive application is also provided to facilitate visualization and exploration of the project outputs.

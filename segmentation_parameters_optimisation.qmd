@@ -42,6 +42,24 @@ library(scatterplot3d)
 ```
 
 ```{r}
+#| label: parameters
+#| echo: false
+#| results: hide
+#| message: false
+#| warning: false
+forests <- c("RMF", "OVF")
+models <- list(model_B = c("z_p95", "z_above2", "z_skew"),
+               model_F = c("z_p95", "z_above2", "B6"),
+               model_G = c("B6", "B8", "B11"))
+
+params <- expand.grid(forests = forests,
+                      models = models,
+                      stringsAsFactors = FALSE)
+
+param <- params[1,] # RMF / model_B
+```
+
+```{r}
 #| label: function
 #| echo: false
 #| results: hide
@@ -360,10 +378,10 @@ Thus, a total of 1000 parameters combinations were tested.
 \newpage
 # **4** Segmentation input {-#segmentation-input}
 
-The "SPL + S2 red edge" model was used for segmentation parameterization. Theses metrics used in this model are shown in the following figures :
+The "SPL only" model was used for segmentation parameterization. Theses metrics used in this model are shown in the following figures :
  * z_p95 → Height of 95th percentiles of returns above 1.3 m
  * z_above2 → Canopy cover of first returns above 2 m
- * B6 → Sentinel-2 Vegetation Red Edge 2 (RE2) - 740 nm
+ * z_skew → Skewness of returns above 1.3 m
 
 ```{r}
 #| label: fig-base-data-7
@@ -371,14 +389,14 @@ The "SPL + S2 red edge" model was used for segmentation parameterization. Theses
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "First metric used for \"SPL + S2 red edge\" model : z_p95."
+#| fig-cap: "First metric used for \"SPL only\" model : z_p95."
 terra::rast("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_RMF.tif") -> metrics
 
 metrics %>%
   terra::crop(sampling_square_temp %>% st_transform(st_crs(metrics))) %>%
   terra::mask(sampling_square_temp %>% st_transform(st_crs(metrics))) -> metrics_temp
 
-for(x in c("z_p95", "z_above2", "B6")){
+for(x in param$models[[1]]){
   ggplot() +
     geom_spatraster_rgb(data = sat_sampling_square*1.5) +
     geom_spatraster(data = metrics_temp[[x]]) +
@@ -403,7 +421,7 @@ z_p95
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Second metric used for \"SPL + S2 red edge\" model : z_above2."
+#| fig-cap: "Second metric used for \"SPL only\" model : z_above2."
 z_above2
 ```
 
@@ -413,8 +431,8 @@ z_above2
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Third metric used for \"SPL + S2 red edge\" model : Vegetation Red Edge 2 band from Sentinel-2 (B6)."
-B6
+#| fig-cap: "Third metric used for \"SPL only\" model : skewness of returns above 1.3 m (z_skew)."
+z_skew
 ```
 \newpage
 # **5** Analysis {-#analysis}
@@ -426,7 +444,7 @@ The three performance metrics are the following :
 $$
 SMAPE = \frac{\text{Predicted} - \text{Actual}}{\dfrac{|\text{Actual}| + |\text{Predicted}|}{2}}
 $$
-Where Predicted is the density of the automated stand delineation polygons and Actual if the density of the photo-interpreted forest inventory polygons. The value is positive when the automated stand delineation has a higher density than the photo-interpreted forest inventory map and negative when it has a lower density. In the example above, the SMAPE of density is 0.17, as the photo-interpreted forest inventory map has a density of 7.25 polygons/km² (1465 polygons) and the segmentation has a density of 8.59 polygons/km² (1650 polygons)
+Where Predicted is the density of the automated stand delineation polygons and Actual if the density of the photo-interpreted forest inventory polygons. The value is positive when the automated stand delineation has a higher density than the photo-interpreted forest inventory map and negative when it has a lower density. For example, with the best parameters retained in the results, the SMAPE of density is -0.03, as the photo-interpreted forest inventory map has a density of 13.96 polygons/km² (3102 polygons) and the segmentation has a density of 13.58 polygons/km² (2943 polygons).
 
 The following two metrics are computed at the pixel level and are therefore area-weighted.
 
@@ -445,7 +463,7 @@ The assumption underlying this analysis is that automated stand delineations sho
 \newpage
 # **6** Results {-#results}
 
-The results presented here are, as mentioned before, for Romeo Malette Forest with the "SPL + S2 red edge" model. The SMAPE threshold is 0.1, which represents approximately 10% variation in polygon density. All sets of parameters that produced SMAPE values outside the range of -0.1 to 0.1 were excluded. 
+The results presented here are, as mentioned before, for Romeo Malette Forest with the "SPL only" model. The SMAPE threshold is 0.1, which represents approximately 10% variation in polygon density. All sets of parameters that produced SMAPE values outside the range of -0.1 to 0.1 were excluded. 
 
 ```{r}
 #| label: fig-1
@@ -468,8 +486,8 @@ readRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results
   mutate_at(c("thresh", "spec", "spat"), as.numeric) -> results
 
 # Compute for a specific forest and model and produce figures
-selected_forest <- "RMF"
-selected_model <- "model_F"
+selected_forest <- param$forests
+selected_model <- names(param$models)
 
 results %>%
   filter(forest == selected_forest) %>%
@@ -552,7 +570,7 @@ points(coords$x, coords$y, col = "red", pch = 19, cex = 2)
 })
 ```
 
-The following figure shows an example of segmentation in Romeo Malette Forest using the "SPL + S2 red edge" model with the best parameters from the previous figure (threshold of 40, spectral homogeneity of 0.5, and spatial homogeneity of 0.5). There is also an example of a smoothed segmentation, as mentioned earlier.
+The following figure shows an example of segmentation in Romeo Malette Forest using the "SPL only" model with the best parameters from the previous figure (threshold of 50, spectral homogeneity of 1, and spatial homogeneity of 0.1). There is also an example of a smoothed segmentation, as mentioned earlier.
 
 ```{r}
 #| label: show-segmentation-1
@@ -571,7 +589,7 @@ sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/bas
          shape_index = perimeter / sqrt(pi * area)) %>%
   filter_if(is.numeric, is.finite) -> polygon_forest_temp # A voir si je peux enlever cette ligne
 
-st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50.shp",
+st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forests, "/", names(param$models), "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, ".shp"),
         quiet = T) %>% 
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%
@@ -582,7 +600,7 @@ st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segment
          shape_index = perimeter / sqrt(pi * area)) %>%
   filter_if(is.numeric, is.finite) -> segmentation # A voir si je peux enlever cette ligne
 
-st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/RMF/model_F/segmentation_thresh40_spec50_spat50_smoothed.shp",
+st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forests, "/", names(param$models), "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, "_smoothed.shp"),
         quiet = T) %>% 
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%
