@@ -153,9 +153,11 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#segmentation-results" id="toc-segmentation-results" class="nav-link active" data-scroll-target="#segmentation-results"><strong>1</strong> Automated stand delineation</a></li>
+  <li><a href="#segmentation-results" id="toc-segmentation-results" class="nav-link active" data-scroll-target="#segmentation-results"><strong>1</strong> Automated stand delineation</a>
+  <ul class="collapse">
   <li><a href="#segmentation-results-fmu" id="toc-segmentation-results-fmu" class="nav-link" data-scroll-target="#segmentation-results-fmu"><strong>1.1</strong> Delineation products at the Forest Management Unit scale</a></li>
   <li><a href="#segmentation-results-example" id="toc-segmentation-results-example" class="nav-link" data-scroll-target="#segmentation-results-example"><strong>1.2</strong> Additionnal parameters</a></li>
+  </ul></li>
   <li><a href="#attribute-table-results" id="toc-attribute-table-results" class="nav-link" data-scroll-target="#attribute-table-results"><strong>2</strong> Example of the final attributed polygon dataset</a>
   <ul class="collapse">
   <li><a href="#attribute-table-results-imputation" id="toc-attribute-table-results-imputation" class="nav-link" data-scroll-target="#attribute-table-results-imputation"><strong>2.1</strong> Imputation results</a></li>
@@ -167,9 +169,9 @@ window.Quarto = {
   <li><a href="#internal-polygon-homogeneity" id="toc-internal-polygon-homogeneity" class="nav-link" data-scroll-target="#internal-polygon-homogeneity"><strong>3.3</strong> Internal polygon homogeneity</a></li>
   <li><a href="#correspondence-structural-transition" id="toc-correspondence-structural-transition" class="nav-link" data-scroll-target="#correspondence-structural-transition"><strong>3.4</strong> Correspondence of stand boundaries with structural transitions</a></li>
   </ul></li>
-  <li><a href="#final-polygon" id="toc-final-polygon" class="nav-link" data-scroll-target="#final-polygon"><strong>3</strong> Final polygon-based eFRI products and tools</a></li>
-  <li><a href="#interactive-tool" id="toc-interactive-tool" class="nav-link" data-scroll-target="#interactive-tool"><strong>4</strong> Interactive automated stand delineation tool</a></li>
-  <li><a href="#additionnal-data" id="toc-additionnal-data" class="nav-link" data-scroll-target="#additionnal-data"><strong>5</strong> Additionnal data</a></li>
+  <li><a href="#final-polygon" id="toc-final-polygon" class="nav-link" data-scroll-target="#final-polygon"><strong>4</strong> Final polygon-based eFRI products and tools</a></li>
+  <li><a href="#interactive-tool" id="toc-interactive-tool" class="nav-link" data-scroll-target="#interactive-tool"><strong>5</strong> Interactive automated stand delineation tool</a></li>
+  <li><a href="#additionnal-data" id="toc-additionnal-data" class="nav-link" data-scroll-target="#additionnal-data"><strong>6</strong> Additionnal data</a></li>
   </ul>
 </nav>
     </div>
@@ -203,7 +205,7 @@ window.Quarto = {
 
 <section id="segmentation-results" class="level1 unnumbered">
 <h1 class="unnumbered"><strong>1</strong> Automated stand delineation</h1>
-<p>In this section and the <a href="#attribute-table-results">next one</a>, the “SPL + S2 red edge” segmentation model was use. As a reminder, the metrics used for this model are theses one : z_p95 + z_above2 + B6. There is a visual example of the metrics used in the <a href="#segmentation-results-example">section 1.2</a>. For both the Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF), distribution of area and shape index will be showed for the whole Forest Management Unit scale (in yellow in the figure 1 and 2). Furthermore, a visual example of resulting automated stand delineation that was smoothed in ArcGIS will be shown for a closer subset area (in red in the figure 1 and 2). The restricted area of 5x5 km allows for easier visualization.</p>
+<p>In this section and the <a href="#attribute-table-results">next one</a>, the “SPL + S2 red edge” segmentation model was use. As a reminder, the metrics used for this model are theses one : z_p95 + z_above2 + B6. There is a visual example of the metrics used in the <a href="./data_and_method.html#Segmentation-generation">section 2.4 of Data and Methods</a>. For both the Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF), distribution of area and shape index will be showed for the whole Forest Management Unit scale (in yellow in the figure 1 and 2). Furthermore, a visual example of resulting automated stand delineation that was smoothed in ArcGIS will be shown for a closer subset area (in red in the figure 1 and 2). The restricted area of 5x5 km allows for easier visualization.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-study-area-subset-rmf" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -232,9 +234,8 @@ Figure&nbsp;2. Restricted area of 5x5 km in Ottawa Valley Forest.
 </div>
 </div>
 </div>
-</section>
-<section id="segmentation-results-fmu" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>1.1</strong> Delineation products at the Forest Management Unit scale</h1>
+<section id="segmentation-results-fmu" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="segmentation-results-fmu"><strong>1.1</strong> Delineation products at the Forest Management Unit scale</h2>
 <p>The next figure provide an overview of the resulting smoothed automated stand delineation for RMF in the restricted areas of 5x5 km.</p>
 <div class="cell">
 <div class="cell-output-display">
@@ -298,7 +299,7 @@ Figure&nbsp;6. Photo-interpreted forest inventory polygons for the Forest Manage
 <p>The automated stand delineations can be now compared to photo-interpreted forest inventory polygons for the whole Forest Management Units. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the <a href="https://metafor-ulaval.github.io/Ontario_eFRI/segmentation_parameters_optimisation.html">segmentation parameters optimisation</a>, the difference between distributions are supposed to be minimal and therefore the automated stand delineation should represent operationally plausible forest stand that mimic polygons of the photo-interpreted forest inventory polygons.</p>
 <p>Area in hectare is use for size and shape index is use to assess polygon shape. The shape index is determine by this formula :</p>
 <p><span class="math display">\[
-ShapeIndex = \frac{\text{Perimeter}}{2\sqrt{\pi \times \text{Area}}}
+ShapeIndex = \frac{\text{Perimeter}}{\sqrt{\pi \times \text{Area}}}
 \]</span></p>
 <p>The density plot were computed at the pixel level and are therefore area-weighted.</p>
 <div class="cell">
@@ -358,8 +359,8 @@ Figure&nbsp;10. Polygon shape index density of photo-interpreted forest inventor
 </div>
 </div>
 </section>
-<section id="segmentation-results-example" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>1.2</strong> Additionnal parameters</h1>
+<section id="segmentation-results-example" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="segmentation-results-example"><strong>1.2</strong> Additionnal parameters</h2>
 <p>It is recommended to perform a smoothing step that can be made later in ArcGIS Pro or any GIS with a smoothing tool that keep the topology of adjacent polygons. The tool use in this case is “Smooth Polygon” of the toolbox “Cartography”. The parameters used are as follow :</p>
 <ul>
 <li>algorithm = “PAEK”;</li>
@@ -428,6 +429,7 @@ Figure&nbsp;14. Resulting polygon after the masks applications.
 </div>
 </div>
 </section>
+</section>
 <section id="attribute-table-results" class="level1 unnumbered">
 <h1 class="unnumbered"><strong>2</strong> Example of the final attributed polygon dataset</h1>
 <p>In addition to producing automated stand delineations, the project generated attributed polygon datasets intended to support forest inventory applications. Each polygon is associated with forest attributes obtained directly from available geospatial datasets or estimated using the procedures described in the Data and Methods section.</p>
@@ -449,13 +451,13 @@ Figure&nbsp;15. Forest age
 </div>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-eFRI-attibut-last-perturbation" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-eFRI-attibut-last-disturbance" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-eFRI-attibut-last-perturbation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="project_outputs_files/figure-html/fig-eFRI-attibut-last-perturbation-1.png" class="img-fluid figure-img" width="672">
+<div aria-describedby="fig-eFRI-attibut-last-disturbance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-eFRI-attibut-last-disturbance-1.png" class="img-fluid figure-img" width="672">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-last-perturbation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;16. Year of last perturbation
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-eFRI-attibut-last-disturbance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;16. Year of last disturbance
 </figcaption>
 </figure>
 </div>
@@ -581,12 +583,12 @@ Table&nbsp;1. Imputation combinations and their accuracy for the tree imputed va
 <p>The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial group class shown below.</p>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-imputation-segmentation" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-imputation-fri" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-imputation-segmentation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="project_outputs_files/figure-html/fig-imputation-segmentation-1.png" class="img-fluid figure-img" width="672">
+<div aria-describedby="fig-imputation-fri-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-imputation-fri-1.png" class="img-fluid figure-img" width="672">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-imputation-segmentation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-imputation-fri-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;22. Three functional group class of photo-interpreted forest inventory maps
 </figcaption>
 </figure>
@@ -595,13 +597,13 @@ Figure&nbsp;22. Three functional group class of photo-interpreted forest invento
 </div>
 <div class="cell">
 <div class="cell-output-display">
-<div id="fig-imputation-fri" class="quarto-float quarto-figure quarto-figure-center anchored">
+<div id="fig-imputation-segmentation" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-imputation-fri-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="project_outputs_files/figure-html/fig-imputation-fri-1.png" class="img-fluid figure-img" width="672">
+<div aria-describedby="fig-imputation-segmentation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="project_outputs_files/figure-html/fig-imputation-segmentation-1.png" class="img-fluid figure-img" width="672">
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-imputation-fri-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;23. Imputation results for three functional group
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-imputation-segmentation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23. Three functional group class of automated stand delineations
 </figcaption>
 </figure>
 </div>
@@ -629,6 +631,7 @@ Figure&nbsp;24. Example validation area showing the photo-interpreted forest inv
 </div>
 </div>
 </div>
+<p><a href="#fig-visualisation-s1" class="quarto-xref">Figure&nbsp;24</a> shows a closed-canopy area where structural transitions are mostly gradual. The delineations based on SPL metrics (“SPL only” and “SPL + S2 red edge”) closely follow the patch of tall, high-volume forest in the north-east and separate it from the lower and less stocked stands in the south. The photo-interpreted polygons and the “S2 only” delineation capture the same general pattern, but several of their boundaries cross gradients of canopy height and merchantable volume rather than following them. Stem density shows little contrast in this area (approximately 1500 to 1900 stems/ha), so none of the delineations is strongly structured by this attribute.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div id="fig-visualisation-s7" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -643,6 +646,7 @@ Figure&nbsp;25. Example validation area showing the photo-interpreted forest inv
 </div>
 </div>
 </div>
+<p><a href="#fig-visualisation-s7" class="quarto-xref">Figure&nbsp;25</a> shows a contrasted landscape where open, low vegetation areas alternate with tall, dense stands. In this situation, the main transitions are captured by all delineations, including the photo-interpreted map. The delineations based on SPL metrics further subdivide the forested areas according to differences in canopy height and merchantable volume, for example by isolating the high-volume stand on the west side from the lower stands surrounding it. The “S2 only” delineation mainly follows the spectral contrast between open and forested areas and tends to group stands that differ in structure into larger polygons.</p>
 </section>
 <section id="partitioning-forest-attribute-variability" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="partitioning-forest-attribute-variability"><strong>3.2</strong> Partitioning of forest-attribute variability</h2>
@@ -661,6 +665,7 @@ Figure&nbsp;26. Performance of automated stand delineations in partitioning fore
 </div>
 </div>
 </div>
+<p>As shown in <a href="#fig-pve" class="quarto-xref">Figure&nbsp;26</a>, the two delineations based on SPL metrics explained more of the variability of the reference forest attributes than the photo-interpreted map in nearly all cases. Gains were larger in OVF, ranging from +3.5 to +9.2 percentage points, with the largest improvements for canopy height and QMDBH. In RMF, the “SPL only” delineation provided consistent gains (+2.3 to +6.8 percentage points), while the “SPL + S2 red edge” delineation performed similarly to the photo-interpreted map (-2.2 to +1.2 percentage points). In contrast, the “S2 only” delineation systematically explained less variability than the photo-interpreted map, with losses of 9.6 to 26.8 percentage points. Spectral information alone is therefore not sufficient to partition forest structure, whereas structural information from SPL is the main driver of the gains observed.</p>
 </section>
 <section id="internal-polygon-homogeneity" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="internal-polygon-homogeneity"><strong>3.3</strong> Internal polygon homogeneity</h2>
@@ -679,6 +684,7 @@ Figure&nbsp;27. Performance of automated stand delineations in improving interna
 </div>
 </div>
 </div>
+<p>The results for internal homogeneity (<a href="#fig-ih" class="quarto-xref">Figure&nbsp;27</a>) closely mirror those obtained for PVE. In OVF, both delineations based on SPL metrics produced polygons that were more homogeneous than the photo-interpreted ones for all attributes, with reductions of wSD between 4.6 % and 8.6 %. In RMF, the “SPL only” delineation also improved homogeneity for all attributes (+3.0 % to +8.6 %), the largest gain being for merchantable volume, while the “SPL + S2 red edge” delineation remained close to the photo-interpreted map (-1.4 % to +1.8 %). The “S2 only” delineation produced markedly more variable polygons in both Forest Management Units (-11.3 % to -27.4 %).</p>
 </section>
 <section id="correspondence-structural-transition" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="correspondence-structural-transition"><strong>3.4</strong> Correspondence of stand boundaries with structural transitions</h2>
@@ -697,10 +703,12 @@ Figure&nbsp;28. Performance of automated stand delineations in improving corresp
 </div>
 </div>
 </div>
+<p>The correspondence between stand boundaries and structural transitions (<a href="#fig-smw" class="quarto-xref">Figure&nbsp;28</a>) shows the largest differences between Forest Management Units. In OVF, the delineations based on SPL metrics strongly improved the correspondence with detected transitions, particularly for canopy height (+29.5 % and +34.1 %) and QMDBH (+27.9 % and +35.9 %). The “SPL + S2 red edge” delineation performed best for three of the four attributes. In RMF, improvements were limited: the “SPL only” delineation improved correspondence for merchantable volume (+12.8 %) but was close to the photo-interpreted map for the other attributes, and the “SPL + S2 red edge” delineation showed slightly poorer correspondence for merchantable volume (-5.9 %) and stem density (-8.6 %). The “S2 only” delineation had poorer correspondence than the photo-interpreted map in both Forest Management Units, with the largest losses in OVF (-18.6 % to -30.1 %).</p>
+<p>Overall, the three criteria lead to consistent conclusions. Automated stand delineations based on SPL metrics performed as well as or better than the photo-interpreted forest inventory map, with clear gains in OVF and more modest gains in RMF. The “SPL only” model was the most consistent across Forest Management Units, while adding the Sentinel-2 red edge band improved boundary correspondence in OVF but not in RMF. Delineations based only on Sentinel-2 imagery performed systematically worse than the photo-interpreted map and are not recommended for structural stand delineation.</p>
 </section>
 </section>
 <section id="final-polygon" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>3</strong> Final polygon-based eFRI products and tools</h1>
+<h1 class="unnumbered"><strong>4</strong> Final polygon-based eFRI products and tools</h1>
 <p>The final polygon-based eFRI products developed through the project are available below for both Forest Management Units. The datasets include the automated stand delineations and associated polygon-level forest attributes. An interactive application is also provided to facilitate visualization and exploration of the project outputs. <a href="téléchargement du produit final">Romeo Malette Forest</a></p>
 <ul>
 <li>éventuellement métadonnées / description des champs.</li>
@@ -711,11 +719,11 @@ Figure&nbsp;28. Performance of automated stand delineations in improving corresp
 </ul>
 </section>
 <section id="interactive-tool" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>4</strong> Interactive automated stand delineation tool</h1>
+<h1 class="unnumbered"><strong>5</strong> Interactive automated stand delineation tool</h1>
 <p>• lien vers la Shiny app • une phrase expliquant ce qu’elle permet de faire.</p>
 </section>
 <section id="additionnal-data" class="level1 unnumbered">
-<h1 class="unnumbered"><strong>5</strong> Additionnal data</h1>
+<h1 class="unnumbered"><strong>6</strong> Additionnal data</h1>
 <ul>
 <li>Lien vers le code ou la documentation technique</li>
 </ul>
