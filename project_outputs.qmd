@@ -1,11 +1,6 @@
 ---
-title: "Project outputs"
-output:
-  pdf_document: default
-  html_document:
-    df_print: paged
-  word_document: default
-date: "2026-05-20"
+title: "Results"
+date: "2026-10-27"
 ---
 
 ```{r}
@@ -300,8 +295,9 @@ fri_polygons_ovf %>%
   st_transform(4326) -> fri_polygons_ovf_clip_4326
 ```
 
-# **1** Automated stand delineation {-#segmentation-results}
-In this section and the [next one](#attribute-table-results), the "SPL only" segmentation model was used, as it is the model retained to produce the final automated stand delineations. As a reminder, the metrics used for this model are these ones : z_p95 + z_above2 + z_skew. There is a visual example of the metrics used in the [section 2.4 of Data and Methods](data_and_method.qmd#Segmentation-generation). For both the Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF), distribution of area and shape index will be showed for the whole Forest Management Unit scale (in yellow in the figure 1 and 2). Furthermore, a visual example of resulting automated stand delineation that was smoothed in ArcGIS will be shown for a closer subset area (in red in the figure 1 and 2). The restricted area of 5x5 km allows for easier visualization.
+# **1** Automated stand delineations {-#segmentation-results}
+
+This section and the next present the final products, produced with the "SPL only" scenario (see [Data and Methods](data_and_method.qmd#Segmentation-generation)). Maps show a 5 × 5 km subset of each FMU (red square in @fig-study-area-subset-rmf and @fig-study-area-subset-ovf), while statistics cover the entire FMU (yellow outline).
 
 ```{r}
 #| label: fig-study-area-subset-rmf
@@ -309,7 +305,7 @@ In this section and the [next one](#attribute-table-results), the "SPL only" seg
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Restricted area of 5x5 km in Romeo Malette Forest."
+#| fig-cap: "Romeo Malette Forest (yellow outline) and the 5 × 5 km subset used for maps (red square)."
 ggplot() +
   geom_spatraster_rgb(data = sat_rmf*1.5) +
   geom_sf(data = rmf_4326, color = "#FEFE62", fill = NA, lwd = 1) +
@@ -325,7 +321,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Restricted area of 5x5 km in Ottawa Valley Forest."
+#| fig-cap: "Ottawa Valley Forest (yellow outline) and the 5 × 5 km subset used for maps (red square)."
 ggplot() +
   geom_spatraster_rgb(data = sat_ovf*1.5) +
   geom_sf(data = ovf_4326, color = "#FEFE62", fill = NA, lwd = 1) +
@@ -335,16 +331,17 @@ ggplot() +
   theme_bw()
 ```
 
-## **1.1**	Delineation products at the Forest Management Unit scale {-#segmentation-results-fmu}
+## **1.1** Delineations at the FMU scale {-#segmentation-results-fmu}
 
-The next figure provide an overview of the resulting smoothed automated stand delineation for RMF in the restricted areas of 5x5 km.
+@fig-segmentation-exemple-rmf and @fig-fri-exemple-rmf compare the automated and FRI polygons in the RMF subset.
+
 ```{r}
 #| label: fig-segmentation-exemple-rmf
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Smoothed automated stand delineations for the Forest Management Unit of Romeo Malette Forest."
+#| fig-cap: "Smoothed automated stand delineation (SPL only) in the Romeo Malette Forest subset."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, 
@@ -355,14 +352,13 @@ ggplot() +
   theme_bw()
 ```
 
-As a comparative, the next figure shows the photo-interpreted forest inventory polygons.
 ```{r}
 #| label: fig-fri-exemple-rmf
 #| echo: false
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Photo-interpreted forest inventory polygons for the Forest Management Unit of Romeo Malette Forest."
+#| fig-cap: "FRI polygons in the Romeo Malette Forest subset."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = fri_polygons_rmf_clip_4326, 
@@ -373,7 +369,7 @@ ggplot() +
   theme_bw()
 ```
 
-And here is the smoothed automated stand delineation and photo-interpreted forest inventory polygons for the Forest Management Unit of Ottawa Valley Forest.
+@fig-segmentation-exemple-ovf and @fig-fri-exemple-ovf show the same comparison for OVF.
 
 ```{r}
 #| label: fig-segmentation-exemple-ovf
@@ -381,7 +377,7 @@ And here is the smoothed automated stand delineation and photo-interpreted fores
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest."
+#| fig-cap: "Smoothed automated stand delineation (SPL only) in the Ottawa Valley Forest subset."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
   geom_sf(data = segmentation_smoothed_ovf_clip_4326, 
@@ -398,7 +394,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Photo-interpreted forest inventory polygons for the Forest Management Unit of Ottawa Valley Forest."
+#| fig-cap: "FRI polygons in the Ottawa Valley Forest subset."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
   geom_sf(data = fri_polygons_ovf_clip_4326, 
@@ -409,17 +405,17 @@ ggplot() +
   theme_bw()
 ```
 
-The resulting polygons can be expected to represent homogeneous forest stands based on choosen metrics. For the whole Romeo Malette Forest, the segmentation produced `r nrow(segmentation_smoothed_rmf)` polygons representing forest stands. Overall, the number of polygon produced is slightly lower as there is `r nrow(fri_polygons_rmf)` photo-interpreted forest inventory polygons. For the Ottawa Valley Forest, a total of `r nrow(segmentation_smoothed_ovf)` polygons was generated by the automated stand delineations which is also lower than than the `r nrow(fri_polygons_ovf)` photo-interpreted forest inventory polygons.
+Over the whole RMF, the segmentation produced `r format(nrow(segmentation_smoothed_rmf), big.mark = ",")` polygons, compared with `r format(nrow(fri_polygons_rmf), big.mark = ",")` FRI polygons. In OVF, it produced `r format(nrow(segmentation_smoothed_ovf), big.mark = ",")` polygons, compared with `r format(nrow(fri_polygons_ovf), big.mark = ",")` FRI polygons. **[TO COMPLETE: one sentence explaining the larger difference in OVF.]**
 
-The automated stand delineations can be now compared to photo-interpreted forest inventory polygons for the whole Forest Management Units. Density plots are used to assess whether the distribution of the size and shape are similar. Based on previous parameters obtained by the [segmentation parameters optimisation](https://metafor-ulaval.github.io/Ontario_eFRI/segmentation_parameters_optimisation.html), the difference between distributions are supposed to be minimal and therefore the automated stand delineation should represent operationally plausible forest stand that mimic polygons of the photo-interpreted forest inventory polygons.
-
-Area in hectare is use for size and shape index is use to assess polygon shape. The shape index is determine by this formula :
+Because segmentation parameters were calibrated on FRI polygons (see [Appendix A](segmentation_parameters_optimisation.qmd)), automated polygons are expected to have size and shape distributions close to those of FRI polygons. @fig-density-area-rmf to @fig-density-shape-ovf compare these distributions in each FMU. Size is expressed as polygon area (ha), and shape by the shape index:
 
 $$
 ShapeIndex = \frac{\text{Perimeter}}{\sqrt{\pi \times \text{Area}}}
 $$
 
-The density plot were computed at the pixel level and are therefore area-weighted.
+which equals 2 for a circle and increases as polygons become more elongated or irregular. Distributions are computed at the pixel level, so that each polygon is weighted by its area.
+
+**[TO COMPLETE: one or two sentences summarizing the comparison, e.g. overlap (%) between the area and shape distributions of automated and FRI polygons in each FMU.]**
 
 ```{r}
 #| label: density-rmf
@@ -521,7 +517,7 @@ bind_rows(tibble(value = polygon_forest_shape_index_raster, type = "fri"),
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Polygon area (ha) density of photo-interpreted forest inventory polygon and smoothed automated stand delineations for the Forest Management Unit of Romeo Malette Forest."
+#| fig-cap: "Area-weighted distribution of polygon area (ha) for FRI and automated polygons, Romeo Malette Forest."
 area_data_frame %>% 
   ggplot() +
   geom_density(aes(x = value/10000,
@@ -551,7 +547,7 @@ area_data_frame %>%
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Polygon shape index density of photo-interpreted forest inventory polygon and smoothed automated stand delineations for the Forest Management Unit of Romeo Malette Forest."
+#| fig-cap: "Area-weighted distribution of the polygon shape index for FRI and automated polygons, Romeo Malette Forest."
 shape_index_data_frame %>% 
   ggplot() +
   geom_density(aes(x = value,
@@ -675,7 +671,7 @@ bind_rows(tibble(value = polygon_forest_shape_index_raster, type = "fri"),
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Polygon area (ha) density of photo-interpreted forest inventory polygon and smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest."
+#| fig-cap: "Area-weighted distribution of polygon area (ha) for FRI and automated polygons, Ottawa Valley Forest."
 area_data_frame %>% 
   ggplot() +
   geom_density(aes(x = value/10000,
@@ -705,7 +701,7 @@ area_data_frame %>%
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Polygon shape index density of photo-interpreted forest inventory polygon and smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest."
+#| fig-cap: "Area-weighted distribution of the polygon shape index for FRI and automated polygons, Ottawa Valley Forest."
 shape_index_data_frame %>% 
   ggplot() +
   geom_density(aes(x = value,
@@ -729,15 +725,9 @@ shape_index_data_frame %>%
         legend.title = element_blank())
 ```
 
-## **1.2** Additionnal parameters {-#segmentation-results-example}
-It is recommended to perform a smoothing step that can be made later in ArcGIS Pro or any GIS with a smoothing tool that keep the topology of adjacent polygons. The tool use in this case is "Smooth Polygon" of the toolbox "Cartography". The parameters used are as follow :
+## **1.2** Post-processing: smoothing and masks {-#segmentation-results-example}
 
- * algorithm = "PAEK"; 
- * tolerance = 100; 
- * endpoint_option = "FIXED_ENDPOINT" 
- * error_option = "RESOLVE_ERRORS".
- 
-The next figure shows automated stand delineation before smoothing.
+Raw GRM polygons follow the 20 m pixel grid and have stair-step edges (@fig-segmentation-non-smoothed). They were smoothed with a tool that preserves the topology between adjacent polygons, so that no gaps or overlaps are created. The final layers were smoothed with the *Smooth Polygon* tool of ArcGIS Pro (Cartography toolbox), using the PAEK algorithm, a 100 m tolerance, fixed endpoints and error resolution. Other GIS software offers equivalent topology-preserving tools.
 
 ```{r}
 #| label: fig-segmentation-non-smoothed
@@ -745,7 +735,7 @@ The next figure shows automated stand delineation before smoothing.
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Automated stand delineations."
+#| fig-cap: "Automated stand delineation before smoothing."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_rmf_clip_4326, 
@@ -756,7 +746,7 @@ ggplot() +
   theme_bw()
 ```
 
-With smoothing, the polygons looks more natural and the border seems to better mimic the edges of actual forest stands.
+Smoothed polygons look more natural and better follow the visible edges of forest stands (@fig-segmentation-smoothed).
 
 ```{r}
 #| label: fig-segmentation-smoothed
@@ -764,7 +754,7 @@ With smoothing, the polygons looks more natural and the border seems to better m
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Smoothed automated stand delineations."
+#| fig-cap: "Automated stand delineation after smoothing."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, 
@@ -775,7 +765,7 @@ ggplot() +
   theme_bw()
 ```
 
-An additional data that can be used in automated stand delineation are masks where there is no forest and therefore the segmentation is not performed. These are typically waterbodies and roads. 
+Non-forest features such as water bodies and roads can also be masked before segmentation, so that they are not merged into forest stands (@fig-segmentation-masks).
 
 ```{r}
 #| label: fig-segmentation-masks
@@ -783,7 +773,7 @@ An additional data that can be used in automated stand delineation are masks whe
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Mask used where segmentation is not performed."
+#| fig-cap: "Non-forest masks (water bodies and roads) excluded from segmentation."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = masks_rmf_4326[[1]], 
@@ -796,7 +786,7 @@ ggplot() +
   theme_bw()
 ```
 
-Here is the resulting automated stand delineation when the masks are considered. It is important to note that the Generic Region Merging algorithm is extremely sensitive to any parameters change. Every slightly input change will drastically change the resulting polygons, even a slightly bigger extent where the algorithm is run. This is the reason why the polygons in the figure x are different from the one at the figure x, even if parameters and metrics as input are the same.
+@fig-segmentation-masks-applied shows the result with masks applied. Its polygons differ from those of @fig-segmentation-smoothed even though inputs and parameters are identical. GRM is very sensitive to its inputs: any change, including a slightly different processing extent, modifies the sequence of merges and therefore the resulting polygons. For operational use, delineations should be produced over fixed, documented extents, such as the whole FMU or a standard tiling, so that results can be reproduced.
 
 ```{r}
 #| label: fig-segmentation-masks-applied
@@ -804,7 +794,7 @@ Here is the resulting automated stand delineation when the masks are considered.
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Resulting polygon after the masks applications."
+#| fig-cap: "Smoothed automated stand delineation with non-forest masks applied."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_masks_smoothed_rmf_clip_4326,
@@ -815,16 +805,13 @@ ggplot() +
   theme_bw()
 ```
 
-# **2** Example of the final attributed polygon dataset {-#attribute-table-results}
-In addition to producing automated stand delineations, the project generated attributed polygon datasets intended to support forest inventory applications. Each polygon is associated with forest attributes obtained directly from available geospatial datasets or estimated using the procedures described in the Data and Methods section.
+# **2** Attributed polygon layers {-#attribute-table-results}
 
-Figure X illustrates the structure of the final dataset for an example stand.
-*Tes exemples de valeurs par polygone avec palette couleur
-•	Une capture d'écran ArcGIS/QGIS avec le produit polygonal. 
-•	Un polygone sélectionné. 
-•	Sa table attributaire visible.
+Each automated polygon carries the attributes listed in the [data dictionary](data_and_method.qmd#attribute-table-assignment). **[TO COMPLETE: screenshot from a GIS showing one selected polygon and its attribute table.]**
 
-The next figures show what can look like some of theses attributes.
+**[TO COMPLETE: one or two sentences quantifying the disturbance update, e.g. share of polygons or area where a harvest or fire that occurred after FRI photo-interpretation is now recorded in YRDEP.]**
+
+@fig-eFRI-attibut-forest-age to @fig-eFRI-attibut-moisture show a selection of attributes over the RMF subset.
 
 ```{r}
 #| label: fig-eFRI-attibut-forest-age
@@ -832,7 +819,7 @@ The next figures show what can look like some of theses attributes.
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Forest age"
+#| fig-cap: "Forest age (years)."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = AGE)) + 
@@ -852,7 +839,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Year of last disturbance"
+#| fig-cap: "Year of the last disturbance."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = YRDEP)) + 
@@ -872,7 +859,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Merchantable volume per hectare"
+#| fig-cap: "Merchantable volume (m³/ha)."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = VMERCH_HA)) + 
@@ -892,7 +879,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Quadratic mean diameter at breast height"
+#| fig-cap: "Quadratic mean diameter at breast height (cm)."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = QMDBH)) + 
@@ -912,7 +899,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Height of forest stand based on median z_p95"
+#| fig-cap: "Stand height, median of z_p95 (m)."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = HEIGHT)) + 
@@ -932,7 +919,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Median slope"
+#| fig-cap: "Median slope (%)."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = SLOPE)) + 
@@ -952,7 +939,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Soil moisture based on SAGA wetness index"
+#| fig-cap: "Soil moisture (SAGA wetness index)."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = MOISTURE)) + 
@@ -966,15 +953,16 @@ ggplot() +
   theme(legend.position = "bottom")
 ```
 
-## **2.1** Imputation results {-#attribute-table-results-imputation}
-The table below shows the combinations and their accuracy for each imputed variables in Romeo Malette Forest.
+## **2.1** Species composition {-#attribute-table-results-imputation}
+
+@tbl-imputation-results gives the best combination of metrics and the accuracy obtained for each imputed attribute in RMF. **[TO COMPLETE: OVF results, or the reason they are not shown.]**
 
 ```{r}
 #| label: tbl-imputation-results
 #| echo: false
 #| message: false
 #| warning: false
-#| tbl-cap: "Imputation combinations and their accuracy for the tree imputed variables in Romeo Malette Forest"
+#| tbl-cap: "Best combination of metrics and accuracy for each imputed attribute, Romeo Malette Forest."
 imputation_results %>% 
   mutate(accuracy = round(accuracy*100, 2))  %>% 
   mutate(target_var = case_when(target_var == "SP_NO_1" ~ "Leading species",
@@ -990,9 +978,9 @@ imputation_results %>%
                 "Accuracy (%)" = "accuracy") -> best_models_clean
 
 knitr::kable(best_models_clean)
-``` 
+```
 
-The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial group class shown below.
+Imputation reproduced the FRI forest group (softwood, hardwood or mixedwood) of polygons with an accuracy of 73.65%. Maps nevertheless show that boundaries between groups do not always coincide between the FRI (@fig-imputation-fri) and the automated polygons (@fig-imputation-segmentation). As species maps produced by machine learning are becoming available with good accuracy, we recommend extracting species composition directly from such maps within the automated polygons. Derived attributes, such as the forest group shown here, can then be computed from that composition.
 
 ```{r}
 #| label: fig-imputation-fri
@@ -1000,7 +988,7 @@ The map below shows the imputed three functional group class (softwood, hardwood
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Three functional group class of photo-interpreted forest inventory maps"
+#| fig-cap: "Forest group (softwood, hardwood, mixedwood) of FRI polygons."
 fri_polygons_rmf_clip_4326 %>% 
   mutate_species_prop(column_name = "SPCOMP") %>% 
   mutate_species_order(column_name = "SPCOMP") %>% 
@@ -1025,7 +1013,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Three functional group class of automated stand delineations"
+#| fig-cap: "Forest group imputed for automated polygons."
 segmentation_smoothed_rmf_clip_4326 %>% 
   dplyr::select(FUNCTIONAL_GROUP_3) -> imputation_data_2
 
@@ -1038,90 +1026,99 @@ ggplot() +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
   theme(legend.position = "bottom")
-``` 
+```
 
 \newpage
 
-# **3** Performance of automated stand delineations {-#performance-assessment}
-## **3.1** Visual comparison of automated stand delineations {-#performance-assessment-visual}
-In the next two figures polygon boundaries are overlaid on the high-resolution forest-attribute layers used for performance assessment, allowing visual comparison of how the different delineations partition spatial variation in canopy height, merchantable volume, and stem density. Also, a imagery have been used in the first row to compare with real colors the stand polygons.
+# **3** Quality of automated stand delineations {-#performance-assessment}
+
+This section compares the three delineation scenarios with the FRI in the eight validation areas, using the reference layers and criteria described in [Data and Methods](data_and_method.qmd#performance-assessment).
+
+## **3.1** Visual comparison {-#performance-assessment-visual}
+
+@fig-visualisation-s1 (RMF) and @fig-visualisation-s7 (OVF) overlay the polygons of each delineation on aerial imagery (top row) and on the reference layers of canopy height, merchantable volume and stem density.
+
 ```{r}
 #| label: fig-visualisation-s1
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment."
+#| fig-cap: "Validation area S1, Romeo Malette Forest: FRI polygons and the three automated delineations overlaid on aerial imagery (top row) and on the reference layers of canopy height, merchantable volume and stem density."
 knitr::include_graphics("figures/segmentation_S1_simplified.jpg")
 ```
 
-@fig-visualisation-s1 shows a closed-canopy area where structural transitions are mostly gradual. The delineations based on SPL metrics ("SPL only" and "SPL + S2 red edge") closely follow the patch of tall, high-volume forest in the north-east and separate it from the lower and less stocked stands in the south. The photo-interpreted polygons and the "S2 only" delineation capture the same general pattern, but several of their boundaries cross gradients of canopy height and merchantable volume rather than following them. Stem density shows little contrast in this area (approximately 1500 to 1900 stems/ha), so none of the delineations is strongly structured by this attribute.
+In the RMF validation area of @fig-visualisation-s1, the canopy is closed and structural transitions are mostly gradual. The two SPL-based delineations closely follow the patch of tall, high-volume forest in the northeast and separate it from the lower, less-stocked stands to the south. The FRI and "S2 only" polygons capture the same general pattern, but several of their boundaries cut across height and volume gradients rather than following them. Stem density varies little in this area (about 1,500 to 1,900 stems/ha), so none of the delineations is strongly structured by it.
 
 ```{r}
 #| label: fig-visualisation-s7
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment."
+#| fig-cap: "Validation area S7, Ottawa Valley Forest: FRI polygons and the three automated delineations overlaid on aerial imagery (top row) and on the reference layers of canopy height, merchantable volume and stem density."
 knitr::include_graphics("figures/segmentation_S7_simplified.jpg")
 ```
 
-@fig-visualisation-s7 shows a contrasted landscape where open, low vegetation areas alternate with tall, dense stands. In this situation, the main transitions are captured by all delineations, including the photo-interpreted map. The delineations based on SPL metrics further subdivide the forested areas according to differences in canopy height and merchantable volume, for example by isolating the high-volume stand on the west side from the lower stands surrounding it. The "S2 only" delineation mainly follows the spectral contrast between open and forested areas and tends to group stands that differ in structure into larger polygons.
+The OVF validation area of @fig-visualisation-s7 is more contrasted, with open wetlands and low vegetation alternating with tall, dense stands. All delineations, including the FRI, capture these main transitions. The SPL-based delineations further subdivide forested areas according to height and volume, for example by isolating the high-volume stand on the west side from the lower stands around it. The "S2 only" delineation mainly follows the contrast between open and forested areas and groups structurally different stands into larger polygons.
 
-## **3.2** Partitioning of forest-attribute variability {-#partitioning-forest-attribute-variability}
-The proportion of variance explained (PVE) was used to assess how effectively each delineation partitioned spatial variability in the reference forest attributes. Higher PVE indicates that a greater proportion of the landscape-level variability is represented by differences among polygons.
+## **3.2** Partitioning of forest attribute variability {-#partitioning-forest-attribute-variability}
+
+@fig-pve shows how much more, or less, of the variation of each reference attribute is explained by the polygons of each delineation, compared with FRI polygons.
 
 ```{r}
 #| label: fig-pve
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "Performance of automated stand delineations in partitioning forest-attribute variability relative to the photo-interpreted forest inventory map. Cell values are differences in proportion of variance explained (PVE), expressed in percentage points. Positive values indicate greater PVE than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter."
+#| fig-cap: "Difference in proportion of variance explained (PVE, percentage points) between each automated delineation and the FRI. Positive values mean that polygons explain more of the variation of the reference attribute than FRI polygons. Canopy height is the 90th percentile of drone LiDAR return heights; QMDBH is the quadratic mean diameter."
 knitr::include_graphics("figures/pve_figure.png")
 ```
 
-As shown in @fig-pve, the two delineations based on SPL metrics explained more of the variability of the reference forest attributes than the photo-interpreted map in nearly all cases. Gains were larger in OVF, ranging from +3.5 to +9.2 percentage points, with the largest improvements for canopy height and QMDBH. In RMF, the "SPL only" delineation provided consistent gains (+2.3 to +6.8 percentage points), while the "SPL + S2 red edge" delineation performed similarly to the photo-interpreted map (-2.2 to +1.2 percentage points). In contrast, the "S2 only" delineation systematically explained less variability than the photo-interpreted map, with losses of 9.6 to 26.8 percentage points. Spectral information alone is therefore not sufficient to partition forest structure, whereas structural information from SPL is the main driver of the gains observed.
+Both SPL-based delineations explained more of the variation than the FRI in almost every case. Gains were largest in OVF (+3.5 to +9.2 percentage points), particularly for canopy height and QMDBH. In RMF, the "SPL only" delineation improved PVE for every attribute (+2.3 to +6.8 points), whereas "SPL + S2 red edge" performed close to the FRI (−2.2 to +1.2 points). The "S2 only" delineation explained much less variation than the FRI for every attribute (−9.6 to −26.8 points). Spectral information alone is therefore not sufficient to delineate stands by structure; the gains come from the SPL data.
 
 ## **3.3** Internal polygon homogeneity {-#internal-polygon-homogeneity}
-Internal polygon homogeneity was assessed using the area-weighted mean within-polygon standard deviation (wSD) of the reference forest attributes. Lower values indicate greater structural homogeneity within delineated polygons.
+
+@fig-ih compares the within-polygon variability (wSD) of each delineation with that of the FRI.
 
 ```{r}
 #| label: fig-ih
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "Performance of automated stand delineations in improving internal polygon homogeneity relative to the photo-interpreted forest inventory map. Cell values represent the relative change in area-weighted within-polygon standard deviation (wSD), expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate lower within-polygon variability than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter."
+#| fig-cap: "Relative change (%) in within-polygon variability (wSD) of each automated delineation compared with the FRI. Positive values mean more uniform polygons than in the FRI. Canopy height is the 90th percentile of drone LiDAR return heights; QMDBH is the quadratic mean diameter."
 knitr::include_graphics("figures/ih_figure.png")
 ```
 
-The results for internal homogeneity (@fig-ih) closely mirror those obtained for PVE. In OVF, both delineations based on SPL metrics produced polygons that were more homogeneous than the photo-interpreted ones for all attributes, with reductions of wSD between 4.6 % and 8.6 %. In RMF, the "SPL only" delineation also improved homogeneity for all attributes (+3.0 % to +8.6 %), the largest gain being for merchantable volume, while the "SPL + S2 red edge" delineation remained close to the photo-interpreted map (-1.4 % to +1.8 %). The "S2 only" delineation produced markedly more variable polygons in both Forest Management Units (-11.3 % to -27.4 %).
+Results mirror those for PVE. In OVF, both SPL-based delineations produced more uniform polygons than the FRI for every attribute, reducing wSD by 4.6% to 8.6%. In RMF, the "SPL only" delineation also reduced wSD for every attribute (by 3.0% to 8.6%), most for merchantable volume, while "SPL + S2 red edge" remained close to the FRI (−1.4% to +1.8%). Polygons of the "S2 only" delineation were markedly more variable than FRI polygons in both FMUs (wSD 11.3% to 27.4% higher).
 
 ## **3.4** Correspondence of stand boundaries with structural transitions {-#correspondence-structural-transition}
-The spatial correspondence between mapped stand boundaries and independently detected structural transitions was evaluated using precision, recall, and F1-score. This analysis assesses the extent to which delineated boundaries coincide with changes in forest structure identified directly from the high-resolution reference layers.
+
+@fig-smw shows how well the boundaries of each delineation coincide with structural transitions detected in the reference layers, compared with FRI boundaries.
 
 ```{r}
 #| label: fig-smw
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "Performance of automated stand delineations in improving correspondence of stand boundaries with structural transitions relative to the photo-interpreted forest inventory map. Cell values represent the relative change in correspondence between a stands boundary and a detected structural structure, expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate higher correspondence. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter."
+#| fig-cap: "Relative change (%) in F1-score of each automated delineation compared with the FRI. Positive values mean that boundaries coincide more often with structural transitions detected in the reference layers. Canopy height is the 90th percentile of drone LiDAR return heights; QMDBH is the quadratic mean diameter."
 knitr::include_graphics("figures/smw_figure.png")
 ```
 
-The correspondence between stand boundaries and structural transitions (@fig-smw) shows the largest differences between Forest Management Units. In OVF, the delineations based on SPL metrics strongly improved the correspondence with detected transitions, particularly for canopy height (+29.5 % and +34.1 %) and QMDBH (+27.9 % and +35.9 %). The "SPL + S2 red edge" delineation performed best for three of the four attributes. In RMF, improvements were limited: the "SPL only" delineation improved correspondence for merchantable volume (+12.8 %) but was close to the photo-interpreted map for the other attributes, and the "SPL + S2 red edge" delineation showed slightly poorer correspondence for merchantable volume (-5.9 %) and stem density (-8.6 %). The "S2 only" delineation had poorer correspondence than the photo-interpreted map in both Forest Management Units, with the largest losses in OVF (-18.6 % to -30.1 %).
+Differences between FMUs are largest for this criterion. In OVF, SPL-based delineations matched transitions much better than the FRI, particularly for canopy height (F1-score +29.5% and +34.1%) and QMDBH (+27.9% and +35.9%); "SPL + S2 red edge" performed best for three of the four attributes. In RMF, "SPL only" improved correspondence for merchantable volume (+12.8%) and was close to the FRI for the other attributes, while "SPL + S2 red edge" was slightly poorer for merchantable volume (−5.9%) and stem density (−8.6%). The "S2 only" delineation performed worse than the FRI in both FMUs, most strongly in OVF (−18.6% to −30.1%).
 
-Overall, the three criteria lead to consistent conclusions. Automated stand delineations based on SPL metrics performed as well as or better than the photo-interpreted forest inventory map, with clear gains in OVF and more modest gains in RMF. The "SPL only" model was the most consistent across Forest Management Units, while adding the Sentinel-2 red edge band improved boundary correspondence in OVF but not in RMF. Delineations based only on Sentinel-2 imagery performed systematically worse than the photo-interpreted map and are not recommended for structural stand delineation. Based on these results, the "SPL only" model was retained to produce the final automated stand delineations of both Forest Management Units.
+The larger gains in OVF partly reflect the FRI itself. In this mixed forest, where changes between stands are gradual and linked to species mixtures, FRI boundaries matched structural transitions less closely than in RMF, where stand edges are sharp and easy to identify on aerial photographs. **[TO CONFIRM with absolute F1-scores of the FRI in each FMU.]**
 
-# **4** Final polygon-based eFRI products and tools {-#final-polygon}
-The final polygon-based eFRI products developed through the project are available below for both Forest Management Units. The datasets include the automated stand delineations and associated polygon-level forest attributes. An interactive application is also provided to facilitate visualization and exploration of the project outputs.
+## **3.5** Summary {-#performance-summary}
 
-[Romeo Malette Forest](téléchargement du produit final)
+The three criteria lead to consistent conclusions (@tbl-performance-summary).
 
- * éventuellement métadonnées / description des champs.
+| Delineation | Internal homogeneity | Partitioning of variability | Boundary correspondence |
+|---|---|---|---|
+| SPL only | Better than FRI in both FMUs | Better than FRI in both FMUs | Much better in OVF; similar or better in RMF |
+| SPL + S2 red edge | Better in OVF; similar in RMF | Better in OVF; similar in RMF | Best in OVF; slightly poorer in RMF |
+| S2 only | Poorer in both FMUs | Poorer in both FMUs | Poorer in both FMUs |
 
-[Ottawa Valley Forest](téléchargement du produit final)
+: Performance of each automated delineation relative to the FRI. {#tbl-performance-summary}
 
- * métadonnées / description des champs.
+Automated delineations based on SPL metrics performed as well as or better than the FRI, with clear gains in OVF and more modest gains in RMF. The "SPL only" delineation was the most consistent across FMUs and was therefore retained to produce the final layers. Adding the Sentinel-2 red-edge band improved boundary placement in the mixed forest of OVF only. Delineations based on Sentinel-2 imagery alone are not recommended for structural stand delineation.
 
-# **5** Additionnal data {-#additionnal-data}
-
--	Que mettre comme ducmentation technique?
+Practical recommendations and limitations are discussed in [Recommendations and limitations](recommendations.qmd), and the final layers and tools are described in [Deliverables and tools](deliverables.qmd).

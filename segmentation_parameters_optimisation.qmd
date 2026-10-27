@@ -1,11 +1,6 @@
 ---
-title: "Appendix A : Segmentation parameters optimisation"
-output:
-  pdf_document: default
-  html_document:
-    df_print: paged
-  word_document: default
-date: "2026-05-20"
+title: "Appendix A: Calibration of segmentation parameters"
+date: "2026-10-27"
 ---
 
 ```{r}
@@ -136,11 +131,11 @@ smape <- function(actual, predicted) {
 
 # **1** Introduction {-#introduction}
 
-This appendix describes the steps to find the optimal parameters of the Generic Region Merging (GRM) algorithm in the Orfeo ToolBox for automatically delineating operationally plausible forest stands. Photo-interpreted forest inventory maps were used as reference data to determine the optimal parameters. The optimization was performed using the symmetric mean absolute percentage error (SMAPE) of polygon density, as well as the overlapping kernel density of polygon stand area and polygon stand shape index at the pixel level. In this appendix, an example is provided for only one forest management unit and one combination of metrics; however, optimal parameters can be determined for any study area and any combination of metrics.
+This appendix describes how the parameters of the Generic Region Merging (GRM) algorithm of the Orfeo ToolBox were calibrated to produce operationally plausible forest stands. FRI polygons were used as the target: parameters were chosen so that automated polygons match FRI polygons in density, area and shape. Three criteria were used: the symmetric percentage error of polygon density, and the overlap between the area-weighted distributions of polygon area and of polygon shape index. The example below covers one FMU (RMF) and one combination of metrics ("SPL only"), but the same procedure applies to any study area and any combination of input layers.
 
-# **2** Sampling area {-#sampling-area}
+# **2** Calibration areas {-#sampling-area}
 
-Romeo Malette Forest is the forest management unit used for parameter optimization. It is located in Ontario, Canada, and is predominantly coniferous. Ten 5 km × 5 km square areas were used for the subsequent analysis.
+Calibration was carried out in Romeo Malette Forest, a predominantly coniferous FMU of northeastern Ontario, using ten 5 × 5 km square areas (@fig-base-data-1).
 
 ```{r}
 #| label: fig-base-data-1
@@ -148,7 +143,7 @@ Romeo Malette Forest is the forest management unit used for parameter optimizati
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Romeo Malette Forest with the ten 5 km × 5 km square areas used for segmentation parameters optimisation."
+#| fig-cap: "Romeo Malette Forest and the ten 5 × 5 km calibration areas."
 st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/PolygonForest.shp", quiet = T) -> polygon_forest
   
 st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/ctg.shp", quiet = T) %>%
@@ -180,7 +175,8 @@ ggplot() +
 ```
 
 \newpage
-To position these areas, only actual forest stands (POLYTYPE == "FOR") from photo-interpreted forest inventory maps were retained.
+
+To position these areas, only FRI polygons classified as forest (POLYTYPE = FOR) were retained (@fig-base-data-2).
 
 ```{r}
 #| label: fig-base-data-2
@@ -188,7 +184,7 @@ To position these areas, only actual forest stands (POLYTYPE == "FOR") from phot
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Photo-interpreted forest inventory maps where polygon are considered forested."
+#| fig-cap: "FRI polygons classified as forest."
 polygon_forest %>% 
   filter(POLYTYPE == "FOR") %>%
   st_geometry() %>%
@@ -208,7 +204,8 @@ ggplot() +
 ```
 
 \newpage
-A 500 m buffer followed by a inner 500 m buffer enabled the merging of adjacent forest stands.
+
+An outward buffer of 500 m followed by an inward buffer of 500 m merged adjacent forest polygons into continuous forest zones (@fig-base-data-3).
 
 ```{r}
 #| label: fig-base-data-3
@@ -216,7 +213,7 @@ A 500 m buffer followed by a inner 500 m buffer enabled the merging of adjacent 
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Forest polygon with a 500 m buffer followed by a inner 500 m buffer."
+#| fig-cap: "Forest zones after an outward 500 m buffer followed by an inward 500 m buffer."
 polygon_forest_temp %>% 
   st_buffer(500) %>%
   st_union() %>%
@@ -233,7 +230,8 @@ ggplot() +
 ```
 
 \newpage
-A final inner buffer of approximately 7 km was used to produce final polygons that allowed for the placement of each area's centroid.
+
+A final inward buffer of about 7 km delimited the zone where area centroids could be placed, so that each 5 × 5 km area falls entirely within forest (@fig-base-data-4).
 
 ```{r}
 #| label: fig-base-data-4
@@ -241,7 +239,7 @@ A final inner buffer of approximately 7 km was used to produce final polygons th
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Forest polygon with a inner 7 km buffer."
+#| fig-cap: "Zone available for area centroids after an inward buffer of about 7 km."
 inner_radius <- sqrt(10000^2*2)/2
 
 polygon_forest_temp %>%
@@ -258,7 +256,8 @@ ggplot() +
 ```
 
 \newpage
-The first area was placed randomly, and then the remaining 9 areas were iteratively placed as far as possible from the previously placed areas. The following figure shows the last placed centroid area in red and the distance raster used to identify the farthest possible position.
+
+The first area was placed at random. Each following area was placed as far as possible from those already placed, to spread the ten areas across the FMU. @fig-base-data-5 shows the distance raster used to locate the farthest position, with the last centroid placed shown in red.
 
 ```{r}
 #| label: fig-base-data-5
@@ -266,7 +265,7 @@ The first area was placed randomly, and then the remaining 9 areas were iterativ
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Distance matrix used to place the centroid of 5 km × 5 km square areas. The figure shows the last placed centroid area in red."
+#| fig-cap: "Distance raster used to place the centroids of the 5 × 5 km areas; the last centroid placed is shown in red."
 sample_farthest_point(nb = 10,
                       res = 100,
                       sampling_area = polygon_forest_temp,
@@ -320,7 +319,8 @@ ggplot() +
 ```
 
 \newpage
-For each area, only actual forest stands (POLYTYPE == "FOR") were used for segmentation.
+
+Within each area, only forest polygons (POLYTYPE = FOR) were segmented (@fig-base-data-6).
 
 ```{r}
 #| label: fig-base-data-6
@@ -328,7 +328,7 @@ For each area, only actual forest stands (POLYTYPE == "FOR") were used for segme
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Photo-interpreted forest inventory maps where polygon are considered forested and segmentation is therefore performed."
+#| fig-cap: "FRI forest polygons within which segmentation was performed."
 sampling_square %>% 
   slice(4) -> sampling_square_temp
 
@@ -351,37 +351,24 @@ ggplot() +
 ```
 
 \newpage
-# **3** Parameters {-#parameters}
 
-The parameters tested are the following : 
+# **3** Parameters tested {-#parameters}
 
- * The threshold controls the maximum heterogeneity allowed when merging, controlling how fine or coarse the segmentation is :
+Three GRM parameters were varied:
 
-     * Small threshold → fine segmentation (many small regions)
-     * Large threshold → coarse segmentation (fewer, larger regions)
-     * This parameter was tested with values ranging from 10 to 100 in increments of 10
+- **Threshold**, the maximum heterogeneity allowed when merging regions, which controls how fine or coarse the segmentation is. A small threshold gives many small regions and a large threshold gives fewer, larger regions. Values from 10 to 100 were tested, in steps of 10.
+- **Spectral weight**, the importance given to the similarity of input values when deciding whether regions merge. With a high weight, boundaries closely follow the input layers; with a low weight, shape criteria dominate. Values from 0.1 to 1 were tested, in steps of 0.1.
+- **Spatial weight**, the importance given to compact and smooth shapes. With a high weight, the algorithm favours compact, smooth regions even when their values are less similar; with a low weight, boundaries mostly follow the input values. Values from 0.1 to 1 were tested, in steps of 0.1.
 
- * The weight assigned to spectral homogeneity in evaluating spectral similarity (pixel values, band means) when deciding whether regions should merge :
+In total, 1,000 parameter combinations were tested.
 
-     * If high → segmentation will mostly respect spectral values
-     * If low → spectral similarity matters little, other criteria (shape) dominate
-     * This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1
+# **4** Segmentation inputs {-#segmentation-input}
 
- * The weight of spatial homogeneity gives to shape similarity (compactness and smoothness) when deciding whether regions should merge :
+The "SPL only" scenario was used in this example. Its three input metrics are shown in @fig-base-data-7 to @fig-base-data-9:
 
-     * If high → the algorithm favors compact, smooth regions even if spectral similarity is weaker
-     * If low → region boundaries will mostly follow spectral homogeneity
-     * This parameter was tested with values ranging from 0.1 to 1 in increments of 0.1
-
-Thus, a total of 1000 parameters combinations were tested.
-
-\newpage
-# **4** Segmentation input {-#segmentation-input}
-
-The "SPL only" model was used for segmentation parameterization. Theses metrics used in this model are shown in the following figures :
- * z_p95 → Height of 95th percentiles of returns above 1.3 m
- * z_above2 → Canopy cover of first returns above 2 m
- * z_skew → Skewness of returns above 1.3 m
+- **z_p95:** 95th percentile of return heights above 1.3 m (dominant canopy height);
+- **z_above2:** proportion of first returns above 2 m (canopy cover);
+- **z_skew:** skewness of return heights above 1.3 m (vertical distribution of vegetation).
 
 ```{r}
 #| label: fig-base-data-7
@@ -389,7 +376,7 @@ The "SPL only" model was used for segmentation parameterization. Theses metrics 
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "First metric used for \"SPL only\" model : z_p95."
+#| fig-cap: "Dominant canopy height (z_p95, m), first input metric of the SPL only scenario."
 terra::rast("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_RMF.tif") -> metrics
 
 metrics %>%
@@ -421,7 +408,7 @@ z_p95
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Second metric used for \"SPL only\" model : z_above2."
+#| fig-cap: "Canopy cover (z_above2), second input metric of the SPL only scenario."
 z_above2
 ```
 
@@ -431,39 +418,41 @@ z_above2
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Third metric used for \"SPL only\" model : skewness of returns above 1.3 m (z_skew)."
+#| fig-cap: "Skewness of return heights above 1.3 m (z_skew), third input metric of the SPL only scenario."
 z_skew
 ```
+
 \newpage
-# **5** Analysis {-#analysis}
 
-The three performance metrics are the following :
+# **5** Calibration criteria {-#analysis}
 
-1. Symmetric mean absolute percentage error (SMAPE) of polygon density, determined by this formula :
+Three criteria compared each segmentation with the FRI polygons of the same area.
+
+1. **Symmetric percentage error of polygon density (SMAPE):**
 
 $$
 SMAPE = \frac{\text{Predicted} - \text{Actual}}{\dfrac{|\text{Actual}| + |\text{Predicted}|}{2}}
 $$
-Where Predicted is the density of the automated stand delineation polygons and Actual if the density of the photo-interpreted forest inventory polygons. The value is positive when the automated stand delineation has a higher density than the photo-interpreted forest inventory map and negative when it has a lower density. For example, with the best parameters retained in the results, the SMAPE of density is -0.03, as the photo-interpreted forest inventory map has a density of 13.96 polygons/km² (3102 polygons) and the segmentation has a density of 13.58 polygons/km² (2943 polygons).
 
-The following two metrics are computed at the pixel level and are therefore area-weighted.
+where Predicted is the polygon density of the automated delineation and Actual is that of the FRI. As defined here, the error is signed: it is positive when the automated delineation has more polygons per km² than the FRI, and negative when it has fewer. For example, with the retained parameters, the FRI has a density of 13.96 polygons/km² (3,102 polygons) and the segmentation 13.58 polygons/km² (2,943 polygons), giving a SMAPE of −0.03.
 
-2. Overlapping kernel density of the polygon stand area at the pixel level. This performance metric represents how well the distribution of automated stand delineation polygon stand areas matches the distribution of photo-interpreted forest inventory polygon areas
+2. **Overlap of polygon area distributions:** the overlap between the kernel density of polygon area of the automated delineation and that of the FRI, computed at the pixel level so that each polygon is weighted by its area.
 
-3. Overlapping kernel density of the polygon stand shape index at the pixel level. The shape index in determined by this formula :
+3. **Overlap of polygon shape distributions:** the same overlap computed for the shape index,
 
 $$
-ShapeIndex = \frac{\text{Perimeter}}{2\sqrt{\pi \times \text{Area}}}
+ShapeIndex = \frac{\text{Perimeter}}{\sqrt{\pi \times \text{Area}}}
 $$
 
-Similarly, this performance metric represents how well the distribution of automated stand delineation polygon stand shape index matches the distribution of photo-interpreted forest inventory polygon shape indices. The shape index was computed using smoothed polygons to avoid overestimating perimeter.
+which equals 2 for a circle and increases as polygons become more elongated or irregular. The shape index was computed on smoothed polygons, to avoid overestimating perimeters along the pixel grid.
 
-The assumption underlying this analysis is that automated stand delineations should have the same distribution of polygon area and shape as photo-interpreted forest inventory polygons and therefore represent operationally plausible forest stands.
+These criteria rest on the assumption that automated polygons with the same distribution of density, area and shape as FRI polygons are operationally plausible stands.
 
 \newpage
+
 # **6** Results {-#results}
 
-The results presented here are, as mentioned before, for Romeo Malette Forest with the "SPL only" model. The SMAPE threshold is 0.1, which represents approximately 10% variation in polygon density. All sets of parameters that produced SMAPE values outside the range of -0.1 to 0.1 were excluded. 
+Results are presented for Romeo Malette Forest with the "SPL only" scenario. Parameter combinations with a SMAPE outside −0.1 to 0.1, that is, a difference in polygon density of more than about 10%, were first excluded (@fig-1).
 
 ```{r}
 #| label: fig-1
@@ -518,11 +507,14 @@ s3d <- scatterplot3d(
 
 \newpage
 
-After this step, the optimal parameters were chosen as those that maximized both the area overlap and the shape index overlap. The final score was computed as follows:
+Among the remaining combinations, the retained parameters were those that maximized both the area overlap and the shape overlap, that is, those with the lowest final score:
 
-**1 − (overlap_area + overlap_shape_index) / 2**
+$$
+\text{Final score} = 1 - \frac{\text{overlap}_{\text{area}} + \text{overlap}_{\text{shape}}}{2}
+$$
 
-The best parameter set was chosen as the one with the lowest final score among all combinations with an SMAPE of polygon density of approximately 0.1. In the following figure, the red circles indicate the best parameter sets.
+In @fig-2, red circles indicate the best parameter sets.
+
 ```{r}
 #| label: fig-2
 #| echo: false
@@ -570,7 +562,9 @@ points(coords$x, coords$y, col = "red", pch = 19, cex = 2)
 })
 ```
 
-The following figure shows an example of segmentation in Romeo Malette Forest using the "SPL only" model with the best parameters from the previous figure (threshold of 50, spectral homogeneity of 1, and spatial homogeneity of 0.1). There is also an example of a smoothed segmentation, as mentioned earlier.
+The figures below show the FRI polygons and the segmentation obtained in one calibration area with the retained parameters (threshold of 50, spectral weight of 1 and spatial weight of 0.1), before and after smoothing, together with the distributions of polygon area and shape.
+
+**[TO COMPLETE: table of the retained parameters for each scenario and FMU.]**
 
 ```{r}
 #| label: show-segmentation-1
@@ -672,7 +666,7 @@ bind_rows(tibble(value = polygon_forest_shape_index_raster, type = "fri"),
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Photo-interpreted forest inventory polygons."
+#| fig-cap: "FRI polygons in a calibration area."
 ggplot() +
   geom_spatraster_rgb(data = sat_sampling_square*1.5) +
   geom_sf(data = polygon_forest_temp %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#1E88E5", linewidth = 1, alpha = 0.5) +
@@ -687,7 +681,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Automated stand delineations."
+#| fig-cap: "Automated stand delineation with the retained parameters."
 ggplot() +
   geom_spatraster_rgb(data = sat_sampling_square*1.5) +
   geom_sf(data = segmentation %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#D81B60", linewidth = 1, alpha = 0.5) +
@@ -702,7 +696,7 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Smoothed automated stand delineations."
+#| fig-cap: "Automated stand delineation with the retained parameters, after smoothing."
 ggplot() +
   geom_spatraster_rgb(data = sat_sampling_square*1.5) +
   geom_sf(data = segmentation_smoothed %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#FFC107", linewidth = 1, alpha = 0.5) +

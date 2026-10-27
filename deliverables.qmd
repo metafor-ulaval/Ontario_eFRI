@@ -1,0 +1,41 @@
+---
+title: "Deliverables and tools"
+date: "2026-10-27"
+---
+
+# **1** Attributed polygon layers {-#final-polygon}
+
+Final attributed polygon layers are available for both FMUs (@tbl-deliverables). Each layer contains the smoothed automated stand polygons of the "SPL only" scenario and the attributes described in the [data dictionary](data_and_method.qmd#attribute-table-assignment).
+
+| FMU | Polygons | Format | Download |
+|---|---|---|---|
+| Romeo Malette Forest | 73,670 | **[TO COMPLETE]** | **[TO COMPLETE: link]** |
+| Ottawa Valley Forest | 55,291 | **[TO COMPLETE]** | **[TO COMPLETE: link]** |
+
+: Final attributed polygon layers. {#tbl-deliverables}
+
+Coordinate reference system: **[TO COMPLETE]**. Conditions of use: **[TO COMPLETE]**.
+
+# **2** eFRItools R package {-#efritools}
+
+Most steps of the workflow are implemented in the open-source R package [eFRItools](https://github.com/metafor-ulaval/eFRItools), which standardizes them and makes them reusable in other FMUs or for other stand delineation and attribution tasks. **[TO CONFIRM: list of main functions, e.g. segmentation with GRM, parameter calibration, attribute extraction, kNN imputation and performance metrics; Orfeo ToolBox requirement.]**
+
+The package can be installed in R with:
+
+```r
+# install.packages("pak")
+pak::pak("metafor-ulaval/eFRItools")
+```
+
+# **3** Desktop application {-#application}
+
+A desktop application lets users run the complete workflow without programming. The user selects an area on a map, sets the three segmentation parameters (threshold, spectral weight and spatial weight), and launches the computation. The application then reads the LiDAR metrics, masks and FRI polygons, segments the area, builds the attribute table, imputes species attributes and writes the outputs, which can be displayed on the map.
+
+The application is distributed in the [project repository](https://github.com/metafor-ulaval/Ontario_eFRI/tree/main/app) with a portable version of R for Windows, and is started with the `Launch_eFRI.bat` launcher. **[TO COMPLETE: download location of the packaged version, required input data and system requirements.]**
+
+# **4** Code and documentation {-#documentation}
+
+- **Report source:** the code used to produce this report and its figures is available in the [Ontario_eFRI repository](https://github.com/metafor-ulaval/Ontario_eFRI).
+- **Scientific article:** **[TO COMPLETE: reference to the article once submitted or published.]**
+- **How to cite this report:** **[TO COMPLETE: suggested citation.]**
+- **Contact:** **[TO COMPLETE: name and email of the project lead.]**

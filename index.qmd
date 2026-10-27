@@ -1,11 +1,6 @@
 ---
 title: "Introduction"
-output:
-  pdf_document: default
-  html_document:
-    df_print: paged
-  word_document: default
-date: "2026-05-20"
+date: "2026-10-27"
 ---
 
 ```{r}
@@ -66,70 +61,69 @@ st_read("D:/00_Ontario_eFRI/01_base_data/drone_flight_areas/drone_flight_areas.s
 ```
 
 # **1** Project summary {-#project-summary}
-Forest managers increasingly have access to detailed, wall-to-wall information on forest structure, but operational planning still relies largely on stand polygons. This project developed and tested an automated framework for transforming LiDAR-derived enhanced forest inventory data into forest stands that can be used in operational inventory and planning. Applied in the Romeo Malette and Ottawa Valley forest management units, the workflow combines automated stand delineation, extraction of LiDAR-derived forest attributes, integration of disturbance and age information, and flexible attribution of species composition. The project produced new stand delineations, an open-source implementation of the workflow, and a comparative assessment of polygon quality based on structural homogeneity, representation of forest variability, and correspondence with independently detected structural transitions.
+
+This report presents the outcomes of *Refining Species and Disturbance in EFRI Inventories*, a project funded by the Knowledge Transfer and Tool Development (KTTD) program of the Forestry Futures Trust and led by Université Laval. The project developed and tested an automated workflow that turns wall-to-wall LiDAR data into forest stand polygons ready for inventory and planning. The workflow:
+
+1. delineates stands automatically from single-photon LiDAR (SPL) metrics;
+2. attributes each stand with LiDAR-derived forest attributes, recent disturbances, stand age and land cover;
+3. accepts species composition from any compatible map product.
+
+The workflow was applied to two contrasting forest management units (FMUs): the boreal Romeo Malette Forest (RMF) and the Great Lakes–St. Lawrence Ottawa Valley Forest (OVF). The automated stands were compared with the photo-interpreted Forest Resources Inventory (FRI) polygons, using independent high-resolution reference data collected with drone LiDAR and field plots.
+
+The project delivers attributed polygon layers covering both FMUs, the open-source R package [eFRItools](https://github.com/metafor-ulaval/eFRItools), an interactive viewer, and this report (see [Deliverables and tools](deliverables.qmd)).
+
+::: {.callout-tip appearance="simple"}
+## Key findings
+
+- **Automated stands are at least as good as photo-interpreted stands.** Delineations built from SPL metrics produced stands that were more internally uniform than FRI polygons (within-stand variability reduced by up to 8.6%) and that captured more of the structural variation of the landscape (up to +9.2 percentage points of variance explained).
+- **Their boundaries follow real changes in forest structure, especially in mixed forests.** In OVF, boundaries of SPL-based delineations matched LiDAR-detected structural transitions markedly better than FRI boundaries (F1-score 8.5% to 35.9% higher). In RMF, where stand edges are sharper and easier to photo-interpret, the "SPL only" delineation performed as well as or better than the FRI.
+- **LiDAR structure is the key input.** Delineations based on Sentinel-2 imagery alone performed worse than the FRI on every criterion. Adding a Sentinel-2 red-edge band to SPL metrics helped in the mixed forest of OVF, but not in the boreal RMF.
+- **One configuration works in both units.** The "SPL only" delineation, which needs only the provincial SPL data, was the most consistent across units and was used to produce the final polygon layers.
+- **The automated layers are operationally plausible.** Segmentation parameters were calibrated so that polygon size and shape resemble FRI polygons. The final layers contain 73,670 polygons in RMF (FRI: 79,094) and 55,291 in OVF (FRI: 68,169).
+:::
 
 # **2** Project context {-#project-context}
-Forest inventory systems rely on spatially explicit information to describe forest conditions and support forest management planning. In operational inventories, this information is typically organized within stand polygons, which provide the spatial units used to summarize attributes such as volume, tree density, canopy structure, species composition, age, and disturbance history. The usefulness of these products therefore depends not only on the accuracy of the forest attributes themselves, but also on the relevance of the spatial units used to represent and aggregate them.
-In Ontario, conventional Forest Resources Inventory products have historically relied on aerial photo-interpretation to delineate relatively homogeneous forest stands and assign interpreted attributes. This approach remains central to forest management planning, but it is time-consuming, partly subjective, and difficult to update frequently across large forest management units. As forest conditions change through harvesting, natural disturbance, succession, and stand development, there is a growing need for more consistent, reproducible, and updateable approaches to stand delineation and attribution.
 
-Recent investments in airborne single photon LiDAR provide an opportunity to modernize this workflow. Ontario’s Forest Resources Inventory leaf-on LiDAR program provides SPL data and derived products to support FRI development, including canopy height models, terrain models, forest inventory raster metrics, and forest inventory attributes. These datasets can be used to describe forest structure wall-to-wall and to support polygon-based inventory products that are more consistent with current forest conditions.
+Forest management planning in Ontario relies on stand polygons. The FRI describes the composition, age, height and stocking of each stand, and planners use these polygons for reporting, growth and yield projections, and operational decisions. FRI polygons are delineated by aerial photo-interpretation, which is time-consuming, partly subjective, and difficult to repeat often over large FMUs. Between updates, harvesting, natural disturbances and stand development make parts of the inventory outdated.
 
-However, moving from wall-to-wall raster products to operational forest inventory polygons remains a key challenge. Forest managers still require polygon-based products for planning, reporting, growth and yield projections, and operational decision-making. Automated stand delineation must therefore produce polygons that are not only technically reproducible, but also meaningful for forest inventory use: internally homogeneous, distinct from neighbouring units, and aligned with real structural transitions in the landscape.
-
-This project, funded by the Knowledge Transfer and Tool Development (KTTD) of the Forestry Futures Trust Ontario, was designed to refine and operationalize an automated polygon-based inventory framework that integrates LiDAR-derived enhanced forest inventory attributes, conventional FRI information, and additional disturbance and attribution layers. The project builds on previous open-source tools developed to integrate photo-interpreted and LiDAR-derived forest attributes into a polygonal forest inventory framework.
-
-<!-- The main improvement over previous work is that most of the steps have been integrated into a package, simplifying and standardizing them. The package is called eFRItools and is available [here](https://github.com/metafor-ulaval/eFRItools). All the functions can be used for other purposes that concern automated stand delineations and forest attribute characterization. -->
+Ontario's leaf-on SPL program now provides wall-to-wall LiDAR coverage and derived enhanced forest inventory (EFI) products, such as canopy height, merchantable volume, basal area and stem density, mapped on a 20 m grid. These rasters describe forest structure in much more detail than polygons, but planners still need polygons. The challenge is to turn raster products into stands that are internally uniform, distinct from their neighbours, and bounded where forest structure actually changes.
 
 # **3** Previous work {-#previous-work}
-The previous Forestry Futures Trust project, led by the University of British Columbia in collaboration with GreenFirst Forest Products, the Ontario Ministry of Natural Resources and Forestry, and Université Laval, developed an open-source framework to integrate photo-interpreted and airborne LiDAR-derived attributes into a polygonal forest inventory. That work addressed a practical operational question: how can area-based LiDAR estimates, produced as raster layers, be aggregated into inventory polygons that remain compatible with strategic and tactical forest management needs?
 
-The project demonstrated that Generic Region Merging segmentation could be used to generate new polygons from LiDAR-derived forest attributes, producing stand-like units that were more consistent with current forest structure than older FRI polygons in some areas. It also developed an imputation workflow to transfer interpreted attributes from existing FRI polygons to newly generated polygons, allowing the new polygon layer to retain information not directly predicted from LiDAR, such as species composition and age.
+This project builds on an earlier Forestry Futures Trust project led by the University of British Columbia with GreenFirst Forest Products, the Ontario Ministry of Natural Resources and Université Laval ([Berman et al., 2024](https://doi.org/10.1080/07038992.2024.2391319)). That project showed that Generic Region Merging (GRM) segmentation of LiDAR metrics can produce stand-like polygons that reflect current forest structure better than older FRI polygons in some areas. It also showed that interpreted attributes such as species composition and age can be transferred from FRI polygons to the new polygons by imputation.
 
-This work represented an important proof of concept, but several issues remained before the approach could be more broadly implemented:
+Four issues remained before the approach could be used operationally:
 
-  * The segmentation workflow needed to be refined to produce polygons that were more compatible with the shape, size, and spatial structure expected in operational forest inventories.
-  
-  * The approach required further testing across contrasting forest types, particularly beyond the boreal conditions where much of the initial development occurred.
-    
-  * Additional attributes such as disturbance history, stand age, and species composition needed to be better integrated or updated when legacy FRI information no longer reflected current forest conditions.
-    
-  * The quality of the resulting polygons needed to be evaluated using criteria that go beyond simple visual comparison with existing photo-interpreted forest inventory maps.
-    
-A central remaining question was how to evaluate the quality of the resulting polygons. Previous work showed that automated stand delineation could generate structurally homogeneous units, but an operational validation framework also needs to ask whether polygons effectively partition forest variability and whether their boundaries correspond to real changes in forest structure. These criteria guided the validation component of the present project.
+- polygons needed sizes and shapes closer to those expected in operational inventories;
+- the approach had been developed mainly in boreal conditions and needed testing in other forest types;
+- disturbance history, stand age and species composition needed updating where the FRI no longer reflected current conditions;
+- polygon quality needed to be assessed with objective criteria rather than by visual comparison with FRI maps.
+
+On the last point, a useful stand map must do more than produce uniform polygons. It must also separate structurally different areas and place boundaries where forest structure changes. These three criteria guided the evaluation carried out in this project.
 
 # **4** Project objectives {-#project-objectives}
-The general objective of this project was to refine an automated stand delineation and attribution framework so that it can better support operational forest inventory modernization in Ontario.
 
-More specifically, the project aimed to:
+The overall objective was to refine the automated delineation and attribution workflow so that it can support the modernization of Ontario's forest inventory. The specific objectives were to:
 
-1. Refine the automated segmentation workflow
+1. **Refine the automated segmentation.** Adjust the segmentation so that it transfers across forest types and produces polygons whose size, shape and structural content are compatible with FRI products.
 
-The project tested and adjusted the segmentation approach to improve its transferability across forest types, with a focus on producing polygons that are more compatible with operational FRI products in terms of size, shape, and structural relevance.
+2. **Integrate LiDAR-derived EFI attributes.** Summarize wall-to-wall EFI rasters (height, volume, basal area, density and canopy cover) within the new polygons.
 
-2. Integrate LiDAR-derived enhanced forest inventory attributes
+3. **Incorporate disturbance and age information.** Use provincial and national disturbance and age products to update polygons where recent harvests or fires are missing from the FRI.
 
-The workflow was designed to incorporate wall-to-wall EFI raster attributes produced from Ontario’s SPL LiDAR data, allowing structural attributes such as height, volume, basal area, density, and canopy metrics to be summarized within newly delineated polygons.
+4. **Keep species composition flexible.** The original proposal planned to improve the imputation of species composition. Gains from imputation proved limited, while a parallel project using deep learning showed stronger potential for mapping species. The workflow was therefore designed to take species composition from any compatible raster product, including future deep learning outputs, rather than from a single imputation method.
 
-3. Incorporate disturbance and age information
-
-The project integrated disturbance information from provincial and national disturbance products to improve the temporal consistency of the new polygon inventory, particularly in areas where the existing FRI did not reflect more recent harvests or natural disturbances.
-
-4. Maintain flexibility for species composition attribution
-
-The initial proposal included additional work on imputing species composition into newly generated polygons. During the project, this component was refined. Improvements from the original imputation approach were limited, while a parallel project using deep learning approaches showed stronger potential for species composition mapping. As a result, the framework was designed to remain flexible: species composition can be incorporated from any compatible raster product, including future outputs from deep learning models, rather than being tied to a single imputation method.
-
-5. Evaluate the quality of automated stand delineations
-
-The project developed and applied a validation framework based on three complementary criteria:
-
-  * Internal structural homogeneity;
-    
-  * The ability of polygons to partition forest structural variability;
-  
-  * The correspondence between mapped polygon boundaries and independently detected structural transitions.
+5. **Evaluate the quality of automated stands** with three complementary criteria: internal homogeneity of stands, partitioning of structural variability among stands, and correspondence of stand boundaries with independently detected structural transitions.
 
 # **5** Study area {-#introduction-study-area}
-[ADD TEXT HERE]
+
+The workflow was tested in two FMUs chosen for their contrasting forest conditions (@fig-study-area).
+
+- **Romeo Malette Forest (RMF)** covers about 586,600 ha in the boreal forest of northeastern Ontario, near Timmins. Its low-relief terrain supports conifer and mixedwood stands dominated by black spruce, jack pine, trembling aspen and white birch. Stand structure is shaped by harvesting, wildfire, windthrow and insect outbreaks, so that stand edges are often sharp and reflect even-aged stands.
+
+- **Ottawa Valley Forest (OVF)** covers about 806,200 ha in eastern Ontario, of which about 237,100 ha are managed Crown land, in the Great Lakes–St. Lawrence forest region. Its more rugged terrain supports a diverse mix of tolerant hardwoods, eastern hemlock, white and red pine, oak and intolerant hardwoods, managed under selection, shelterwood and clearcut systems. Changes between stands are often gradual and linked to species mixtures and partial harvesting.
+
+Delineations were produced over each entire FMU. Their quality was assessed in four 50-ha validation areas per FMU (red dots in @fig-study-area), where drone LiDAR and field plots provided independent reference data (see [Data and Methods](data_and_method.qmd#performance-assessment)).
 
 ```{r}
 #| label: fig-study-area
@@ -137,7 +131,7 @@ The project developed and applied a validation framework based on three compleme
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Study area of the forest management units of Ottawa Valley Forest and Romeo Malette Forest, located in Canada and validation areas."
+#| fig-cap: "Location of the Ottawa Valley Forest (A) and Romeo Malette Forest (B) forest management units in Ontario, with the four 50-ha validation areas of each unit (red dots)."
 panel <- function(f, letter, buffer) {
   g <- filter(fmu, site == f)
   
@@ -197,3 +191,27 @@ left <- global / plot_spacer() + plot_layout(heights = c(1, 0.5))
 fig  <- (left | (A / B)) + plot_layout(widths = c(1, 1.3))
 fig
 ```
+
+# **6** Partners and project team {-#partners}
+
+The project was carried out by Université Laval in collaboration with the Ontario Ministry of Natural Resources, GreenFirst Forest Products, Ottawa Valley Forest Inc. and the Canadian Forest Service. **[TO COMPLETE: project team members and their roles; acknowledgements, including the Forestry Futures Trust and the field crews.]**
+
+# **7** Acronyms {-#acronyms}
+
+| Acronym | Meaning |
+|---|---|
+| EFI | Enhanced forest inventory: forest attributes predicted wall-to-wall from LiDAR |
+| F1 | F1-score, a measure of agreement between stand boundaries and detected structural transitions |
+| FMU | Forest management unit |
+| FRI | Forest Resources Inventory (photo-interpreted stand polygons) |
+| GRM | Generic Region Merging, the segmentation algorithm used to delineate stands |
+| kNN | k-nearest neighbour imputation |
+| OVF | Ottawa Valley Forest |
+| PVE | Proportion of variance explained |
+| QMDBH | Quadratic mean diameter at breast height |
+| RMF | Romeo Malette Forest |
+| S2 | Sentinel-2 satellite imagery |
+| SMW | Split moving window analysis |
+| SPL | Single-photon LiDAR (provincial airborne acquisition) |
+| ULS | Uncrewed (drone) laser scanning |
+| wSD | Area-weighted mean within-polygon standard deviation |
