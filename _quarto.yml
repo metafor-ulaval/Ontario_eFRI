@@ -12,9 +12,13 @@ website:
       - href: data_and_method.qmd
         text: "Data and Methods"
       - href: project_outputs.qmd
-        text: "Project Outputs"
+        text: "Results"
+      - href: recommendations.qmd
+        text: "Recommendations"
+      - href: deliverables.qmd
+        text: "Deliverables and tools"
       - href: segmentation_parameters_optimisation.qmd
-        text: "Appendix A : Segmentation parameters optimisation"
+        text: "Appendix A: Segmentation calibration"
 
 format:
   html:

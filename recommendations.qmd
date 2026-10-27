@@ -1,0 +1,38 @@
+---
+title: "Recommendations and limitations"
+date: "2026-10-27"
+---
+
+# **1** Recommendations for operational use {-#recommendations}
+
+The results support the following recommendations for producing automated stand polygons from Ontario's SPL data.
+
+1. **Base the delineation on SPL structure metrics.** The "SPL only" scenario (dominant height, canopy cover and height skewness) gave the most consistent results in both FMUs and requires only the provincial SPL data. Sentinel-2 imagery should not be used alone to delineate stands.
+
+2. **Consider a red-edge band in mixed forests.** In the Great Lakes–St. Lawrence forest, adding the Sentinel-2 red-edge band to SPL metrics improved the placement of boundaries between stands of different composition. In the boreal forest, where even-aged stands dominate, it brought no benefit.
+
+3. **Calibrate the segmentation for each FMU and set of inputs.** Parameters calibrated in one FMU should not be reused elsewhere without checking polygon density, size and shape against the local FRI, as described in [Appendix A](segmentation_parameters_optimisation.qmd).
+
+4. **Fix and document the processing extent.** GRM results change with the processing extent. Segmentation should be run over the whole FMU or a documented tiling, and the extent and parameters should be stored with the product.
+
+5. **Mask non-forest features and smooth polygons.** Masking water bodies and roads before segmentation keeps them out of forest stands, and topology-preserving smoothing gives polygons a natural appearance without gaps or overlaps.
+
+6. **Refresh disturbance attributes as new data become available.** Disturbance and age attributes can be updated whenever national or provincial disturbance products are released. New delineations should follow new LiDAR acquisitions or extensive disturbances.
+
+7. **Take species composition from species maps.** Rather than imputing species from the FRI, species composition should be extracted within the automated polygons from province-wide species maps as they become available.
+
+8. **Assess new delineations before adoption.** The three criteria used here (internal homogeneity, partitioning of variability and boundary correspondence) can be applied in other FMUs wherever drone LiDAR and field plots are available, to compare a new delineation with the FRI.
+
+# **2** Limitations {-#limitations}
+
+- **Two forest management units.** Results come from one boreal and one Great Lakes–St. Lawrence FMU, with four 50-ha validation areas in each. They indicate clear trends but should be confirmed in other forest types.
+
+- **Different acquisition dates.** FRI photo-interpretation, SPL acquisition (2018 in RMF), drone LiDAR and field measurements took place at different times **[TO COMPLETE: year of FRI photography and of drone and field campaigns]**. Forest change between these dates may slightly penalize the older products in the comparison.
+
+- **Reference layers are model predictions.** Reference attributes were predicted from drone LiDAR with moderate to good accuracy (54% to 75% of variance explained). Their errors affect all delineations equally but add noise to the comparison.
+
+- **Calibration on the FRI.** Parameters were tuned so that automated polygons resemble FRI polygons in size and shape. This makes the comparison fair, but it also means that automated polygons inherit the level of detail of the FRI, which may not suit every use.
+
+- **Simplified detection of transitions.** The split moving window analysis detects transitions along transects, reduces each one to a single point, and ignores the minimum area and shape constraints of operational stand maps. Isolated canopy gaps or large trees can still be detected as transitions in open stands.
+
+- **Species composition.** Species attributes in the delivered layers come from kNN imputation of FRI data and remain approximate until province-wide species maps are available.
