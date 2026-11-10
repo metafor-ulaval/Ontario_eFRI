@@ -715,7 +715,7 @@ Here are listed the extracted attributes that lies for each polygons of automate
  
  * Most frequent landcover proportion (POLYTYPEPROP) → The proportion (%) of the most frequent landcover class based on landcover raster;
  
- * Forest age (AGE) → Mean forest age (year) at year of produced data based on a forest age raster layer;
+ * Forest age (AGE) → Median forest age (year) at year of produced data based on a forest age raster layer;
  
  * Year of last disturbance (YRDEP) → Year of the last disturbance where at least 80 % of polygon stand was affected;
  
