@@ -236,14 +236,14 @@ run_efri_pipeline <- function(p) {
   levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
                                   class = unname(landcover_codes))
 
-  read_raster_on_template(paste0(p$wd, "/metrics/", p$forest, "/other/forest_age_2019.tif"),
-                          template, extraction_area_vect, method = "near") -> forest_age_2019
+  read_raster_on_template(paste0(p$wd, "/metrics/", p$forest, "/other/forest_age_2022.tif"),
+                          template, extraction_area_vect, method = "near") -> forest_age_2022
 
-  read_raster_on_template(paste0(p$wd, "/metrics/", p$forest, "/other/forest_fire_1985_2020.tif"),
-                          template, extraction_area_vect, method = "near") -> forest_fire_1985_2020
+  read_raster_on_template(paste0(p$wd, "/metrics/", p$forest, "/other/forest_fire_1985_2022.tif"),
+                          template, extraction_area_vect, method = "near") -> forest_fire_1985_2022
 
-  read_raster_on_template(paste0(p$wd, "/metrics/", p$forest, "/other/forest_harvest_1985_2020.tif"),
-                          template, extraction_area_vect, method = "near") -> forest_harvest_1985_2020
+  read_raster_on_template(paste0(p$wd, "/metrics/", p$forest, "/other/forest_harvest_1985_2022.tif"),
+                          template, extraction_area_vect, method = "near") -> forest_harvest_1985_2022
 
   # 🟢 Segmentation 🟢
   write_progress(4, n_steps, "Perform segmentation")
@@ -270,9 +270,10 @@ run_efri_pipeline <- function(p) {
                        metrics = metrics,
                        summary_metrics = unique(c(p$summary_metrics, "z_p95", "z_above2", "slope", "sagawi")),
                        landcover = landcover,
-                       forest_fire = forest_fire_1985_2020,
-                       forest_harvest = forest_harvest_1985_2020,
-                       forest_age = forest_age_2019) -> segmentation_data
+                       forest_fire = forest_fire_1985_2022,
+                       forest_harvest = forest_harvest_1985_2022,
+                       forest_age = forest_age_2022,
+                       raster_year = 2022) -> segmentation_data
 
   segmentation_data %>%
     dplyr::select(-id_seg, -id) %>%
@@ -292,8 +293,8 @@ run_efri_pipeline <- function(p) {
                   forest_polygon = fri_polygons,
                   metrics = metrics,
                   landcover = landcover,
-                  forest_fire = forest_fire_1985_2020,
-                  forest_harvest = forest_harvest_1985_2020,
+                  forest_fire = forest_fire_1985_2022,
+                  forest_harvest = forest_harvest_1985_2022,
                   ctg = ctg,
                   lidar_year_column = "Fl_Cr_Y",
                   forest_year_column = "YRUPD",

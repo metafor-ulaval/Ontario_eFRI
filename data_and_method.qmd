@@ -85,7 +85,8 @@ params <- expand.grid(forests = forests,
 #| message: false
 #| warning: false
 # for(p in seq_len(nrow(params))[c(1, 3, 5)]){ # RMF
-for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
+# for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
+for(p in seq_len(nrow(params))){ # ALL
   param <- params[p,]
   
   cat("Forest :", param$forests, "/", names(param$models), ":", unlist(param$models), "\n")
@@ -196,17 +197,17 @@ for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
   levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
                                   class = unname(landcover_codes))
   
-  # Forest age in 2019
-  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_age_2019.tif")) %>%
-    terra::project(epsg_rast, method = "near") -> forest_age_2019
+  # Forest age in 2022
+  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_age_2022.tif")) %>%
+    terra::project(epsg_rast, method = "near") -> forest_age_2022
   
-  # Forest fire between 1985-2020
-  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_fire_1985_2020.tif")) %>%
-    terra::project(epsg_rast, method = "near") -> forest_fire_1985_2020
+  # Forest fire between 1985-2022
+  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_fire_1985_2022.tif")) %>%
+    terra::project(epsg_rast, method = "near") -> forest_fire_1985_2022
   
-  # Forest harvest between 1985-2020
-  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_harvest_1985_2020.tif")) %>%
-    terra::project(epsg_rast, method = "near") -> forest_harvest_1985_2020
+  # Forest harvest between 1985-2022
+  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_harvest_1985_2022.tif")) %>%
+    terra::project(epsg_rast, method = "near") -> forest_harvest_1985_2022
   
   # Segmentation
   eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
@@ -230,9 +231,10 @@ for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
                        metrics = metrics,
                        summary_metrics = summary_metrics,
                        landcover = landcover,
-                       forest_fire = forest_fire_1985_2020,
-                       forest_harvest = forest_harvest_1985_2020,
-                       forest_age = forest_age_2019) -> segmentation_data 
+                       forest_fire = forest_fire_1985_2022,
+                       forest_harvest = forest_harvest_1985_2022,
+                       forest_age = forest_age_2022,
+                       raster_year = 2022) -> segmentation_data 
   
   segmentation_data %>% 
     dplyr::select(-id_seg, -id) %>% 
@@ -250,8 +252,8 @@ for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
                   forest_polygon = fri_polygons,
                   metrics = metrics,
                   landcover = landcover,
-                  forest_fire = forest_fire_1985_2020,
-                  forest_harvest = forest_harvest_1985_2020,
+                  forest_fire = forest_fire_1985_2022,
+                  forest_harvest = forest_harvest_1985_2022,
                   ctg = ctg,
                   lidar_year_column = "Fl_Cr_Y",
                   forest_year_column = "YRUPD",
@@ -377,21 +379,21 @@ landcover_codes <- c(`1` = "Clear open water",
 levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
                                 class = unname(landcover_codes))
 
-# Forest age in 2019
-rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_age_2019.tif")) %>%
-  terra::project("EPSG:4326", method = "near") -> forest_age_2019
+# Forest age in 2022
+rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_age_2022.tif")) %>%
+  terra::project("EPSG:4326", method = "near") -> forest_age_2022
 
-# Forest fire between 1985-2020
-rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_fire_1985_2020.tif")) %>%
-  terra::project("EPSG:4326", method = "near") -> forest_fire_1985_2020
+# Forest fire between 1985-2022
+rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_fire_1985_2022.tif")) %>%
+  terra::project("EPSG:4326", method = "near") -> forest_fire_1985_2022
 
-forest_fire_1985_2020[forest_fire_1985_2020 == 0] <- NA
+forest_fire_1985_2022[forest_fire_1985_2022 == 0] <- NA
 
-# Forest harvest between 1985-2020
-rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_harvest_1985_2020.tif")) %>%
-  terra::project("EPSG:4326", method = "near") -> forest_harvest_1985_2020
+# Forest harvest between 1985-2022
+rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_harvest_1985_2022.tif")) %>%
+  terra::project("EPSG:4326", method = "near") -> forest_harvest_1985_2022
 
-forest_harvest_1985_2020[forest_harvest_1985_2020 == 0] <- NA
+forest_harvest_1985_2022[forest_harvest_1985_2022 == 0] <- NA
 ```
 
 # **1** Summary of project methods {-#summary}
@@ -552,7 +554,7 @@ This layer come from [Ontario Land Cover Compilation Version 2.0](https://openda
 
 The following tree layers are part of the [National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada](https://opendata.nfis.org/mapserver/nfis-change_eng.html) and are produced by Canadian Forest Service.
 
-The forest age provides a 30-m resolution forest age map of Canada (2019 as reference), derived from Landsat time series (disturbance detection, surface reflectance composites, forest structure) and MODIS Gross Primary Production. Age is estimated via a hierarchical approach: direct detection from mapped disturbances (highest accuracy), spectral recovery modeling informed by forest succession where disturbance timing is inferred rather than observed, and inverted allometric equations calibrated against realized height and growth-and-yield models where no disturbance evidence exists (86.6% of area). Stands >150 years old are aggregated into a single old-growth class. See [Maltman et al. (2023)](https://www.sciencedirect.com/science/article/pii/S0034425723000809?via%3Dihub) for full methodology and NFI validation.
+The forest age provides a 30-m resolution forest age map of Canada (2022 as reference), derived from Landsat time series (disturbance detection, surface reflectance composites, forest structure) and MODIS Gross Primary Production. Age is estimated via a hierarchical approach: direct detection from mapped disturbances (highest accuracy), spectral recovery modeling informed by forest succession where disturbance timing is inferred rather than observed, and inverted allometric equations calibrated against realized height and growth-and-yield models where no disturbance evidence exists (86.6% of area). Stands >150 years old are aggregated into a single old-growth class. See [Maltman et al. (2023)](https://www.sciencedirect.com/science/article/pii/S0034425723000809?via%3Dihub) for full methodology and NFI validation.
  
 ```{r}
 #| label: fig-eFRI-attibute-table-data-2
@@ -560,20 +562,20 @@ The forest age provides a 30-m resolution forest age map of Canada (2019 as refe
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Forest age in 2019 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
+#| fig-cap: "Forest age in 2022 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
 ggplot() +
   geom_spatraster_rgb(data = sat_forest*1.5) +
-  geom_spatraster(data = forest_age_2019) +
+  geom_spatraster(data = forest_age_2022) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
-  labs(fill = "Forest age in 2019") +
+  labs(fill = "Forest age in 2022") +
   theme(legend.position = "bottom")
 ```
   
-The forest fire and harvest layers maps the year of greatest disturbance for each pixel across Canada's 650-million-hectare forested ecosystems, covering 35 years (1985-2020) at 30-m resolution. It's built from an automated, spatially consistent Landsat time-series pipeline for detecting stand-replacing disturbances, from [Hermosilla et al. (2016)](https://www.tandfonline.com/doi/full/10.1080/17538947.2016.1187673).
+The forest fire and harvest layers maps the year of greatest disturbance for each pixel across Canada's 650-million-hectare forested ecosystems, covering 38 years (1985-2022) at 30-m resolution. It's built from an automated, spatially consistent Landsat time-series pipeline for detecting stand-replacing disturbances, from [Hermosilla et al. (2016)](https://www.tandfonline.com/doi/full/10.1080/17538947.2016.1187673).
 
 ```{r}
 #| label: fig-eFRI-attibute-table-data-3
@@ -581,16 +583,16 @@ The forest fire and harvest layers maps the year of greatest disturbance for eac
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Forest fires from 1985 to 2020 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
+#| fig-cap: "Forest fires from 1985 to 2022 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
 ggplot() +
   geom_spatraster_rgb(data = sat_forest*1.5) +
-  geom_spatraster(data = forest_fire_1985_2020) +
+  geom_spatraster(data = forest_fire_1985_2022) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
-  labs(fill = "Forest fires from 1985 to 2020") +
+  labs(fill = "Forest fires from 1985 to 2022") +
   theme(legend.position = "bottom")
 ```
   
@@ -600,16 +602,16 @@ ggplot() +
 #| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Forest harvests from 1985 to 2020 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
+#| fig-cap: "Forest harvests from 1985 to 2022 from National Terrestrial Ecosystem Monitoring System (NTEMS) for Canada."
 ggplot() +
   geom_spatraster_rgb(data = sat_forest*1.5) +
-  geom_spatraster(data = forest_harvest_1985_2020) +
+  geom_spatraster(data = forest_harvest_1985_2022) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0)) +
   theme_bw() +
-  labs(fill = "Forest harvests from 1985 to 2020") +
+  labs(fill = "Forest harvests from 1985 to 2022") +
   theme(legend.position = "bottom")
 ```
 
