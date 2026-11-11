@@ -39,6 +39,8 @@ library(knitr)
 library(maptiles)
 library(patchwork)
 library(reticulate)
+library(ggspatial)
+library(metafortools)
 ```
 
 ```{r}
@@ -357,6 +359,137 @@ before_after <- function(before,
     margin-bottom: 0.25rem;
   }
 </style>
+```
+
+```{r}
+#| label: visualisation-function
+#| include: false
+# Visual comparison of the photo-interpreted polygons and the automated stand delineations of the three models
+# over the imagery and the reference forest-attribute layers of one validation area (drone flight area)
+visualisation_figure <- function(sector){
+
+  st_read(paste0(wd, "/shapefiles/drone_flight_areas/drone_flight_areas.shp"), quiet = T) %>%
+    filter(sector == !!sector) -> dfa_temp
+
+  # Reference forest-attribute layers (kept in their original CRS)
+  for(d in c("vmb_ha", "dens")){
+
+    rast(paste0(wd, "/analysis/random_forest/", dfa_temp$forest, "_", d, "_", sector, "_prediction.tif")) -> metric
+
+    metric %>%
+      crop(dfa_temp %>% st_transform(st_crs(metric))) -> metric
+
+    assign(d, metric)
+
+  }
+
+  dfa_temp %>%
+    st_transform(st_crs(metric)) -> dfa_temp
+
+  rast(paste0(wd, "/analysis/random_forest/", dfa_temp$forest, "_zq90_prediction.tif")) %>%
+    crop(dfa_temp %>% st_buffer(50)) %>%
+    project(metric, method = "bilinear") %>%
+    crop(dfa_temp) -> zq90
+
+  # Automated stand delineations (smoothed)
+  model_labels <- c(spl_only = "SPL only",
+                    spl_s2_red_edge = "SPL + S2 red edge",
+                    s2_only = "S2 only")
+
+  map_dfr(names(model_labels),
+          function(m){
+            st_read(paste0(wd, "/segmentation/", dfa_temp$forest, "/", m, "/data.gpkg"),
+                    layer = paste0(m, "_data_imputation_smoothed"),
+                    quiet = T) %>%
+              st_geometry() %>%
+              st_as_sf() %>%
+              st_cast("MULTIPOLYGON") %>%
+              st_cast("POLYGON") %>%
+              st_transform(st_crs(dfa_temp)) %>%
+              st_filter(dfa_temp) %>%
+              mutate(model = model_labels[[m]])
+          }) -> segmentation
+
+  st_geometry(segmentation) <- "geom"
+
+  # Photo-interpreted polygons
+  st_read(paste0(wd, "/shapefiles/", dfa_temp$forest, "/PolygonForest.shp"), quiet = T) %>%
+    st_geometry() %>%
+    st_as_sf() %>%
+    st_cast("MULTIPOLYGON") %>%
+    st_cast("POLYGON") %>%
+    st_transform(st_crs(dfa_temp)) %>%
+    st_filter(dfa_temp) %>%
+    mutate(model = "Photo-interpreted") -> polygon_forest
+
+  st_geometry(polygon_forest) <- "geom"
+
+  bind_rows(polygon_forest, segmentation) %>%
+    mutate(model = factor(model, levels = c("Photo-interpreted", model_labels))) -> polygon_forest_segmentation
+
+  # Map frame rotated along the flight area
+  coord_rotate <- geom_sf_rotate(x = dfa_temp,
+                                 ang = get_rotation_angle(dfa_temp),
+                                 size = 707)
+
+  # One row of maps per layer
+  layer_figure <- function(layer, fill_label){
+    polygon_forest_segmentation %>%
+      ggplot() +
+      geom_spatraster(data = layer) +
+      scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"), na.value = NA) +
+      geom_sf(color = "black", fill = NA, lwd = 0.5) +
+      facet_wrap(~model, nrow = 1) +
+      labs(fill = fill_label) +
+      scale_x_continuous(expand = c(0, 0)) +
+      scale_y_continuous(expand = c(0, 0)) +
+      theme_bw(base_size = 10) +
+      theme(legend.justification = c(0, 0.5),
+            strip.text = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank()) +
+      coord_rotate
+  }
+
+  zq90_figure <- layer_figure(zq90, "Canopy\nheight (m)")
+  vmb_ha_figure <- layer_figure(vmb_ha, "Merchantable\nvolume (m³/ha)")
+  dens_figure <- layer_figure(dens, "Stem density\n(stems/ha)")
+
+  # Imagery (projected by get_tiles() in the CRS of the area)
+  get_tiles(x = dfa_temp %>% st_buffer(50), provider = "Esri.WorldImagery", zoom = 18, crop = TRUE) %>%
+    resample(zq90) -> sat
+
+  first_model <- factor(levels(polygon_forest_segmentation$model)[1],
+                        levels = levels(polygon_forest_segmentation$model))
+
+  polygon_forest_segmentation %>%
+    ggplot() +
+    geom_spatraster_rgb(data = sat*1.5) +
+    geom_sf(color = "black", fill = NA, lwd = 0.5) +
+    facet_wrap(~model, nrow = 1) +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    theme_bw(base_size = 10) +
+    theme(axis.ticks = element_blank(),
+          axis.text = element_blank()) +
+    coord_rotate +
+    annotation_scale(data = data.frame(model = first_model),
+                     location = "br",
+                     line_width = 2,
+                     width_hint = 0.3,
+                     height = unit(0.35, "cm"),
+                     pad_x = unit(0.25, "cm"),
+                     pad_y = unit(0.25, "cm"),
+                     text_cex = 1.2,
+                     text_col = "white") +
+    annotation_north_arrow(data = data.frame(model = first_model),
+                           location = "bl",
+                           which_north = "true",
+                           height = unit(1, "cm"),
+                           width = unit(1, "cm")) -> sat_figure
+
+  sat_figure / zq90_figure / vmb_ha_figure / dens_figure
+}
 ```
 
 # **1** Automated stand delineation {-#segmentation-results}
@@ -1120,8 +1253,10 @@ In the next two figures polygon boundaries are overlaid on the high-resolution f
 #| echo: false
 #| message: false
 #| warning: false
+#| fig-width: 10
+#| fig-height: 10
 #| fig-cap: "Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment."
-knitr::include_graphics("figures/segmentation_S1_simplified.jpg")
+visualisation_figure("S1")
 ```
 
 @fig-visualisation-s1 shows a closed-canopy area where structural transitions are mostly gradual. The delineations based on SPL metrics ("SPL only" and "SPL + S2 red edge") closely follow the patch of tall, high-volume forest in the north-east and separate it from the lower and less stocked stands in the south. The photo-interpreted polygons and the "S2 only" delineation capture the same general pattern, but several of their boundaries cross gradients of canopy height and merchantable volume rather than following them. Stem density shows little contrast in this area (approximately 1500 to 1900 stems/ha), so none of the delineations is strongly structured by this attribute.
@@ -1131,8 +1266,10 @@ knitr::include_graphics("figures/segmentation_S1_simplified.jpg")
 #| echo: false
 #| message: false
 #| warning: false
+#| fig-width: 10
+#| fig-height: 10
 #| fig-cap: "Example validation area showing the photo-interpreted forest inventory map and retained automated stand delineations overlaid on the reference forest-attribute layers used in the performance assessment."
-knitr::include_graphics("figures/segmentation_S7_simplified.jpg")
+visualisation_figure("S7")
 ```
 
 @fig-visualisation-s7 shows a contrasted landscape where open, low vegetation areas alternate with tall, dense stands. In this situation, the main transitions are captured by all delineations, including the photo-interpreted map. The delineations based on SPL metrics further subdivide the forested areas according to differences in canopy height and merchantable volume, for example by isolating the high-volume stand on the west side from the lower stands surrounding it. The "S2 only" delineation mainly follows the spectral contrast between open and forested areas and tends to group stands that differ in structure into larger polygons.
