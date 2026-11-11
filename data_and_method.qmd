@@ -496,7 +496,32 @@ Here are listed the three segmentation models generated :
  * SPL only (spl_only in database) : z_p95 + z_above2 + z_skew
  * SPL + S2 red edge (spl_s2_red_edge in database) : z_p95 + z_above2 + B6
  * S2 only (s2_only in database) : B6 + B8 + B11
- 
+
+The next table shows the segmentation parameters retained by the [optimization](#Segmentation-parameter-optimization) for each forest and model.
+```{r}
+#| label: tbl-segmentation-parameters
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "Segmentation parameters of the Generic Region Merging algorithm (Baatz & Schape criterion) by forest and segmentation model."
+readRDS(paste0(wd, "/analysis/segmentation/best_parameters_all.rds")) %>%
+  filter(type == "by_forest_model",
+         model_id %in% names(models)) %>%
+  mutate(forest = factor(forest, levels = forests),
+         model_id = factor(model_id, levels = names(models))) %>%
+  arrange(forest, model_id) %>%
+  mutate(model_id = recode(model_id,
+                           spl_only = "SPL only",
+                           spl_s2_red_edge = "SPL + S2 red edge",
+                           s2_only = "S2 only")) %>%
+  select(Forest = forest,
+         Model = model_id,
+         Threshold = thresh,
+         `Spectral homogeneity weight` = spec,
+         `Spatial homogeneity weight` = spat) %>%
+  knitr::kable()
+```
+
 The next three figures represent the metrics used in the "SPL only" model, which was retained to produce the final automated stand delineations, and their meaning :
 
  * z_p95 → Height of 95th percentiles of returns above 1.3 m
