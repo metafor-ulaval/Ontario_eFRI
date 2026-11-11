@@ -58,6 +58,7 @@ use_python("C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe
 arcpy <- import("arcpy")
 
 wd <- "D:/00_Ontario_eFRI/10_livrables" # wd
+statistics_dir <- "D:/00_Ontario_eFRI/07_analysis/statistics/old" # Performance assessment results (temporary location, will be moved to the deliverables)
 summary_metrics <- c("vmerch_ha", "qmdbh", "dens", "ba_ha", "z_p95", "z_above2", "slope", "sagawi")
 
 forests <- c("RMF", "OVF")
@@ -1274,6 +1275,123 @@ visualisation_figure("S7")
 
 @fig-visualisation-s7 shows a contrasted landscape where open, low vegetation areas alternate with tall, dense stands. In this situation, the main transitions are captured by all delineations, including the photo-interpreted map. The delineations based on SPL metrics further subdivide the forested areas according to differences in canopy height and merchantable volume, for example by isolating the high-volume stand on the west side from the lower stands surrounding it. The "S2 only" delineation mainly follows the spectral contrast between open and forested areas and tends to group stands that differ in structure into larger polygons.
 
+```{r}
+#| label: performance-heatmaps
+#| include: false
+# Performance of each automated stand delineation relative to the photo-interpreted forest inventory map
+# Models shown from top to bottom (model_B = spl_only, model_F = spl_s2_red_edge, model_G = s2_only)
+selected_models <- c("B", "F", "G")
+model_names <- c(B = "SPL only", F = "SPL + S2 red edge", G = "S2 only")
+forest_order <- c("OVF", "RMF")
+
+attribute_order <- c("Merchantable volume", "Canopy height", "Stem density", "QMDBH")
+attribute_axis_labels <- c("Merchantable volume" = "Merchantable\nvolume",
+                           "Canopy height" = "Canopy\nheight",
+                           "Stem density" = "Stem\ndensity",
+                           "QMDBH" = "QMDBH")
+
+# Muted brown-blue divergent palette (brown = poorer, near-white = similar, blue = better than the photo-interpreted map)
+fill_colours <- c("#B98A43", "#D2AC68", "#E8D5AD", "#F5F4F0", "#DDEAF0", "#BDD4E0", "#93B8CB", "#6F9EB7")
+
+normalize_grm_model <- function(x) {
+  x %>%
+    as.character() %>%
+    str_to_upper() %>%
+    str_replace_all("MODEL[_ ]*", "") %>%
+    str_extract("[A-G]")
+}
+
+plot_heatmap <- function(data,
+                         metric,
+                         legend_title,
+                         legend_labels,
+                         fill_limits,
+                         colour_values,
+                         breaks,
+                         digits = 1) {
+
+  data %>%
+    mutate(value_to_plot = .data[[metric]],
+           label = sprintf(paste0("%+.", digits, "f"), .data[[metric]])) %>%
+    ggplot(aes(x = attribute, y = grm_model, fill = value_to_plot)) +
+    geom_tile(color = "white", linewidth = 0.55) +
+    geom_text(aes(label = label), size = 3.7, color = "black") +
+    facet_grid(forest ~ ., scales = "free_y", space = "free_y", drop = FALSE) +
+    scale_x_discrete(labels = attribute_axis_labels, position = "top", drop = FALSE) +
+    scale_y_discrete(labels = model_names, drop = FALSE) +
+    scale_fill_gradientn(colours = fill_colours,
+                         values = scales::rescale(colour_values, from = fill_limits),
+                         limits = fill_limits,
+                         oob = scales::squish,
+                         breaks = breaks,
+                         labels = legend_labels,
+                         name = legend_title,
+                         na.value = "grey90",
+                         guide = guide_colourbar(title.position = "top",
+                                                 title.hjust = 0.5,
+                                                 barwidth = unit(100, "mm"),
+                                                 barheight = unit(4, "mm"),
+                                                 frame.colour = NA,
+                                                 ticks.colour = "grey35",
+                                                 nbin = 300)) +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid = element_blank(),
+          panel.spacing.y = unit(6, "mm"),
+          axis.text.x = element_text(face = "bold", size = 10.5, colour = "grey10", lineheight = 0.9),
+          axis.text.y = element_text(size = 10, colour = "grey10"),
+          axis.ticks = element_blank(),
+          strip.text.y.right = element_text(face = "bold", angle = 0, size = 11, colour = "grey10"),
+          strip.background = element_blank(),
+          legend.position = "bottom",
+          legend.title = element_text(size = 10, hjust = 0.5, lineheight = 1),
+          legend.text = element_text(size = 8.7, hjust = 0.5, lineheight = 0.95),
+          legend.margin = margin(t = 1, r = 0, b = 0, l = 0),
+          legend.box.margin = margin(t = 3, r = 0, b = 0, l = 0),
+          plot.margin = margin(t = 6, r = 12, b = 6, l = 8))
+}
+
+# PVE and wSD (minimum polygon area of 1 ha)
+readRDS(paste0(statistics_dir, "/results_final.rds")) %>%
+  filter(sup_min == 10000) %>%
+  mutate(forest = str_to_upper(as.character(forest)),
+         grm_model = normalize_grm_model(model),
+         attribute = recode(as.character(metric),
+                            vmb_ha = "Merchantable volume",
+                            zq90 = "Canopy height",
+                            dens = "Stem density",
+                            dhpq = "QMDBH")) %>%
+  filter(grm_model %in% selected_models,
+         attribute %in% attribute_order,
+         forest %in% forest_order) %>%
+  group_by(forest, grm_model, attribute) %>%
+  summarise(across(c(pve_forest, pve_segmentation, ih_forest, ih_segmentation), ~ mean(as.numeric(.x), na.rm = TRUE)),
+            .groups = "drop") -> heatmap_data
+
+# PVE in percentage points if stored between 0 and 1
+pve_multiplier <- ifelse(max(c(heatmap_data$pve_forest, heatmap_data$pve_segmentation), na.rm = TRUE) <= 1.5, 100, 1)
+
+heatmap_data %>%
+  mutate(pve_gain = pve_multiplier * (pve_segmentation - pve_forest), # Positive = higher PVE
+         wsd_gain = 100 * (ih_forest - ih_segmentation) / ih_forest, # Positive = lower within-polygon variability
+         forest = factor(forest, levels = forest_order),
+         grm_model = factor(grm_model, levels = rev(selected_models)), # Model B at the top
+         attribute = factor(attribute, levels = attribute_order)) -> heatmap_data
+
+# Boundary correspondence (F1-score relative to the photo-interpreted map)
+read.csv(paste0(statistics_dir, "/f1_delta_bymetric_ws10_w10_pmd20.csv")) %>%
+  mutate(grm_model = normalize_grm_model(boundary_model),
+         attribute = recode(metric,
+                            vmbha = "Merchantable volume",
+                            zq90_buff = "Canopy height",
+                            dens = "Stem density",
+                            dhpq = "QMDBH")) %>%
+  filter(grm_model %in% selected_models) %>%
+  mutate(forest = factor(forest, levels = forest_order),
+         grm_model = factor(grm_model, levels = rev(selected_models)),
+         attribute = factor(attribute, levels = attribute_order)) -> f1_data
+```
+
 ## **3.2** Partitioning of forest-attribute variability {-#partitioning-forest-attribute-variability}
 The proportion of variance explained (PVE) was used to assess how effectively each delineation partitioned spatial variability in the reference forest attributes. Higher PVE indicates that a greater proportion of the landscape-level variability is represented by differences among polygons.
 
@@ -1282,8 +1400,16 @@ The proportion of variance explained (PVE) was used to assess how effectively ea
 #| echo: false
 #| message: false
 #| warning: false
+#| fig-width: 9.8
+#| fig-height: 6.45
 #| fig-cap: "Performance of automated stand delineations in partitioning forest-attribute variability relative to the photo-interpreted forest inventory map. Cell values are differences in proportion of variance explained (PVE), expressed in percentage points. Positive values indicate greater PVE than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter."
-knitr::include_graphics("figures/pve_figure.png")
+plot_heatmap(data = heatmap_data,
+             metric = "pve_gain",
+             legend_title = "Difference in PVE relative to the photo-interpreted map\n(percentage points)",
+             legend_labels = c("−30\nLower PVE", "−20", "−10", "0\nReference", "+5", "+10\nHigher PVE"),
+             fill_limits = c(-30, 10),
+             colour_values = c(-30, -15, -5, 0, 1.5, 4, 7, 10),
+             breaks = c(-30, -20, -10, 0, 5, 10))
 ```
 
 As shown in @fig-pve, the two delineations based on SPL metrics explained more of the variability of the reference forest attributes than the photo-interpreted map in nearly all cases. Gains were larger in OVF, ranging from +3.5 to +9.2 percentage points, with the largest improvements for canopy height and QMDBH. In RMF, the "SPL only" delineation provided consistent gains (+2.3 to +6.8 percentage points), while the "SPL + S2 red edge" delineation performed similarly to the photo-interpreted map (-2.2 to +1.2 percentage points). In contrast, the "S2 only" delineation systematically explained less variability than the photo-interpreted map, with losses of 9.6 to 26.8 percentage points. Spectral information alone is therefore not sufficient to partition forest structure, whereas structural information from SPL is the main driver of the gains observed.
@@ -1296,8 +1422,16 @@ Internal polygon homogeneity was assessed using the area-weighted mean within-po
 #| echo: false
 #| message: false
 #| warning: false
+#| fig-width: 9.8
+#| fig-height: 6.45
 #| fig-cap: "Performance of automated stand delineations in improving internal polygon homogeneity relative to the photo-interpreted forest inventory map. Cell values represent the relative change in area-weighted within-polygon standard deviation (wSD), expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate lower within-polygon variability than the photo-interpreted inventory map. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter."
-knitr::include_graphics("figures/ih_figure.png")
+plot_heatmap(data = heatmap_data,
+             metric = "wsd_gain",
+             legend_title = "Relative change in within-polygon wSD compared with the\nphoto-interpreted map (%)",
+             legend_labels = c("−30\nMore variable", "−20", "−10", "0\nReference", "+5", "+10\nMore homogeneous"),
+             fill_limits = c(-30, 10),
+             colour_values = c(-30, -15, -5, 0, 1.5, 4, 7, 10),
+             breaks = c(-30, -20, -10, 0, 5, 10))
 ```
 
 The results for internal homogeneity (@fig-ih) closely mirror those obtained for PVE. In OVF, both delineations based on SPL metrics produced polygons that were more homogeneous than the photo-interpreted ones for all attributes, with reductions of wSD between 4.6 % and 8.6 %. In RMF, the "SPL only" delineation also improved homogeneity for all attributes (+3.0 % to +8.6 %), the largest gain being for merchantable volume, while the "SPL + S2 red edge" delineation remained close to the photo-interpreted map (-1.4 % to +1.8 %). The "S2 only" delineation produced markedly more variable polygons in both Forest Management Units (-11.3 % to -27.4 %).
@@ -1310,8 +1444,16 @@ The spatial correspondence between mapped stand boundaries and independently det
 #| echo: false
 #| message: false
 #| warning: false
+#| fig-width: 9.8
+#| fig-height: 6.45
 #| fig-cap: "Performance of automated stand delineations in improving correspondence of stand boundaries with structural transitions relative to the photo-interpreted forest inventory map. Cell values represent the relative change in correspondence between a stands boundary and a detected structural structure, expressed as percentages relative to the photo-interpreted inventory map. Positive values indicate higher correspondence. Canopy height corresponds to the 90th percentile of normalized ULS return heights; QMDBH denotes quadratic mean diameter."
-knitr::include_graphics("figures/smw_figure.png")
+plot_heatmap(data = f1_data,
+             metric = "delta",
+             legend_title = "Change in boundary correspondence relative to the photo-interpreted map\n(%)",
+             legend_labels = c("−30\nPoorer correspondence", "−15", "0\nReference", "+15", "+30\nBetter correspondence"),
+             fill_limits = c(-36, 36),
+             colour_values = c(-36, -20, -8, 0, 8, 18, 27, 36),
+             breaks = c(-30, -15, 0, 15, 30))
 ```
 
 The correspondence between stand boundaries and structural transitions (@fig-smw) shows the largest differences between Forest Management Units. In OVF, the delineations based on SPL metrics strongly improved the correspondence with detected transitions, particularly for canopy height (+29.5 % and +34.1 %) and QMDBH (+27.9 % and +35.9 %). The "SPL + S2 red edge" delineation performed best for three of the four attributes. In RMF, improvements were limited: the "SPL only" delineation improved correspondence for merchantable volume (+12.8 %) but was close to the photo-interpreted map for the other attributes, and the "SPL + S2 red edge" delineation showed slightly poorer correspondence for merchantable volume (-5.9 %) and stem density (-8.6 %). The "S2 only" delineation had poorer correspondence than the photo-interpreted map in both Forest Management Units, with the largest losses in OVF (-18.6 % to -30.1 %).
