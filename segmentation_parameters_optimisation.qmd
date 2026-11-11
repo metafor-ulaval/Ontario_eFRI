@@ -38,7 +38,6 @@ library(eFRItools)
 library(basemapR)
 library(patchwork)
 library(maptiles)
-library(scatterplot3d)
 ```
 
 ```{r}
@@ -471,7 +470,6 @@ The results presented here are, as mentioned before, for Romeo Malette Forest wi
 ```{r}
 #| label: fig-1
 #| echo: false
-#| results: hide
 #| message: false
 #| warning: false
 #| fig-cap: "Symmetric mean absolute percentage error (SMAPE) of polygon density based on threshold, weight of spectral homogeneity and weight of spatial homogeneity and where SMAPE values outside the range of -0.1 to 0.1 were excluded."
@@ -498,25 +496,27 @@ results %>%
   filter(dens_smape >= -dens_threshold & dens_smape <= dens_threshold) %>%
   mutate(parameters = paste0("thresh", thresh, "_spec", spec*100, "_spat", spat*100)) -> results_temp
 
-# Color scaling
-pal <- colorRampPalette(c("#332288", "#117733", "#882235"))
-col_scaled <- pal(100)[cut(results_temp$dens_smape, breaks = 100)]
+# Axis titles shared by the 3D figures
+scene_axes <- list(xaxis = list(title = "Threshold"),
+                   yaxis = list(title = "Weight of spectral homogeneity"),
+                   zaxis = list(title = "Weight of spatial homogeneity"))
 
-# Size scaling
-cex_scaled <- scales::rescale(results_temp$dens_smape, to = c(0.5, 2))
-
-# Plot
-s3d <- scatterplot3d(
-  x = results_temp$thresh,
-  y = results_temp$spec,
-  z = results_temp$spat,
-  color = col_scaled,
-  pch = 16,
-  cex.symbols = cex_scaled,
-  xlab = "Threshold",
-  ylab = "Weight of spectral homogeneity",
-  zlab = "Weight of spatial homogeneity"
-)
+plot_ly(data = results_temp,
+        x = ~thresh, y = ~spec, z = ~spat,
+        color = ~dens_smape,
+        colors = c("#332288", "#117733", "#882235"),
+        size = ~dens_smape,
+        sizes = c(1, 1000),
+        type = "scatter3d",
+        mode = "markers",
+        text = ~parameters,
+        hovertemplate = paste("Threshold : %{x}<br>",
+                              "Weight of spectral homogeneity : %{y}<br>",
+                              "Weight of spatial homogeneity : %{z}<br>",
+                              "SMAPE of polygon density : %{marker.color:.3f}<br>",
+                              "Parameters : %{text}<extra></extra>")) %>%
+  colorbar(title = "SMAPE") %>%
+  layout(scene = scene_axes)
 ```
 
 \newpage
@@ -529,7 +529,6 @@ The best parameter set was chosen as the one with the lowest final score among a
 ```{r}
 #| label: fig-2
 #| echo: false
-#| results: hide
 #| message: false
 #| warning: false
 #| fig-cap: "Final score polygon density based on threshold, weight of spectral homogeneity and weight of spatial homogeneity and where SMAPE values outside the range of -0.1 to 0.1 were excluded."
@@ -538,39 +537,35 @@ results_temp %>%
   slice(1) %>%
   dplyr::select(forest, model_id, model_name, thresh, spec, spat, overlap_area_raster, overlap_shape_smoothed_raster, n_forest, n_segmentation, dens_smape, final_score) -> best_parameters_temp
 
-local({
-
-# Color scaling
-pal <- colorRampPalette(c("#117733", "#882235"))
-col_scaled <- pal(100)[cut(results_temp$final_score, breaks = 100)]
-
-# Size scaling
-cex_scaled <- scales::rescale(results_temp$final_score, to = c(2, 0.5))
-
-# Plot
-s3d <- scatterplot3d(
-  x = results_temp$thresh,
-  y = results_temp$spec,
-  z = results_temp$spat,
-  color = col_scaled,
-  pch = 16,
-  cex.symbols = cex_scaled,
-  xlab = "Threshold",
-  ylab = "Weight of spectral homogeneity",
-  zlab = "Weight of spatial homogeneity"
-)
-
-i <- which.min(results_temp$final_score)
-
-coords <- s3d$xyz.convert(
-  results_temp$thresh[i],
-  results_temp$spec[i],
-  results_temp$spat[i]
-)
-
-points(coords$x, coords$y, col = "red", pch = 19, cex = 2)
-
-})
+plot_ly(data = results_temp,
+        x = ~thresh, y = ~spec, z = ~spat,
+        color = ~final_score,
+        colors = c("#117733", "#882235"),
+        size = ~final_score,
+        sizes = c(1000, 1),
+        type = "scatter3d",
+        mode = "markers",
+        text = ~parameters,
+        hovertemplate = paste("Threshold : %{x}<br>",
+                              "Weight of spectral homogeneity : %{y}<br>",
+                              "Weight of spatial homogeneity : %{z}<br>",
+                              "Final score : %{marker.color:.3f}<br>",
+                              "Parameters : %{text}<extra></extra>")) %>%
+  colorbar(title = "Final score") %>%
+  # Best parameter set (lowest final score)
+  add_trace(data = best_parameters_temp,
+            x = ~thresh, y = ~spec, z = ~spat,
+            type = "scatter3d",
+            mode = "markers",
+            marker = list(color = "red", size = 12, symbol = "circle-open", line = list(color = "red", width = 6)),
+            name = "Best parameters",
+            hovertemplate = paste("Best parameters<br>",
+                                  "Threshold : %{x}<br>",
+                                  "Weight of spectral homogeneity : %{y}<br>",
+                                  "Weight of spatial homogeneity : %{z}<extra></extra>"),
+            inherit = FALSE) %>%
+  layout(scene = scene_axes,
+         showlegend = FALSE)
 ```
 
 The following figure shows an example of segmentation in Romeo Malette Forest using the "SPL only" model with the best parameters from the previous figure (threshold of 50, spectral homogeneity of 1, and spatial homogeneity of 0.1). There is also an example of a smoothed segmentation, as mentioned earlier.
