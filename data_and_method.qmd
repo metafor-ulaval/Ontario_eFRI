@@ -229,6 +229,7 @@ for(p in seq_len(nrow(params))){ # ALL
                     clean_nodata = TRUE,
                     ofile = paste0(segmentation_wd, "/", names(param$models), ".tif"),
                     otb_dir = otb_dir) -> segmentation
+  processing_time_segmentation <- difftime(Sys.time(), processing_start, units = "mins")
 
   segmentation %>%
     st_write(paste0(segmentation_wd, "/data.gpkg"),
@@ -237,6 +238,7 @@ for(p in seq_len(nrow(params))){ # ALL
              quiet = T)
 
   # Clip segmentation with the FMU boundary
+  processing_start <- Sys.time()
   fmu %>%
     st_write(paste0(segmentation_wd, "/data.gpkg"),
              layer = "fmu",
@@ -255,7 +257,7 @@ for(p in seq_len(nrow(params))){ # ALL
     st_cast("POLYGON") %>%
     dplyr::select(id_seg) %>%
     mutate(id = seq_len(n())) -> segmentation
-  processing_time_segmentation <- difftime(Sys.time(), processing_start, units = "mins") # Segmentation and clip
+  processing_time_clip <- difftime(Sys.time(), processing_start, units = "mins")
 
   # eFRI attibute table
   processing_start <- Sys.time()
@@ -318,8 +320,9 @@ for(p in seq_len(nrow(params))){ # ALL
   tibble(forest = param$forests,
          model_id = names(param$models),
          n_polygons = nrow(segmentation),
-         step = c("eFRI_segmentation", "eFRI_attribute_table", "eFRI_imputation", "SmoothPolygon_cartography"),
+         step = c("eFRI_segmentation", "Clip_analysis", "eFRI_attribute_table", "eFRI_imputation", "SmoothPolygon_cartography"),
          time_min = round(as.numeric(c(processing_time_segmentation,
+                                       processing_time_clip,
                                        processing_time_attribute_table,
                                        processing_time_imputation,
                                        processing_time_smoothing)), 2)) -> processing_time
