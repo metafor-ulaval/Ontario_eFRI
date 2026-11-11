@@ -291,9 +291,65 @@ st_read(paste0(wd, "/shapefiles/", param_figures_ovf$forest, "/PolygonForest.shp
   rowid_to_column("id")  %>% 
   st_transform(epsg_ovf) -> fri_polygons_ovf
 
-fri_polygons_ovf %>% 
-  st_filter(subset_area_ovf) %>% 
+fri_polygons_ovf %>%
+  st_filter(subset_area_ovf) %>%
   ms_clip(subset_area_ovf) -> fri_polygons_ovf_clip
+```
+
+```{r}
+#| label: before-after-slider
+#| include: false
+# Before/after slider between two static maps of the same extent (HTML only)
+# Both maps are saved as PNG with the same size in the figure folder of the page, then overlaid
+# with img-comparison-slider (https://github.com/sneas/img-comparison-slider)
+before_after <- function(before,
+                         after,
+                         before_label,
+                         after_label,
+                         name,
+                         width = 7,
+                         height = 7){
+
+  fig_dir <- knitr::opts_current$get("fig.path")
+  dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
+  paths <- paste0(fig_dir, name, c("-before", "-after"), ".png")
+
+  ggsave(paths[1], plot = before, width = width, height = height, dpi = 200)
+  ggsave(paths[2], plot = after, width = width, height = height, dpi = 200)
+
+  htmltools::tags$div(class = "before-after",
+                      htmltools::tags$div(class = "before-after-labels",
+                                          htmltools::tags$span(paste("←", before_label)),
+                                          htmltools::tags$span(paste(after_label, "→"))),
+                      htmltools::tag("img-comparison-slider",
+                                     list(htmltools::tags$img(slot = "first", src = paths[1], alt = before_label),
+                                          htmltools::tags$img(slot = "second", src = paths[2], alt = after_label))))
+}
+```
+
+```{=html}
+<script defer src="https://cdn.jsdelivr.net/npm/img-comparison-slider@8.0.6/dist/index.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/img-comparison-slider@8.0.6/dist/styles.css"/>
+<style>
+  .before-after img-comparison-slider {
+    width: 100%;
+    --divider-width: 3px;
+    --divider-color: #ffffff;
+    --default-handle-color: #ffffff;
+  }
+  .before-after img-comparison-slider img {
+    display: block;
+    width: 100%;
+  }
+  .before-after-labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+</style>
 ```
 
 # **1** Automated stand delineation {-#segmentation-results}
@@ -360,69 +416,61 @@ readRDS(paste0(wd, "/analysis/processing_time.rds")) %>%
   knitr::kable()
 ```
 
-The next figure provide an overview of the resulting smoothed automated stand delineation for RMF in the restricted areas of 5x5 km.
+The next figure compares the photo-interpreted forest inventory polygons with the resulting smoothed automated stand delineation for RMF in the restricted area of 5x5 km. Drag the slider to switch from one to the other.
+
+::: {#fig-segmentation-fri-rmf}
 ```{r}
-#| label: fig-segmentation-exemple-rmf
+#| label: segmentation-fri-rmf
 #| echo: false
-#| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Smoothed automated stand delineations for the Forest Management Unit of Romeo Malette Forest."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip, 
-          color = "#FFC107", alpha = 0, size = 0.5) +
-  coord_subset_rmf +
-  theme_bw()
+before_after(before = ggplot() +
+               geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
+               geom_sf(data = fri_polygons_rmf_clip,
+                       color = "#28E2E5", alpha = 0, size = 0.5) +
+               coord_subset_rmf +
+               theme_bw(),
+             after = ggplot() +
+               geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
+               geom_sf(data = segmentation_smoothed_rmf_clip,
+                       color = "#FFC107", alpha = 0, size = 0.5) +
+               coord_subset_rmf +
+               theme_bw(),
+             before_label = "Photo-interpreted forest inventory polygons",
+             after_label = "Smoothed automated stand delineations",
+             name = "segmentation-fri-rmf")
 ```
 
-As a comparative, the next figure shows the photo-interpreted forest inventory polygons.
+Photo-interpreted forest inventory polygons (left) and smoothed automated stand delineations (right) for the Forest Management Unit of Romeo Malette Forest.
+:::
+
+And here is the same comparison for the Forest Management Unit of Ottawa Valley Forest.
+
+::: {#fig-segmentation-fri-ovf}
 ```{r}
-#| label: fig-fri-exemple-rmf
+#| label: segmentation-fri-ovf
 #| echo: false
-#| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Photo-interpreted forest inventory polygons for the Forest Management Unit of Romeo Malette Forest."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = fri_polygons_rmf_clip, 
-          color = "#28E2E5", alpha = 0, size = 0.5) + 
-  coord_subset_rmf +
-  theme_bw()
+before_after(before = ggplot() +
+               geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
+               geom_sf(data = fri_polygons_ovf_clip,
+                       color = "#28E2E5", alpha = 0, size = 0.5) +
+               coord_subset_ovf +
+               theme_bw(),
+             after = ggplot() +
+               geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
+               geom_sf(data = segmentation_smoothed_ovf_clip,
+                       color = "#FFC107", alpha = 0, size = 0.5) +
+               coord_subset_ovf +
+               theme_bw(),
+             before_label = "Photo-interpreted forest inventory polygons",
+             after_label = "Smoothed automated stand delineations",
+             name = "segmentation-fri-ovf")
 ```
 
-And here is the smoothed automated stand delineation and photo-interpreted forest inventory polygons for the Forest Management Unit of Ottawa Valley Forest.
-
-```{r}
-#| label: fig-segmentation-exemple-ovf
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
-  geom_sf(data = segmentation_smoothed_ovf_clip, 
-          color = "#FFC107", alpha = 0, size = 0.5) +
-  coord_subset_ovf +
-  theme_bw()
-```
-
-```{r}
-#| label: fig-fri-exemple-ovf
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Photo-interpreted forest inventory polygons for the Forest Management Unit of Ottawa Valley Forest."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
-  geom_sf(data = fri_polygons_ovf_clip, 
-          color = "#28E2E5", alpha = 0, size = 0.5) + 
-  coord_subset_ovf +
-  theme_bw()
-```
+Photo-interpreted forest inventory polygons (left) and smoothed automated stand delineations (right) for the Forest Management Unit of Ottawa Valley Forest.
+:::
 
 The resulting polygons can be expected to represent homogeneous forest stands based on choosen metrics. For the whole Romeo Malette Forest, the segmentation produced `r nrow(segmentation_smoothed_rmf)` polygons representing forest stands. Overall, the number of polygon produced is slightly lower as there is `r nrow(fri_polygons_rmf)` photo-interpreted forest inventory polygons. For the Ottawa Valley Forest, a total of `r nrow(segmentation_smoothed_ovf)` polygons was generated by the automated stand delineations which is also lower than than the `r nrow(fri_polygons_ovf)` photo-interpreted forest inventory polygons.
 
@@ -752,39 +800,33 @@ It is recommended to perform a smoothing step that can be made later in ArcGIS P
  * endpoint_option = "FIXED_ENDPOINT" 
  * error_option = "RESOLVE_ERRORS".
  
-The next figure shows automated stand delineation before smoothing.
+The next figure shows automated stand delineation before and after smoothing. With smoothing, the polygons looks more natural and the border seems to better mimic the edges of actual forest stands.
 
+::: {#fig-segmentation-smoothing}
 ```{r}
-#| label: fig-segmentation-non-smoothed
+#| label: segmentation-smoothing
 #| echo: false
-#| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Automated stand delineations."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_rmf_clip, 
-          color = "#D81B60", alpha = 0, size = 0.5) +
-  coord_subset_rmf +
-  theme_bw()
+before_after(before = ggplot() +
+               geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
+               geom_sf(data = segmentation_rmf_clip,
+                       color = "#D81B60", alpha = 0, size = 0.5) +
+               coord_subset_rmf +
+               theme_bw(),
+             after = ggplot() +
+               geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
+               geom_sf(data = segmentation_smoothed_rmf_clip,
+                       color = "#FFC107", alpha = 0, size = 0.5) +
+               coord_subset_rmf +
+               theme_bw(),
+             before_label = "Automated stand delineations",
+             after_label = "Smoothed automated stand delineations",
+             name = "segmentation-smoothing")
 ```
 
-With smoothing, the polygons looks more natural and the border seems to better mimic the edges of actual forest stands.
-
-```{r}
-#| label: fig-segmentation-smoothed
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Smoothed automated stand delineations."
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip, 
-          color = "#FFC107", alpha = 0, size = 0.5) +
-  coord_subset_rmf +
-  theme_bw()
-```
+Automated stand delineations before (left) and after (right) smoothing.
+:::
 
 An additional data that can be used in automated stand delineation are masks where there is no forest and therefore the segmentation is not performed. These are typically waterbodies and roads. 
 
@@ -985,49 +1027,49 @@ imputation_results %>%
 knitr::kable(best_models_clean)
 ``` 
 
-The map below shows the imputed three functional group class (softwood, hardwood and mixedwood). The map at the right show the reference layer used to impute this variable. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial group class shown below.
+The figure below compares the reference layer used to impute the three functional group class (softwood, hardwood and mixedwood), on the left, with the imputed class of the automated stand delineations, on the right. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial group class shown below.
 
+::: {#fig-imputation}
 ```{r}
-#| label: fig-imputation-fri
+#| label: imputation
 #| echo: false
-#| results: hide
 #| message: false
 #| warning: false
-#| fig-cap: "Three functional group class of photo-interpreted forest inventory maps"
-fri_polygons_rmf_clip %>% 
-  mutate_species_prop(column_name = "SPCOMP") %>% 
-  mutate_species_order(column_name = "SPCOMP") %>% 
-  mutate_forest_type() %>% 
+fri_polygons_rmf_clip %>%
+  mutate_species_prop(column_name = "SPCOMP") %>%
+  mutate_species_order(column_name = "SPCOMP") %>%
+  mutate_forest_type() %>%
   mutate_functional_group(functional_group_5 = FALSE) %>%
   dplyr::select(FUNCTIONAL_GROUP_3) -> imputation_data_1
 
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = imputation_data_1, aes(fill = FUNCTIONAL_GROUP_3)) + 
-  labs(fill = "Three functional group class") +
-  coord_subset_rmf +
-  theme_bw() +
-  theme(legend.position = "bottom")
-``` 
-
-```{r}
-#| label: fig-imputation-segmentation
-#| echo: false
-#| results: hide
-#| message: false
-#| warning: false
-#| fig-cap: "Three functional group class of automated stand delineations"
-segmentation_smoothed_rmf_clip %>% 
+segmentation_smoothed_rmf_clip %>%
   dplyr::select(FUNCTIONAL_GROUP_3) -> imputation_data_2
 
-ggplot() +
-  geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = imputation_data_2, aes(fill = FUNCTIONAL_GROUP_3)) +
-  labs(fill = "Three functional group class") +
-  coord_subset_rmf +
-  theme_bw() +
-  theme(legend.position = "bottom")
-``` 
+# Same classes and colors on both maps, so the legend does not change with the slider
+functional_group_classes <- sort(unique(na.omit(c(imputation_data_1$FUNCTIONAL_GROUP_3,
+                                                  imputation_data_2$FUNCTIONAL_GROUP_3))))
+
+plot_functional_group <- function(data){
+  ggplot() +
+    geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
+    geom_sf(data = data, aes(fill = FUNCTIONAL_GROUP_3)) +
+    scale_fill_discrete(limits = functional_group_classes) +
+    labs(fill = "Three functional group class") +
+    coord_subset_rmf +
+    theme_bw() +
+    theme(legend.position = "bottom")
+}
+
+before_after(before = plot_functional_group(imputation_data_1),
+             after = plot_functional_group(imputation_data_2),
+             before_label = "Photo-interpreted forest inventory polygons",
+             after_label = "Automated stand delineations",
+             name = "imputation",
+             height = 7.6)
+```
+
+Three functional group class of photo-interpreted forest inventory polygons (left) and of automated stand delineations (right).
+:::
 
 \newpage
 
