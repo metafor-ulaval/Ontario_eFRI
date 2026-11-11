@@ -106,34 +106,36 @@ st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T)
   st_transform(epsg_rmf) -> rmf
 
 # Areas
-rmf %>% 
-  st_geometry() %>%
-  st_transform(4326) %>% 
-  st_as_sf() -> rmf_4326
-
 rmf %>%
   st_bbox() %>%
   st_as_sfc() %>%
   st_centroid() %>%
   st_buffer(2500) %>%
   st_bbox() %>%
-  st_as_sfc() %>% 
+  st_as_sfc() %>%
   st_as_sf() -> subset_area_rmf
 
-subset_area_rmf %>% 
-  st_transform(4326) %>% 
-  st_as_sf() -> subset_area_rmf_4326
-
-# Imagery
-sat_rmf <- get_tiles(x = st_bbox(rmf_4326 %>% st_buffer(5000)),
+# Imagery (projected by get_tiles() in the CRS of the area, so all maps stay in the original CRS)
+sat_rmf <- get_tiles(x = st_bbox(rmf %>% st_buffer(5000)),
                      provider = "Esri.WorldImagery",
                      zoom = 11,
                      crop = TRUE)
 
-sat_subset_area_rmf <- get_tiles(x = st_bbox(subset_area_rmf_4326 %>% st_buffer(100)),
+sat_subset_area_rmf <- get_tiles(x = st_bbox(subset_area_rmf %>% st_buffer(250)),
                                  provider = "Esri.WorldImagery",
                                  zoom = 15,
                                  crop = TRUE)
+
+# Map frames (the imagery is a bit larger, so its reprojected edges stay outside the frame)
+coord_fmu_rmf <- coord_sf(crs = epsg_rmf,
+                          xlim = st_bbox(st_buffer(rmf, 1000))[c("xmin", "xmax")],
+                          ylim = st_bbox(st_buffer(rmf, 1000))[c("ymin", "ymax")],
+                          expand = FALSE)
+
+coord_subset_rmf <- coord_sf(crs = epsg_rmf,
+                             xlim = st_bbox(subset_area_rmf)[c("xmin", "xmax")],
+                             ylim = st_bbox(subset_area_rmf)[c("ymin", "ymax")],
+                             expand = FALSE)
 
 # Read metrics
 metrics_infos_rmf %>%
@@ -156,8 +158,7 @@ names(metrics_rmf) <- metrics_names # Assign metrics names
 list(vect(paste0(wd, "/shapefiles/", param_figures_rmf$forest, "/roads.shp")),
      vect(paste0(wd, "/shapefiles/", param_figures_rmf$forest, "/waterbodies.shp"))) %>%
   map(project, epsg_rast_rmf) %>% 
-  map(crop, subset_area_rmf) %>% 
-  map(project, subset_area_rmf_4326) -> masks_rmf_4326
+  map(crop, subset_area_rmf) -> masks_rmf
 
 # Segmentation
 st_read(paste0(segmentation_wd_rmf, "/data.gpkg"), 
@@ -168,8 +169,7 @@ st_read(paste0(segmentation_wd_rmf, "/data.gpkg"),
 
 segmentation_rmf %>% 
   st_filter(subset_area_rmf) %>% 
-  ms_clip(subset_area_rmf) %>% 
-  st_transform(4326) -> segmentation_rmf_clip_4326
+  ms_clip(subset_area_rmf) -> segmentation_rmf_clip
 
 # Segmentation smoothed
 st_read(paste0(segmentation_wd_rmf, "/data.gpkg"), 
@@ -180,8 +180,7 @@ st_read(paste0(segmentation_wd_rmf, "/data.gpkg"),
 
 segmentation_smoothed_rmf  %>% 
   st_filter(subset_area_rmf) %>% 
-  ms_clip(subset_area_rmf) %>% 
-  st_transform(4326) -> segmentation_smoothed_rmf_clip_4326
+  ms_clip(subset_area_rmf) -> segmentation_smoothed_rmf_clip
 
 # Segmentation with masks smoothed
 st_read(paste0(segmentation_wd_rmf, "/data.gpkg"), 
@@ -192,8 +191,7 @@ st_read(paste0(segmentation_wd_rmf, "/data.gpkg"),
 
 segmentation_masks_smoothed_rmf  %>% 
   st_filter(subset_area_rmf) %>% 
-  ms_clip(subset_area_rmf) %>% 
-  st_transform(4326) -> segmentation_masks_smoothed_rmf_clip_4326
+  ms_clip(subset_area_rmf) -> segmentation_masks_smoothed_rmf_clip
 
 # Photo-interpreted polygons
 st_read(paste0(wd, "/shapefiles/", param_figures_rmf$forest, "/PolygonForest.shp"), 
@@ -204,8 +202,7 @@ st_read(paste0(wd, "/shapefiles/", param_figures_rmf$forest, "/PolygonForest.shp
 
 fri_polygons_rmf %>% 
   st_filter(subset_area_rmf) %>% 
-  ms_clip(subset_area_rmf) %>% 
-  st_transform(4326) -> fri_polygons_rmf_clip_4326
+  ms_clip(subset_area_rmf) -> fri_polygons_rmf_clip
 
 
 # OVF
@@ -234,34 +231,36 @@ st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T)
   st_transform(epsg_ovf) -> ovf
 
 # Areas
-ovf %>% 
-  st_geometry() %>%
-  st_transform(4326) %>% 
-  st_as_sf() -> ovf_4326
-
 ovf %>%
   st_bbox() %>%
   st_as_sfc() %>%
   st_centroid() %>%
   st_buffer(2500) %>%
   st_bbox() %>%
-  st_as_sfc() %>% 
+  st_as_sfc() %>%
   st_as_sf() -> subset_area_ovf
 
-subset_area_ovf %>% 
-  st_transform(4326) %>% 
-  st_as_sf() -> subset_area_ovf_4326
-
-# Imagery
-sat_ovf <- get_tiles(x = st_bbox(ovf_4326 %>% st_buffer(5000)),
+# Imagery (projected by get_tiles() in the CRS of the area, so all maps stay in the original CRS)
+sat_ovf <- get_tiles(x = st_bbox(ovf %>% st_buffer(5000)),
                      provider = "Esri.WorldImagery",
                      zoom = 11,
                      crop = TRUE)
 
-sat_subset_area_ovf <- get_tiles(x = st_bbox(subset_area_ovf_4326 %>% st_buffer(100)),
+sat_subset_area_ovf <- get_tiles(x = st_bbox(subset_area_ovf %>% st_buffer(250)),
                                  provider = "Esri.WorldImagery",
                                  zoom = 15,
                                  crop = TRUE)
+
+# Map frames (the imagery is a bit larger, so its reprojected edges stay outside the frame)
+coord_fmu_ovf <- coord_sf(crs = epsg_ovf,
+                          xlim = st_bbox(st_buffer(ovf, 1000))[c("xmin", "xmax")],
+                          ylim = st_bbox(st_buffer(ovf, 1000))[c("ymin", "ymax")],
+                          expand = FALSE)
+
+coord_subset_ovf <- coord_sf(crs = epsg_ovf,
+                             xlim = st_bbox(subset_area_ovf)[c("xmin", "xmax")],
+                             ylim = st_bbox(subset_area_ovf)[c("ymin", "ymax")],
+                             expand = FALSE)
 
 # Segmentation
 st_read(paste0(segmentation_wd_ovf, "/data.gpkg"), 
@@ -272,8 +271,7 @@ st_read(paste0(segmentation_wd_ovf, "/data.gpkg"),
 
 segmentation_ovf %>% 
   st_filter(subset_area_ovf) %>% 
-  ms_clip(subset_area_ovf) %>% 
-  st_transform(4326) -> segmentation_ovf_clip_4326
+  ms_clip(subset_area_ovf) -> segmentation_ovf_clip
 
 # Segmentation smoothed
 st_read(paste0(segmentation_wd_ovf, "/data.gpkg"), 
@@ -284,8 +282,7 @@ st_read(paste0(segmentation_wd_ovf, "/data.gpkg"),
 
 segmentation_smoothed_ovf  %>% 
   st_filter(subset_area_ovf) %>% 
-  ms_clip(subset_area_ovf) %>% 
-  st_transform(4326) -> segmentation_smoothed_ovf_clip_4326
+  ms_clip(subset_area_ovf) -> segmentation_smoothed_ovf_clip
 
 # Photo-interpreted polygons
 st_read(paste0(wd, "/shapefiles/", param_figures_ovf$forest, "/PolygonForest.shp"), 
@@ -296,8 +293,7 @@ st_read(paste0(wd, "/shapefiles/", param_figures_ovf$forest, "/PolygonForest.shp
 
 fri_polygons_ovf %>% 
   st_filter(subset_area_ovf) %>% 
-  ms_clip(subset_area_ovf) %>% 
-  st_transform(4326) -> fri_polygons_ovf_clip_4326
+  ms_clip(subset_area_ovf) -> fri_polygons_ovf_clip
 ```
 
 # **1** Automated stand delineation {-#segmentation-results}
@@ -312,10 +308,9 @@ In this section and the [next one](#attribute-table-results), the "SPL only" seg
 #| fig-cap: "Restricted area of 5x5 km in Romeo Malette Forest."
 ggplot() +
   geom_spatraster_rgb(data = sat_rmf*1.5) +
-  geom_sf(data = rmf_4326, color = "#FEFE62", fill = NA, lwd = 1) +
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = rmf, color = "#FEFE62", fill = NA, lwd = 1) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
+  coord_fmu_rmf +
   theme_bw()
 ```
 
@@ -328,10 +323,9 @@ ggplot() +
 #| fig-cap: "Restricted area of 5x5 km in Ottawa Valley Forest."
 ggplot() +
   geom_spatraster_rgb(data = sat_ovf*1.5) +
-  geom_sf(data = ovf_4326, color = "#FEFE62", fill = NA, lwd = 1) +
-  geom_sf(data = subset_area_ovf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = ovf, color = "#FEFE62", fill = NA, lwd = 1) +
+  geom_sf(data = subset_area_ovf, color = "red", fill = NA, lwd = 1) +
+  coord_fmu_ovf +
   theme_bw()
 ```
 
@@ -376,11 +370,10 @@ The next figure provide an overview of the resulting smoothed automated stand de
 #| fig-cap: "Smoothed automated stand delineations for the Forest Management Unit of Romeo Malette Forest."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, 
+  geom_sf(data = segmentation_smoothed_rmf_clip, 
           color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
+  coord_subset_rmf +
   theme_bw()
 ```
 
@@ -394,11 +387,10 @@ As a comparative, the next figure shows the photo-interpreted forest inventory p
 #| fig-cap: "Photo-interpreted forest inventory polygons for the Forest Management Unit of Romeo Malette Forest."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = fri_polygons_rmf_clip_4326, 
+  geom_sf(data = fri_polygons_rmf_clip, 
           color = "#1E88E5", alpha = 0, size = 0.5) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
+  coord_subset_rmf +
   theme_bw()
 ```
 
@@ -413,11 +405,10 @@ And here is the smoothed automated stand delineation and photo-interpreted fores
 #| fig-cap: "Smoothed automated stand delineations for the Forest Management Unit of Ottawa Valley Forest."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
-  geom_sf(data = segmentation_smoothed_ovf_clip_4326, 
+  geom_sf(data = segmentation_smoothed_ovf_clip, 
           color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_ovf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = subset_area_ovf, color = "red", fill = NA, lwd = 1) +
+  coord_subset_ovf +
   theme_bw()
 ```
 
@@ -430,11 +421,10 @@ ggplot() +
 #| fig-cap: "Photo-interpreted forest inventory polygons for the Forest Management Unit of Ottawa Valley Forest."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
-  geom_sf(data = fri_polygons_ovf_clip_4326, 
+  geom_sf(data = fri_polygons_ovf_clip, 
           color = "#1E88E5", alpha = 0, size = 0.5) + 
-  geom_sf(data = subset_area_ovf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = subset_area_ovf, color = "red", fill = NA, lwd = 1) +
+  coord_subset_ovf +
   theme_bw()
 ```
 
@@ -777,11 +767,10 @@ The next figure shows automated stand delineation before smoothing.
 #| fig-cap: "Automated stand delineations."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_rmf_clip_4326, 
+  geom_sf(data = segmentation_rmf_clip, 
           color = "#D81B60", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
+  coord_subset_rmf +
   theme_bw()
 ```
 
@@ -796,11 +785,10 @@ With smoothing, the polygons looks more natural and the border seems to better m
 #| fig-cap: "Smoothed automated stand delineations."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, 
+  geom_sf(data = segmentation_smoothed_rmf_clip, 
           color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
+  coord_subset_rmf +
   theme_bw()
 ```
 
@@ -815,13 +803,12 @@ An additional data that can be used in automated stand delineation are masks whe
 #| fig-cap: "Mask used where segmentation is not performed."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = masks_rmf_4326[[1]], 
+  geom_sf(data = masks_rmf[[1]], 
           color = "grey", size = 1) +
-  geom_sf(data = masks_rmf_4326[[2]], 
+  geom_sf(data = masks_rmf[[2]], 
           color = "#4F81BD", fill = "#A6CDE4", size = 0.5) +
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
+  coord_subset_rmf +
   theme_bw()
 ```
 
@@ -836,11 +823,10 @@ Here is the resulting automated stand delineation when the masks are considered.
 #| fig-cap: "Resulting polygon after the masks applications."
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_masks_smoothed_rmf_clip_4326,
+  geom_sf(data = segmentation_masks_smoothed_rmf_clip,
           color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
+  coord_subset_rmf +
   theme_bw()
 ```
 
@@ -864,13 +850,12 @@ The next figures show what can look like some of theses attributes.
 #| fig-cap: "Forest age"
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = AGE)) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = AGE)) + 
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Forest age") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -884,13 +869,12 @@ ggplot() +
 #| fig-cap: "Year of last disturbance"
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = YRDEP)) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = YRDEP)) + 
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Year of last disturbance") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -904,13 +888,12 @@ ggplot() +
 #| fig-cap: "Merchantable volume per hectare"
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = VMERCH_HA)) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = VMERCH_HA)) + 
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Merchantable volume per hectare") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -924,13 +907,12 @@ ggplot() +
 #| fig-cap: "Quadratic mean diameter at breast height"
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = QMDBH)) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = QMDBH)) + 
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Quadratic mean diameter at breast height") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -944,13 +926,12 @@ ggplot() +
 #| fig-cap: "Height of forest stand based on median z_p95"
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = HEIGHT)) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = HEIGHT)) + 
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Height of forest stand based on median z_p95") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -964,13 +945,12 @@ ggplot() +
 #| fig-cap: "Median slope"
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = SLOPE)) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = SLOPE)) + 
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Median slope") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -984,13 +964,12 @@ ggplot() +
 #| fig-cap: "Soil moisture based on SAGA wetness index"
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
-  geom_sf(data = segmentation_smoothed_rmf_clip_4326, aes(fill = MOISTURE)) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = MOISTURE)) + 
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Soil moisture based on SAGA wetness index") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -1030,7 +1009,7 @@ The map below shows the imputed three functional group class (softwood, hardwood
 #| message: false
 #| warning: false
 #| fig-cap: "Three functional group class of photo-interpreted forest inventory maps"
-fri_polygons_rmf_clip_4326 %>% 
+fri_polygons_rmf_clip %>% 
   mutate_species_prop(column_name = "SPCOMP") %>% 
   mutate_species_order(column_name = "SPCOMP") %>% 
   mutate_forest_type() %>% 
@@ -1040,10 +1019,9 @@ fri_polygons_rmf_clip_4326 %>%
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = imputation_data_1, aes(fill = FUNCTIONAL_GROUP_3)) + 
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Three functional group class") +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ``` 
@@ -1055,16 +1033,15 @@ ggplot() +
 #| message: false
 #| warning: false
 #| fig-cap: "Three functional group class of automated stand delineations"
-segmentation_smoothed_rmf_clip_4326 %>% 
+segmentation_smoothed_rmf_clip %>% 
   dplyr::select(FUNCTIONAL_GROUP_3) -> imputation_data_2
 
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = imputation_data_2, aes(fill = FUNCTIONAL_GROUP_3)) +
-  geom_sf(data = subset_area_rmf_4326, color = "red", fill = NA, lwd = 1) +
+  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Three functional group class") +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_subset_rmf +
   theme_bw() +
   theme(legend.position = "bottom")
 ``` 

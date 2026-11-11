@@ -158,24 +158,28 @@ ctg %>%
   st_geometry() %>%
   st_buffer(10) %>%
   st_union() %>%
-  st_buffer(-10) %>% 
-  st_transform(4326) -> area_clean
+  st_buffer(-10) -> area_clean
 
 sat <- get_tiles(x = st_bbox(area_clean %>% st_buffer(5000)),
                  provider = "Esri.WorldImagery",
                  zoom = 11,
-                 crop = TRUE)
+                 crop = TRUE) # Projected by get_tiles() in the CRS of the area, so all maps stay in the original CRS
+
+# Map frame (the imagery is a bit larger, so its reprojected edges stay outside the frame)
+coord_area <- coord_sf(crs = st_crs(area_clean),
+                       xlim = st_bbox(st_buffer(area_clean, 1000))[c("xmin", "xmax")],
+                       ylim = st_bbox(st_buffer(area_clean, 1000))[c("ymin", "ymax")],
+                       expand = FALSE)
   
 st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_RMF.shp",
         quiet = T) %>% 
-  st_transform(4326) -> sampling_square
+  st_transform(st_crs(area_clean)) -> sampling_square
   
 ggplot() +
   geom_spatraster_rgb(data = sat*1.5) +
   geom_sf(data = sampling_square, fill = "white") +
   geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) +  
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_area +
   theme_bw()
 ```
 
@@ -200,10 +204,9 @@ polygon_forest %>%
 
 ggplot() +
   geom_spatraster_rgb(data = sat*1.5) +
-  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5, lwd = 0) +
+  geom_sf(data = polygon_forest_temp, color = NA, fill = "#1E88E5", alpha = 0.5, lwd = 0) +
   geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) + 
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_area +
   theme_bw()
 ```
 
@@ -225,10 +228,9 @@ polygon_forest_temp %>%
 
 ggplot() +
   geom_spatraster_rgb(data = sat*1.5) +
-  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5) +
+  geom_sf(data = polygon_forest_temp, color = NA, fill = "#1E88E5", alpha = 0.5) +
   geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) +  
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_area +
   theme_bw()
 ```
 
@@ -250,10 +252,9 @@ polygon_forest_temp %>%
 
 ggplot() +
   geom_spatraster_rgb(data = sat*1.5) +
-  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = NA, fill = "#1E88E5", alpha = 0.5) +
+  geom_sf(data = polygon_forest_temp, color = NA, fill = "#1E88E5", alpha = 0.5) +
   geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) + 
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_area +
   theme_bw()
 ```
 
@@ -306,15 +307,14 @@ map_dfr(1:10,
 
 ggplot() +
   geom_spatraster_rgb(data = sat*1.5) +
-  geom_spatraster(data = (dist_raster_masked %>% terra::project("EPSG:4326", method = "bilinear"))/1000) +
+  geom_spatraster(data = dist_raster_masked/1000) +
   scale_fill_continuous(palette = "Viridis", na.value = NA) +
-  geom_sf(data = sampling_square %>% st_transform(4326), fill = "white") +
-  geom_sf(data = sampling_point[1:9,] %>% st_transform(4326), pch = 16) +
-  geom_sf(data = sampling_point[10,] %>% st_transform(4326), color = "red", pch = 16) +
+  geom_sf(data = sampling_square, fill = "white") +
+  geom_sf(data = sampling_point[1:9,], pch = 16) +
+  geom_sf(data = sampling_point[10,], color = "red", pch = 16) +
   geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) +
   labs(fill = "Distance from first 9 points (km)") +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_area +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -332,10 +332,15 @@ For each area, only actual forest stands (POLYTYPE == "FOR") were used for segme
 sampling_square %>% 
   slice(4) -> sampling_square_temp
 
-sat_sampling_square <- get_tiles(x = st_bbox(sampling_square_temp %>% st_buffer(250)),
+sat_sampling_square <- get_tiles(x = st_bbox(sampling_square_temp %>% st_buffer(500)),
                                  provider = "Esri.WorldImagery",
                                  zoom = 14,
                                  crop = TRUE)
+
+coord_square <- coord_sf(crs = st_crs(sampling_square_temp),
+                         xlim = st_bbox(st_buffer(sampling_square_temp, 250))[c("xmin", "xmax")],
+                         ylim = st_bbox(st_buffer(sampling_square_temp, 250))[c("ymin", "ymax")],
+                         expand = FALSE)
 
 sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
   sf::st_cast("MULTIPOLYGON") %>%
@@ -344,9 +349,8 @@ sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/bas
 
 ggplot() +
   geom_spatraster_rgb(data = sat_sampling_square*1.5) +
-  geom_sf(data = polygon_forest_temp %>% st_transform(4326), color = "black", linewidth = 1, alpha = 0.4) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = polygon_forest_temp, color = "black", linewidth = 1, alpha = 0.4) +
+  coord_square +
   theme_bw()
 ```
 
@@ -403,8 +407,7 @@ for(x in param$models[[1]]){
     scale_fill_whitebox_c(palette = "muted",
                           labels = scales::label_number(accuracy = 1),
                           breaks = scales::pretty_breaks(n = 3)) +
-    scale_x_continuous(expand = c(0, 0)) +
-    scale_y_continuous(expand = c(0, 0)) +
+    coord_square +
     theme_bw() +
     labs(fill = x) +
     theme(legend.position = "bottom") -> metric_fig
@@ -675,9 +678,8 @@ bind_rows(tibble(value = polygon_forest_shape_index_raster, type = "fri"),
 #| fig-cap: "Photo-interpreted forest inventory polygons."
 ggplot() +
   geom_spatraster_rgb(data = sat_sampling_square*1.5) +
-  geom_sf(data = polygon_forest_temp %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#1E88E5", linewidth = 1, alpha = 0.5) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = polygon_forest_temp %>% st_filter(sampling_square_temp), color = "black", fill = "#1E88E5", linewidth = 1, alpha = 0.5) +
+  coord_square +
   theme_bw()
 ```
 
@@ -690,9 +692,8 @@ ggplot() +
 #| fig-cap: "Automated stand delineations."
 ggplot() +
   geom_spatraster_rgb(data = sat_sampling_square*1.5) +
-  geom_sf(data = segmentation %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#D81B60", linewidth = 1, alpha = 0.5) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = segmentation %>% st_filter(sampling_square_temp), color = "black", fill = "#D81B60", linewidth = 1, alpha = 0.5) +
+  coord_square +
   theme_bw()
 ```
 
@@ -705,9 +706,8 @@ ggplot() +
 #| fig-cap: "Smoothed automated stand delineations."
 ggplot() +
   geom_spatraster_rgb(data = sat_sampling_square*1.5) +
-  geom_sf(data = segmentation_smoothed %>% st_filter(sampling_square_temp) %>% st_transform(4326), color = "black", fill = "#FFC107", linewidth = 1, alpha = 0.5) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  geom_sf(data = segmentation_smoothed %>% st_filter(sampling_square_temp), color = "black", fill = "#FFC107", linewidth = 1, alpha = 0.5) +
+  coord_square +
   theme_bw()
 ```
 

@@ -339,17 +339,17 @@ st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T)
   filter(FMU_NAME == "Romeo Malette Forest") %>% 
   st_transform(epsg) -> fmu
 
-# Areas
-fmu %>% 
-  st_geometry() %>%
-  st_transform(4326) %>% 
-  st_as_sf() -> forest_4326
-
-# Imagery
-sat_forest <- get_tiles(x = st_bbox(forest_4326 %>% st_buffer(5000)),
+# Imagery (projected by get_tiles() in the CRS of the forest, so all maps stay in the original CRS)
+sat_forest <- get_tiles(x = st_bbox(fmu %>% st_buffer(5000)),
                         provider = "Esri.WorldImagery",
                         zoom = 11,
                         crop = TRUE)
+
+# Map frame (the imagery is a bit larger, so its reprojected edges stay outside the frame)
+coord_fmu <- coord_sf(crs = epsg,
+                      xlim = st_bbox(st_buffer(fmu, 1000))[c("xmin", "xmax")],
+                      ylim = st_bbox(st_buffer(fmu, 1000))[c("ymin", "ymax")],
+                      expand = FALSE)
 
 # Read metrics
 metrics_infos %>%
@@ -407,17 +407,17 @@ levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
 
 # Forest age in 2022
 rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_age_2022.tif")) %>%
-  terra::project("EPSG:4326", method = "near") -> forest_age_2022
+  terra::project(crs(epsg_rast), method = "near") -> forest_age_2022
 
 # Forest fire between 1985-2022
 rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_fire_1985_2022.tif")) %>%
-  terra::project("EPSG:4326", method = "near") -> forest_fire_1985_2022
+  terra::project(crs(epsg_rast), method = "near") -> forest_fire_1985_2022
 
 forest_fire_1985_2022[forest_fire_1985_2022 == 0] <- NA
 
 # Forest harvest between 1985-2022
 rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_harvest_1985_2022.tif")) %>%
-  terra::project("EPSG:4326", method = "near") -> forest_harvest_1985_2022
+  terra::project(crs(epsg_rast), method = "near") -> forest_harvest_1985_2022
 
 forest_harvest_1985_2022[forest_harvest_1985_2022 == 0] <- NA
 ```
@@ -542,8 +542,7 @@ for(metric in param_figures$models[[1]]){
     scale_fill_whitebox_c(palette = "muted",
                           labels = scales::label_number(accuracy = 1),
                           breaks = scales::pretty_breaks(n = 3)) +
-    scale_x_continuous(expand = c(0, 0)) +
-    scale_y_continuous(expand = c(0, 0)) +
+    coord_fmu +
     theme_bw() +
     labs(fill = metric) +
     theme(legend.position = "bottom") -> metric_fig
@@ -594,8 +593,7 @@ ggplot() +
   geom_spatraster_rgb(data = sat_forest*1.5) +
   geom_spatraster(data = landcover) +
   scale_fill_discrete(na.translate = FALSE) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_fmu +
   theme_bw() +
   labs(fill = "Landcover type") +
   theme(legend.position = "bottom")
@@ -619,8 +617,7 @@ ggplot() +
   geom_spatraster(data = forest_age_2022) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_fmu +
   theme_bw() +
   labs(fill = "Forest age in 2022") +
   theme(legend.position = "bottom")
@@ -640,8 +637,7 @@ ggplot() +
   geom_spatraster(data = forest_fire_1985_2022) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_fmu +
   theme_bw() +
   labs(fill = "Forest fires from 1985 to 2022") +
   theme(legend.position = "bottom")
@@ -659,8 +655,7 @@ ggplot() +
   geom_spatraster(data = forest_harvest_1985_2022) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_fmu +
   theme_bw() +
   labs(fill = "Forest harvests from 1985 to 2022") +
   theme(legend.position = "bottom")
@@ -680,8 +675,7 @@ ggplot() +
   geom_spatraster(data = metrics[["vmerch_ha"]]) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_fmu +
   theme_bw() +
   labs(fill = "Merchantable volume per hectare (m\u00b3/ha)") +
   theme(legend.position = "bottom")
@@ -699,8 +693,7 @@ ggplot() +
   geom_spatraster(data = metrics[["qmdbh"]]) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_fmu +
   theme_bw() +
   labs(fill = "Quadratic mean diameter at breast height (cm)") +
   theme(legend.position = "bottom")
@@ -718,8 +711,7 @@ ggplot() +
   geom_spatraster(data = metrics[["dens"]]) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_fmu +
   theme_bw() +
   labs(fill = "Number of stems with DBH > 7.1 cm per ha") +
   theme(legend.position = "bottom")
@@ -737,8 +729,7 @@ ggplot() +
   geom_spatraster(data = metrics[["ba_ha"]]) +
   scale_fill_whitebox_c(palette = "muted",
                         breaks = scales::pretty_breaks(n = 3)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
+  coord_fmu +
   theme_bw() +
   labs(fill = "Basal area (m\u00b2/ha), tree cross sectional area\n(approximated as a circle) at breast height") +
   theme(legend.position = "bottom")

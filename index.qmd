@@ -139,19 +139,27 @@ The project developed and applied a validation framework based on three compleme
 #| warning: false
 #| fig-cap: "Study area of the forest management units of Ottawa Valley Forest and Romeo Malette Forest, located in Canada and validation areas."
 panel <- function(f, letter, buffer) {
-  g <- filter(fmu, site == f)
-  
-  sat <- get_tiles(st_bbox(st_buffer(g, buffer)),
+  # Original CRS of the forest (UTM zone of its LiDAR metrics)
+  crs_forest <- st_crs(rast(paste0(wd, "/metrics/", f, "/lidar/dem.tif")))
+
+  g <- st_transform(filter(fmu, site == f), crs_forest)
+
+  # Imagery projected by get_tiles() in the CRS of the forest, a bit larger than the frame
+  # so its reprojected edges stay outside the frame
+  sat <- get_tiles(st_bbox(st_buffer(g, buffer + 5000)),
                    "Esri.WorldImagery", zoom = 11, crop = TRUE)
-  
+
   ggplot() +
     geom_spatraster_rgb(data = sat*1.5) +
     geom_sf(data = g, color = "#FEFE62", fill = NA, linewidth = 1.2) +
-    geom_sf(data = st_centroid(st_filter(dfa, g)), color = pal[["DFA"]],
+    geom_sf(data = st_centroid(st_filter(st_transform(dfa, crs_forest), g)), color = pal[["DFA"]],
             shape = 16, size = 2) +
     annotate("text", x = Inf, y = Inf, label = letter, hjust = 1.6, vjust = 1.6,
-             size = 8, colour = "white", fontface = "bold") +    
-    coord_sf(expand = FALSE) + 
+             size = 8, colour = "white", fontface = "bold") +
+    coord_sf(crs = crs_forest,
+             xlim = st_bbox(st_buffer(g, buffer))[c("xmin", "xmax")],
+             ylim = st_bbox(st_buffer(g, buffer))[c("ymin", "ymax")],
+             expand = FALSE) +
     annotation_scale(location = "br", width_hint = 0.28, style = "ticks",
                      tick_height = 1, line_width = 2, line_col = "white", 
                      text_col = "white", text_cex = 1, height = unit(0.15, "cm")) +
