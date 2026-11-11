@@ -80,12 +80,19 @@ segmentation_metrics <- param_figures_rmf$models[[1]]
 
 segmentation_wd_rmf <- paste0(wd, "/segmentation/", param_figures_rmf$forest, "/", names(param_figures_rmf$models))
 
-list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", param_figures_rmf$forest), full.names = T) %>% 
+# Best imputation combination of each target variable, for both forests
+list.files(paste0(wd, "/analysis/imputation"), pattern = "^results_(RMF|OVF)_.*\\.csv$", full.names = T) %>%
   map_dfr(function(x){
     read.csv(x) %>%
       arrange(desc(accuracy)) %>%
-      slice_max(accuracy, n = 1)
+      slice_max(accuracy, n = 1, with_ties = FALSE)
   }) -> imputation_results
+
+# Accuracy (%) of the three functional group class, used in the text
+imputation_results %>%
+  filter(target_var == "FUNCTIONAL_GROUP_3") %>%
+  mutate(accuracy = round(accuracy * 100, 2)) %>%
+  {setNames(.$accuracy, .$forest)} -> accuracy_functional_group
 
 # Metrics infos
 list.files(paste0(wd, "/metrics/", param_figures_rmf$forest), full.names = TRUE) %>%
@@ -1002,73 +1009,105 @@ ggplot() +
 ```
 
 ## **2.1** Imputation results {-#attribute-table-results-imputation}
-The table below shows the combinations and their accuracy for each imputed variables in Romeo Malette Forest.
+The table below shows the combinations of metrics retained and their accuracy for each imputed variable in Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF).
 
 ```{r}
 #| label: tbl-imputation-results
 #| echo: false
 #| message: false
 #| warning: false
-#| tbl-cap: "Imputation combinations and their accuracy for the tree imputed variables in Romeo Malette Forest"
-imputation_results %>% 
-  mutate(accuracy = round(accuracy*100, 2))  %>% 
+#| tbl-cap: "Imputation combinations and their accuracy for the three imputed variables in Romeo Malette Forest (RMF) and Ottawa Valley Forest (OVF)."
+imputation_results %>%
+  mutate(accuracy = round(accuracy*100, 2)) %>%
   mutate(target_var = case_when(target_var == "SP_NO_1" ~ "Leading species",
                                 target_var == "SP_NO_2" ~ "Second species",
-                                target_var == "FUNCTIONAL_GROUP_3" ~ "Three functional group class")) %>% 
-  mutate(target_var = factor(target_var, 
+                                target_var == "FUNCTIONAL_GROUP_3" ~ "Three functional group class")) %>%
+  mutate(forest = factor(forest, levels = forests),
+         target_var = factor(target_var,
                              levels = c("Leading species",
                                         "Second species",
-                                        "Three functional group class"))) %>% 
-  arrange(target_var) %>% 
-  dplyr::select("Target variable" = "target_var",
+                                        "Three functional group class"))) %>%
+  arrange(forest, target_var) %>%
+  dplyr::select("Forest" = "forest",
+                "Target variable" = "target_var",
                 "Used metrics" = "knn_vars",
                 "Accuracy (%)" = "accuracy") -> best_models_clean
 
 knitr::kable(best_models_clean)
-``` 
+```
 
-The figure below compares the reference layer used to impute the three functional group class (softwood, hardwood and mixedwood), on the left, with the imputed class of the automated stand delineations, on the right. Even if the accuracy of this imputed variable is quite high, at 73.65 %, the map illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial group class shown below.
+The imputation is more accurate in RMF than in OVF for the three variables. The three functional group class is the most accurate variable in both forests (`r accuracy_functional_group[["RMF"]]` % in RMF and `r accuracy_functional_group[["OVF"]]` % in OVF), while the second species remains difficult to impute. The lower accuracies in OVF are consistent with its more diverse forests, where mixedwood stands dominate and species composition varies more from one stand to another.
 
-::: {#fig-imputation}
+The figures below compare, for each forest, the reference layer used to impute the three functional group class (softwood, hardwood and mixedwood), on the left, with the imputed class of the automated stand delineations, on the right. Even if the accuracy of this imputed variable is quite high, the maps illustrate that there is still some discrepancy between the reference layer and the automated stand delineation. As there is more and more raster layers characterizing tree species with modeling like Random Forest, and at a quite high accuracy, we therefore recommend to directly extract theses attributes where the segmented polygon are. Theses attributes, like tree species, could therefore be used to infer other information like the tree functionial group class shown below.
+
 ```{r}
-#| label: imputation
-#| echo: false
-#| message: false
-#| warning: false
-fri_polygons_rmf_clip %>%
-  mutate_species_prop(column_name = "SPCOMP") %>%
-  mutate_species_order(column_name = "SPCOMP") %>%
-  mutate_forest_type() %>%
-  mutate_functional_group(functional_group_5 = FALSE) %>%
-  dplyr::select(FUNCTIONAL_GROUP_3) -> imputation_data_1
+#| label: functional-group-data
+#| include: false
+# Three functional group class of the photo-interpreted polygons (reference) and of the automated stand delineations (imputed)
+fri_functional_group <- function(data){
+  data %>%
+    mutate_species_prop(column_name = "SPCOMP") %>%
+    mutate_species_order(column_name = "SPCOMP") %>%
+    mutate_forest_type() %>%
+    mutate_functional_group(functional_group_5 = FALSE) %>%
+    dplyr::select(FUNCTIONAL_GROUP_3)
+}
 
-segmentation_smoothed_rmf_clip %>%
-  dplyr::select(FUNCTIONAL_GROUP_3) -> imputation_data_2
+imputation_data_rmf_1 <- fri_functional_group(fri_polygons_rmf_clip)
+imputation_data_rmf_2 <- dplyr::select(segmentation_smoothed_rmf_clip, FUNCTIONAL_GROUP_3)
+imputation_data_ovf_1 <- fri_functional_group(fri_polygons_ovf_clip)
+imputation_data_ovf_2 <- dplyr::select(segmentation_smoothed_ovf_clip, FUNCTIONAL_GROUP_3)
 
-# Same classes and colors on both maps, so the legend does not change with the slider
-functional_group_classes <- sort(unique(na.omit(c(imputation_data_1$FUNCTIONAL_GROUP_3,
-                                                  imputation_data_2$FUNCTIONAL_GROUP_3))))
+# Same classes and colors on all maps, so the legend does not change with the slider or between forests
+functional_group_classes <- sort(unique(na.omit(c(imputation_data_rmf_1$FUNCTIONAL_GROUP_3,
+                                                  imputation_data_rmf_2$FUNCTIONAL_GROUP_3,
+                                                  imputation_data_ovf_1$FUNCTIONAL_GROUP_3,
+                                                  imputation_data_ovf_2$FUNCTIONAL_GROUP_3))))
 
-plot_functional_group <- function(data){
+plot_functional_group <- function(data, sat, coord){
   ggplot() +
-    geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
+    geom_spatraster_rgb(data = sat) +
     geom_sf(data = data, aes(fill = FUNCTIONAL_GROUP_3)) +
     scale_fill_discrete(limits = functional_group_classes) +
     labs(fill = "Three functional group class") +
-    coord_subset_rmf +
+    coord +
     theme_bw() +
     theme(legend.position = "bottom")
 }
+```
 
-before_after(before = plot_functional_group(imputation_data_1),
-             after = plot_functional_group(imputation_data_2),
+::: {#fig-imputation-rmf}
+```{r}
+#| label: imputation-rmf
+#| echo: false
+#| message: false
+#| warning: false
+before_after(before = plot_functional_group(imputation_data_rmf_1, sat_subset_area_rmf*1.5, coord_subset_rmf),
+             after = plot_functional_group(imputation_data_rmf_2, sat_subset_area_rmf*1.5, coord_subset_rmf),
              before_label = "Photo-interpreted forest inventory polygons",
              after_label = "Automated stand delineations",
-             name = "imputation",
+             name = "imputation-rmf",
              height = 7.6)
 ```
 
-Three functional group class of photo-interpreted forest inventory polygons (left) and of automated stand delineations (right).
+Three functional group class of photo-interpreted forest inventory polygons (left) and of automated stand delineations (right) in Romeo Malette Forest.
+:::
+
+::: {#fig-imputation-ovf}
+```{r}
+#| label: imputation-ovf
+#| echo: false
+#| message: false
+#| warning: false
+before_after(before = plot_functional_group(imputation_data_ovf_1, sat_subset_area_ovf/1.2, coord_subset_ovf),
+             after = plot_functional_group(imputation_data_ovf_2, sat_subset_area_ovf/1.2, coord_subset_ovf),
+             before_label = "Photo-interpreted forest inventory polygons",
+             after_label = "Automated stand delineations",
+             name = "imputation-ovf",
+             height = 7.6)
+```
+
+Three functional group class of photo-interpreted forest inventory polygons (left) and of automated stand delineations (right) in Ottawa Valley Forest.
 :::
 
 \newpage
