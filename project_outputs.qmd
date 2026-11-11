@@ -351,17 +351,18 @@ readRDS(paste0(wd, "/analysis/processing_time.rds")) %>%
   arrange(forest, model_id, step) %>%
   pivot_wider(names_from = step, values_from = time_min) %>%
   mutate(Total = rowSums(across(eFRI_segmentation:SmoothPolygon_cartography)),
+         `Attribute table and imputation` = eFRI_attribute_table + eFRI_imputation,
          model_id = recode(model_id,
                            spl_only = "SPL only",
                            spl_s2_red_edge = "SPL + S2 red edge",
                            s2_only = "S2 only")) %>%
-  rename(Forest = forest,
+  select(Forest = forest,
          Model = model_id,
          `Number of polygons` = n_polygons,
          Segmentation = eFRI_segmentation,
-         `Attribute table` = eFRI_attribute_table,
-         Imputation = eFRI_imputation,
-         Smoothing = SmoothPolygon_cartography) %>%
+         `Attribute table and imputation`,
+         Smoothing = SmoothPolygon_cartography,
+         Total) %>%
   knitr::kable()
 ```
 
