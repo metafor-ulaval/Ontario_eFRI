@@ -48,15 +48,15 @@ library(scatterplot3d)
 #| message: false
 #| warning: false
 forests <- c("RMF", "OVF")
-models <- list(model_B = c("z_p95", "z_above2", "z_skew"),
-               model_F = c("z_p95", "z_above2", "B6"),
-               model_G = c("B6", "B8", "B11"))
+models <- list(spl_only = c("z_p95", "z_above2", "z_skew"),
+               spl_s2_red_edge = c("z_p95", "z_above2", "B6"),
+               s2_only = c("B6", "B8", "B11"))
 
 params <- expand.grid(forests = forests,
                       models = models,
                       stringsAsFactors = FALSE)
 
-param <- params[1,] # RMF / model_B
+param <- params[1,] # RMF / spl_only
 ```
 
 ```{r}
@@ -491,7 +491,7 @@ selected_model <- names(param$models)
 
 results %>%
   filter(forest == selected_forest) %>%
-  filter(model_name == selected_model) %>%
+  filter(model_id == selected_model) %>%
   filter(dens_smape >= -dens_threshold & dens_smape <= dens_threshold) %>%
   mutate(parameters = paste0("thresh", thresh, "_spec", spec*100, "_spat", spat*100)) -> results_temp
 
@@ -533,7 +533,7 @@ The best parameter set was chosen as the one with the lowest final score among a
 results_temp %>%
   arrange(final_score) %>%
   slice(1) %>%
-  dplyr::select(forest, model_name, thresh, spec, spat, overlap_area_raster, overlap_shape_smoothed_raster, n_forest, n_segmentation, dens_smape, final_score) -> best_parameters_temp
+  dplyr::select(forest, model_id, model_name, thresh, spec, spat, overlap_area_raster, overlap_shape_smoothed_raster, n_forest, n_segmentation, dens_smape, final_score) -> best_parameters_temp
 
 local({
 
@@ -589,7 +589,7 @@ sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/bas
          shape_index = perimeter / sqrt(pi * area)) %>%
   filter_if(is.numeric, is.finite) -> polygon_forest_temp # A voir si je peux enlever cette ligne
 
-st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forests, "/", names(param$models), "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, ".shp"),
+st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forests, "/", best_parameters_temp$model_name, "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, ".shp"),
         quiet = T) %>% 
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%
@@ -600,7 +600,7 @@ st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/
          shape_index = perimeter / sqrt(pi * area)) %>%
   filter_if(is.numeric, is.finite) -> segmentation # A voir si je peux enlever cette ligne
 
-st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forests, "/", names(param$models), "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, "_smoothed.shp"),
+st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forests, "/", best_parameters_temp$model_name, "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, "_smoothed.shp"),
         quiet = T) %>% 
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%

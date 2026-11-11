@@ -59,9 +59,9 @@ wd <- "D:/00_Ontario_eFRI/10_livrables" # wd
 summary_metrics <- c("vmerch_ha", "qmdbh", "dens", "ba_ha", "z_p95", "z_above2", "slope", "sagawi")
 
 forests <- c("RMF", "OVF")
-models <- list(model_B = c("z_p95", "z_above2", "z_skew"),
-               model_F = c("z_p95", "z_above2", "B6"),
-               model_G = c("B6", "B8", "B11"))
+models <- list(spl_only = c("z_p95", "z_above2", "z_skew"),
+               spl_s2_red_edge = c("z_p95", "z_above2", "B6"),
+               s2_only = c("B6", "B8", "B11"))
 
 params <- expand.grid(forests = forests,
                       models = models,
