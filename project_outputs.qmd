@@ -337,6 +337,34 @@ ggplot() +
 
 ## **1.1**	Delineation products at the Forest Management Unit scale {-#segmentation-results-fmu}
 
+The next table shows the processing time (in minutes) of each step of the workflow for both forests and the three segmentation models.
+```{r}
+#| label: tbl-processing-time
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "Processing time (minutes) of each step of the workflow by forest and segmentation model."
+readRDS(paste0(wd, "/analysis/processing_time.rds")) %>%
+  mutate(forest = factor(forest, levels = forests),
+         model_id = factor(model_id, levels = names(models)),
+         step = factor(step, levels = c("eFRI_segmentation", "eFRI_attribute_table", "eFRI_imputation", "SmoothPolygon_cartography"))) %>%
+  arrange(forest, model_id, step) %>%
+  pivot_wider(names_from = step, values_from = time_min) %>%
+  mutate(Total = rowSums(across(eFRI_segmentation:SmoothPolygon_cartography)),
+         model_id = recode(model_id,
+                           spl_only = "SPL only",
+                           spl_s2_red_edge = "SPL + S2 red edge",
+                           s2_only = "S2 only")) %>%
+  rename(Forest = forest,
+         Model = model_id,
+         `Number of polygons` = n_polygons,
+         Segmentation = eFRI_segmentation,
+         `Attribute table` = eFRI_attribute_table,
+         Imputation = eFRI_imputation,
+         Smoothing = SmoothPolygon_cartography) %>%
+  knitr::kable()
+```
+
 The next figure provide an overview of the resulting smoothed automated stand delineation for RMF in the restricted areas of 5x5 km.
 ```{r}
 #| label: fig-segmentation-exemple-rmf
