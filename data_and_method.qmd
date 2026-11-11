@@ -64,6 +64,7 @@ otb_dir <- "D:/00_Ontario_eFRI/10_livrables/app/softwares/OTB-9.1.0-Win64/bin"
 
 use_python("C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe", required = TRUE)
 arcpy <- import("arcpy")
+arcpy$env$overwriteOutput <- TRUE # Allow ArcGIS tools to replace existing outputs
 
 wd <- "D:/00_Ontario_eFRI/10_livrables" # wd
 summary_metrics <- c("vmerch_ha", "qmdbh", "dens", "ba_ha", "z_p95", "z_above2", "slope", "sagawi")
@@ -94,7 +95,7 @@ for(p in seq_len(nrow(params))){ # ALL
   # Parameters
   segmentation_metrics <- param$models[[1]]
   
-  list.files(paste0(wd, "/metrics/", param$forest), full.names = TRUE) %>%
+  list.files(paste0(wd, "/metrics/", param$forests), full.names = TRUE) %>%
     read_metrics() -> metrics_infos
   
   metrics_infos %>% 
@@ -105,14 +106,14 @@ for(p in seq_len(nrow(params))){ # ALL
   epsg_rast %>% 
     st_crs() -> epsg
   
-  list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", param$forest), full.names = T) %>% 
+  list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", param$forests), full.names = T) %>% 
     map_dfr(function(x){
       read.csv(x) %>%
         arrange(desc(accuracy)) %>%
-        slice_max(accuracy, n = 1)
+        slice_max(accuracy, n = 1, with_ties = FALSE)
     }) -> imputation_results
-  
-  imputation_results %>% 
+
+  imputation_results %>%
     pull(knn_vars) %>% 
     str_remove(",X,Y") %>% 
     strsplit(",") %>% 
@@ -120,15 +121,15 @@ for(p in seq_len(nrow(params))){ # ALL
     unique() -> imputation_metrics
   
   readRDS(paste0(wd, "/analysis/segmentation/best_parameters_all.rds")) %>% 
-    filter(forest == param$forest,
+    filter(forest == param$forests,
            model_id == names(param$models),
            type == "by_forest_model") -> segmentation_parameters
   
-  segmentation_wd <- paste0(wd, "/segmentation/", param$forest, "/", names(param$models))
-  # dir.create(segmentation_wd)
+  segmentation_wd <- paste0(wd, "/segmentation/", param$forests, "/", names(param$models))
+  dir.create(segmentation_wd, recursive = TRUE, showWarnings = FALSE)
   
   # Catalog
-  st_read(paste0(wd, "/shapefiles/", param$forest, "/ctg.shp"), quiet = T) %>%
+  st_read(paste0(wd, "/shapefiles/", param$forests, "/ctg.shp"), quiet = T) %>%
     st_transform(epsg) -> ctg
   
   # Metrics
@@ -150,17 +151,17 @@ for(p in seq_len(nrow(params))){ # ALL
   names(metrics) <- metrics_names # Assign metrics names
   
   # # Masks
-  # list(vect(paste0(wd, "/shapefiles/", param$forest, "/roads.shp")),
-  #      vect(paste0(wd, "/shapefiles/", param$forest, "/waterbodies.shp"))) %>%
+  # list(vect(paste0(wd, "/shapefiles/", param$forests, "/roads.shp")),
+  #      vect(paste0(wd, "/shapefiles/", param$forests, "/waterbodies.shp"))) %>%
   #   map(project, epsg_rast) -> masks
   
   # Photo-interpreted polygons (fri)
-  st_read(paste0(wd, "/shapefiles/", param$forest, "/PolygonForest.shp"), quiet = T) %>%
+  st_read(paste0(wd, "/shapefiles/", param$forests, "/PolygonForest.shp"), quiet = T) %>%
     rowid_to_column("id") %>%
     st_transform(epsg) -> fri_polygons
   
   # Landcover
-  rast(paste0(wd, "/metrics/", param$forest, "/other/landcover.tif")) %>%
+  rast(paste0(wd, "/metrics/", param$forests, "/other/landcover.tif")) %>%
     terra::project(epsg_rast, method = "near") -> landcover
   
   landcover_codes <- c(`1` = "Clear_Open_Water",
@@ -198,15 +199,15 @@ for(p in seq_len(nrow(params))){ # ALL
                                   class = unname(landcover_codes))
   
   # Forest age in 2022
-  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_age_2022.tif")) %>%
+  rast(paste0(wd, "/metrics/", param$forests, "/other/forest_age_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_age_2022
   
   # Forest fire between 1985-2022
-  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_fire_1985_2022.tif")) %>%
+  rast(paste0(wd, "/metrics/", param$forests, "/other/forest_fire_1985_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_fire_1985_2022
   
   # Forest harvest between 1985-2022
-  rast(paste0(wd, "/metrics/", param$forest, "/other/forest_harvest_1985_2022.tif")) %>%
+  rast(paste0(wd, "/metrics/", param$forests, "/other/forest_harvest_1985_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_harvest_1985_2022
   
   # Segmentation
@@ -226,6 +227,7 @@ for(p in seq_len(nrow(params))){ # ALL
   segmentation %>%
     st_write(paste0(segmentation_wd, "/data.gpkg"),
              layer = names(param$models),
+             delete_layer = TRUE,
              quiet = T)
   
   # eFRI attibute table
@@ -249,6 +251,7 @@ for(p in seq_len(nrow(params))){ # ALL
   segmentation_data %>% 
     st_write(paste0(segmentation_wd, "/data.gpkg"), 
              layer = paste0(names(param$models), "_data"),
+             delete_layer = TRUE,
              quiet = T)
   
   # Imputation
@@ -271,6 +274,7 @@ for(p in seq_len(nrow(params))){ # ALL
   segmentation_data_imputation %>% 
     st_write(paste0(segmentation_wd, "/data.gpkg"), 
              layer = paste0(names(param$models), "_data_imputation"),
+             delete_layer = TRUE,
              quiet = T)
   
   # Smooth polygons
@@ -284,7 +288,7 @@ for(p in seq_len(nrow(params))){ # ALL
   processing_time_smoothing <- difftime(Sys.time(), processing_start, units = "mins")
 
   # Processing time (rows of this forest and model are replaced, the others are kept)
-  tibble(forest = param$forest,
+  tibble(forest = param$forests,
          model_id = names(param$models),
          n_polygons = nrow(segmentation),
          step = c("eFRI_segmentation", "eFRI_attribute_table", "eFRI_imputation", "SmoothPolygon_cartography"),
@@ -296,7 +300,7 @@ for(p in seq_len(nrow(params))){ # ALL
   processing_time_file <- paste0(wd, "/analysis/processing_time.rds")
   if(file.exists(processing_time_file)){
     readRDS(processing_time_file) %>%
-      filter(!(forest == param$forest & model_id == names(param$models))) %>%
+      filter(!(forest == param$forests & model_id == names(param$models))) %>%
       bind_rows(processing_time) -> processing_time
   }
   saveRDS(processing_time, processing_time_file)
