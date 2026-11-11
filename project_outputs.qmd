@@ -372,7 +372,6 @@ ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, 
           color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   coord_subset_rmf +
   theme_bw()
 ```
@@ -389,7 +388,6 @@ ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = fri_polygons_rmf_clip, 
           color = "#28E2E5", alpha = 0, size = 0.5) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   coord_subset_rmf +
   theme_bw()
 ```
@@ -407,7 +405,6 @@ ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
   geom_sf(data = segmentation_smoothed_ovf_clip, 
           color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_ovf, color = "red", fill = NA, lwd = 1) +
   coord_subset_ovf +
   theme_bw()
 ```
@@ -423,7 +420,6 @@ ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
   geom_sf(data = fri_polygons_ovf_clip, 
           color = "#28E2E5", alpha = 0, size = 0.5) + 
-  geom_sf(data = subset_area_ovf, color = "red", fill = NA, lwd = 1) +
   coord_subset_ovf +
   theme_bw()
 ```
@@ -769,7 +765,6 @@ ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_rmf_clip, 
           color = "#D81B60", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   coord_subset_rmf +
   theme_bw()
 ```
@@ -787,7 +782,6 @@ ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, 
           color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   coord_subset_rmf +
   theme_bw()
 ```
@@ -807,7 +801,6 @@ ggplot() +
           color = "grey", size = 1) +
   geom_sf(data = masks_rmf[[2]], 
           color = "#4F81BD", fill = "#A6CDE4", size = 0.5) +
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   coord_subset_rmf +
   theme_bw()
 ```
@@ -825,7 +818,6 @@ ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_masks_smoothed_rmf_clip,
           color = "#FFC107", alpha = 0, size = 0.5) +
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   coord_subset_rmf +
   theme_bw()
 ```
@@ -851,7 +843,6 @@ The next figures show what can look like some of theses attributes.
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = AGE)) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Forest age") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -870,7 +861,6 @@ ggplot() +
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = YRDEP)) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Year of last disturbance") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -889,7 +879,6 @@ ggplot() +
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = VMERCH_HA)) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Merchantable volume per hectare") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -908,7 +897,6 @@ ggplot() +
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = QMDBH)) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Quadratic mean diameter at breast height") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -927,7 +915,6 @@ ggplot() +
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = HEIGHT)) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Height of forest stand based on median z_p95") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -946,7 +933,6 @@ ggplot() +
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = SLOPE)) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Median slope") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -965,7 +951,6 @@ ggplot() +
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = segmentation_smoothed_rmf_clip, aes(fill = MOISTURE)) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Soil moisture based on SAGA wetness index") +
   scale_fill_continuous(palette = c("#D81B60", "#FFC107", "#004D40"),
                         breaks = scales::pretty_breaks(n = 3)) +
@@ -1019,7 +1004,6 @@ fri_polygons_rmf_clip %>%
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = imputation_data_1, aes(fill = FUNCTIONAL_GROUP_3)) + 
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Three functional group class") +
   coord_subset_rmf +
   theme_bw() +
@@ -1039,7 +1023,6 @@ segmentation_smoothed_rmf_clip %>%
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = imputation_data_2, aes(fill = FUNCTIONAL_GROUP_3)) +
-  geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   labs(fill = "Three functional group class") +
   coord_subset_rmf +
   theme_bw() +
