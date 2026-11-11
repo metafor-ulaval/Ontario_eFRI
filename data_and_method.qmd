@@ -70,6 +70,8 @@ wd <- "D:/00_Ontario_eFRI/10_livrables" # wd
 summary_metrics <- c("vmerch_ha", "qmdbh", "dens", "ba_ha", "z_p95", "z_above2", "slope", "sagawi")
 
 forests <- c("RMF", "OVF")
+fmu_names <- c(RMF = "Romeo Malette Forest",
+               OVF = "Ottawa Valley Forest") # FMU_NAME in FOREST_MANAGEMENT_UNIT.shp
 models <- list(spl_only = c("z_p95", "z_above2", "z_skew"),
                spl_s2_red_edge = c("z_p95", "z_above2", "B6"),
                s2_only = c("B6", "B8", "B11"))
@@ -131,7 +133,12 @@ for(p in seq_len(nrow(params))){ # ALL
   # Catalog
   st_read(paste0(wd, "/shapefiles/", param$forests, "/ctg.shp"), quiet = T) %>%
     st_transform(epsg) -> ctg
-  
+
+  # Forest Management Unit (FMU) boundary
+  st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>%
+    filter(FMU_NAME == fmu_names[[param$forests]]) %>%
+    st_transform(epsg) -> fmu
+
   # Metrics
   metrics_infos %>%
     filter(name %in% c(segmentation_metrics,
@@ -222,14 +229,34 @@ for(p in seq_len(nrow(params))){ # ALL
                     clean_nodata = TRUE,
                     ofile = paste0(segmentation_wd, "/", names(param$models), ".tif"),
                     otb_dir = otb_dir) -> segmentation
-  processing_time_segmentation <- difftime(Sys.time(), processing_start, units = "mins")
 
   segmentation %>%
     st_write(paste0(segmentation_wd, "/data.gpkg"),
              layer = names(param$models),
              delete_layer = TRUE,
              quiet = T)
-  
+
+  # Clip segmentation with the FMU boundary
+  fmu %>%
+    st_write(paste0(segmentation_wd, "/data.gpkg"),
+             layer = "fmu",
+             delete_layer = TRUE,
+             quiet = T)
+
+  arcpy$Clip_analysis(in_features = paste0(segmentation_wd, "/data.gpkg/", names(param$models)),
+                      clip_features = paste0(segmentation_wd, "/data.gpkg/fmu"),
+                      out_feature_class = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_clipped"))
+
+  # Polygons cut by the boundary can become multipart, so they are split again and renumbered
+  st_read(paste0(segmentation_wd, "/data.gpkg"),
+          layer = paste0(names(param$models), "_clipped"),
+          quiet = T) %>%
+    st_cast("MULTIPOLYGON") %>%
+    st_cast("POLYGON") %>%
+    dplyr::select(id_seg) %>%
+    mutate(id = seq_len(n())) -> segmentation
+  processing_time_segmentation <- difftime(Sys.time(), processing_start, units = "mins") # Segmentation and clip
+
   # eFRI attibute table
   processing_start <- Sys.time()
   eFRI_attribute_table(segmentation = segmentation,
