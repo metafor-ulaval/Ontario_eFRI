@@ -388,7 +388,7 @@ As a comparative, the next figure shows the photo-interpreted forest inventory p
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_rmf*1.5) +
   geom_sf(data = fri_polygons_rmf_clip, 
-          color = "#1E88E5", alpha = 0, size = 0.5) + 
+          color = "#28E2E5", alpha = 0, size = 0.5) + 
   geom_sf(data = subset_area_rmf, color = "red", fill = NA, lwd = 1) +
   coord_subset_rmf +
   theme_bw()
@@ -422,7 +422,7 @@ ggplot() +
 ggplot() +
   geom_spatraster_rgb(data = sat_subset_area_ovf/1.2) +
   geom_sf(data = fri_polygons_ovf_clip, 
-          color = "#1E88E5", alpha = 0, size = 0.5) + 
+          color = "#28E2E5", alpha = 0, size = 0.5) + 
   geom_sf(data = subset_area_ovf, color = "red", fill = NA, lwd = 1) +
   coord_subset_ovf +
   theme_bw()
@@ -551,10 +551,10 @@ area_data_frame %>%
                  color = type),
              linetype = 5) +
   # # Direct polygons
-  # geom_vline(xintercept = median(polygon_forest_temp$area)/10000, color = "#1E88E5", linetype = 5) +
+  # geom_vline(xintercept = median(polygon_forest_temp$area)/10000, color = "#28E2E5", linetype = 5) +
   # geom_vline(xintercept = median(segmentation_temp$area)/10000, color = "#D81B60", linetype = 5) +
   # geom_vline(xintercept = median(segmentation_smoothed_temp$area)/10000, color = "#FFC107", linetype = 5) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
+  scale_color_manual(values = c("#28E2E5", "#D81B60", "#FFC107"),
                      labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
   xlim(c(0, 200)) +
   labs(x = "Polygon area (ha)",
@@ -581,10 +581,10 @@ shape_index_data_frame %>%
                  color = type),
              linetype = 5) +
   # # Direct polygons
-  # geom_vline(xintercept = median(polygon_forest_temp$shape_index), color = "#1E88E5", linetype = 5) +
+  # geom_vline(xintercept = median(polygon_forest_temp$shape_index), color = "#28E2E5", linetype = 5) +
   # geom_vline(xintercept = median(segmentation_temp$shape_index), color = "#D81B60", linetype = 5) +
   # geom_vline(xintercept = median(segmentation_smoothed_temp$shape_index), color = "#FFC107", linetype = 5) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
+  scale_color_manual(values = c("#28E2E5", "#D81B60", "#FFC107"),
                      labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
   xlim(c(0, 20)) +
   labs(x = "Shape index",
@@ -705,10 +705,10 @@ area_data_frame %>%
                  color = type),
              linetype = 5) +
   # # Direct polygons
-  # geom_vline(xintercept = median(polygon_forest_temp$area)/10000, color = "#1E88E5", linetype = 5) +
+  # geom_vline(xintercept = median(polygon_forest_temp$area)/10000, color = "#28E2E5", linetype = 5) +
   # geom_vline(xintercept = median(segmentation_temp$area)/10000, color = "#D81B60", linetype = 5) +
   # geom_vline(xintercept = median(segmentation_smoothed_temp$area)/10000, color = "#FFC107", linetype = 5) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
+  scale_color_manual(values = c("#28E2E5", "#D81B60", "#FFC107"),
                      labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
   xlim(c(0, 200)) +
   labs(x = "Polygon area (ha)",
@@ -735,10 +735,10 @@ shape_index_data_frame %>%
                  color = type),
              linetype = 5) +
   # # Direct polygons
-  # geom_vline(xintercept = median(polygon_forest_temp$shape_index), color = "#1E88E5", linetype = 5) +
+  # geom_vline(xintercept = median(polygon_forest_temp$shape_index), color = "#28E2E5", linetype = 5) +
   # geom_vline(xintercept = median(segmentation_temp$shape_index), color = "#D81B60", linetype = 5) +
   # geom_vline(xintercept = median(segmentation_smoothed_temp$shape_index), color = "#FFC107", linetype = 5) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
+  scale_color_manual(values = c("#28E2E5", "#D81B60", "#FFC107"),
                      labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
   xlim(c(0, 20)) +
   labs(x = "Shape index",

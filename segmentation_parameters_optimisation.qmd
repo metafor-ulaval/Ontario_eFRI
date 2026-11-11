@@ -204,7 +204,7 @@ polygon_forest %>%
 
 ggplot() +
   geom_spatraster_rgb(data = sat*1.5) +
-  geom_sf(data = polygon_forest_temp, color = NA, fill = "#1E88E5", alpha = 0.5, lwd = 0) +
+  geom_sf(data = polygon_forest_temp, color = NA, fill = "#28E2E5", alpha = 0.5, lwd = 0) +
   geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) + 
   coord_area +
   theme_bw()
@@ -228,7 +228,7 @@ polygon_forest_temp %>%
 
 ggplot() +
   geom_spatraster_rgb(data = sat*1.5) +
-  geom_sf(data = polygon_forest_temp, color = NA, fill = "#1E88E5", alpha = 0.5) +
+  geom_sf(data = polygon_forest_temp, color = NA, fill = "#28E2E5", alpha = 0.5) +
   geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) +  
   coord_area +
   theme_bw()
@@ -252,7 +252,7 @@ polygon_forest_temp %>%
 
 ggplot() +
   geom_spatraster_rgb(data = sat*1.5) +
-  geom_sf(data = polygon_forest_temp, color = NA, fill = "#1E88E5", alpha = 0.5) +
+  geom_sf(data = polygon_forest_temp, color = NA, fill = "#28E2E5", alpha = 0.5) +
   geom_sf(data = area_clean, fill = NA, color = "#FEFE62", lwd = 1) + 
   coord_area +
   theme_bw()
@@ -678,7 +678,7 @@ bind_rows(tibble(value = polygon_forest_shape_index_raster, type = "fri"),
 #| fig-cap: "Photo-interpreted forest inventory polygons."
 ggplot() +
   geom_spatraster_rgb(data = sat_sampling_square*1.5) +
-  geom_sf(data = polygon_forest_temp %>% st_filter(sampling_square_temp), color = "black", fill = "#1E88E5", linewidth = 1, alpha = 0.5) +
+  geom_sf(data = polygon_forest_temp %>% st_filter(sampling_square_temp), color = "black", fill = "#28E2E5", linewidth = 1, alpha = 0.5) +
   coord_square +
   theme_bw()
 ```
@@ -723,7 +723,7 @@ area_data_frame %>%
   geom_density(aes(x = value/10000,
                    color = type),
                linewidth = 1) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
+  scale_color_manual(values = c("#28E2E5", "#D81B60", "#FFC107"),
                      labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
   xlim(c(0, 100)) +
   labs(x = "Polygon area (ha)",
@@ -745,7 +745,7 @@ shape_index_data_frame %>%
   geom_density(aes(x = value,
                    color = type),
                linewidth = 1) +
-  scale_color_manual(values = c("#1E88E5", "#D81B60", "#FFC107"),
+  scale_color_manual(values = c("#28E2E5", "#D81B60", "#FFC107"),
                      labels = c("Photo-interpreted forest\ninventory polygons", "Automated stand\ndelineations", "Smoothed automated\nstand delineations")) +
   xlim(c(0, 20)) +
   labs(x = "Shape index",
