@@ -219,16 +219,18 @@ for(forest_name in forests){ # ALL
 
   # Imputation reference polygons (they don't depend on the segmentation model, so they are built once per forest)
   processing_start <- Sys.time()
-  eFRI_build_imputation_reference(forest_polygon = fri_polygons,
-                                  metrics = metrics[[imputation_metrics_all]],
-                                  landcover = landcover,
-                                  forest_fire = forest_fire_1985_2022,
-                                  forest_harvest = forest_harvest_1985_2022,
-                                  ctg = ctg,
-                                  lidar_year_column = "Fl_Cr_Y",
-                                  forest_year_column = "YRUPD",
-                                  forest_composition_column = "SPCOMP",
-                                  forest_type_column = "POLYTYPE") -> imputation_reference
+  fri_polygons %>%
+    mutate_metrics(metrics[[imputation_metrics_all]], fun = "median") %>%
+    eFRI_build_imputation_reference(metrics = imputation_metrics_all,
+                                    metrics_fun = "median",
+                                    landcover = landcover,
+                                    forest_fire = forest_fire_1985_2022,
+                                    forest_harvest = forest_harvest_1985_2022,
+                                    ctg = ctg,
+                                    lidar_year_column = "Fl_Cr_Y",
+                                    forest_year_column = "YRUPD",
+                                    forest_composition_column = "SPCOMP",
+                                    forest_type_column = "POLYTYPE") -> imputation_reference
   processing_time_imputation_reference <- difftime(Sys.time(), processing_start, units = "mins")
 
   # for(model_name in "spl_only"){ # One model
@@ -291,14 +293,15 @@ for(forest_name in forests){ # ALL
 
     # eFRI attibute table
     processing_start <- Sys.time()
-    eFRI_attribute_table(segmentation = segmentation,
-                         metrics = metrics,
-                         summary_metrics = summary_metrics,
-                         landcover = landcover,
-                         forest_fire = forest_fire_1985_2022,
-                         forest_harvest = forest_harvest_1985_2022,
-                         forest_age = forest_age_2022,
-                         raster_year = 2022) -> segmentation_data
+    segmentation %>%
+      mutate_metrics(metrics[[unique(c(summary_metrics, imputation_metrics))]], fun = "median") %>%
+      eFRI_attribute_table(summary_metrics = summary_metrics,
+                           summary_metrics_fun = "median",
+                           landcover = landcover,
+                           forest_fire = forest_fire_1985_2022,
+                           forest_harvest = forest_harvest_1985_2022,
+                           forest_age = forest_age_2022,
+                           raster_year = 2022) -> segmentation_data
     processing_time_attribute_table <- difftime(Sys.time(), processing_start, units = "mins")
 
     segmentation_data %>%
@@ -308,6 +311,7 @@ for(forest_name in forests){ # ALL
              MOISTURE = SAGAWI) -> segmentation_data
 
     segmentation_data %>%
+      dplyr::select(-ends_with("_median")) %>% # Removed from the written layer only, segmentation_data keeps them for the imputation
       st_write(paste0(segmentation_wd, "/data.gpkg"),
                layer = paste0(model_name, "_data"),
                delete_layer = TRUE,
@@ -317,9 +321,10 @@ for(forest_name in forests){ # ALL
     processing_start <- Sys.time()
     eFRI_imputation(segmentation = segmentation_data,
                     reference = imputation_reference,
-                    metrics = metrics[[imputation_metrics_all]],
                     target_variables = imputation_results$target_var,
-                    knn_variables = imputation_results$knn_vars) -> segmentation_data_imputation
+                    knn_variables = imputation_results$knn_vars,
+                    knn_variables_fun = "median") %>%
+      dplyr::select(-ends_with("_median")) -> segmentation_data_imputation
     processing_time_imputation <- difftime(Sys.time(), processing_start, units = "mins")
 
     segmentation_data_imputation %>%
