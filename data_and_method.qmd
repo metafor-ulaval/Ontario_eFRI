@@ -62,9 +62,20 @@ Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
 Sys.setenv(GDAL_CACHEMAX = "65536") # 64 GO
 otb_dir <- "D:/00_Ontario_eFRI/10_livrables/app/softwares/OTB-9.1.0-Win64/bin"
 
-use_python("C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe", required = TRUE)
-arcpy <- import("arcpy")
-arcpy$env$overwriteOutput <- TRUE # Allow ArcGIS tools to replace existing outputs
+# ArcGIS tools are run in a separate R session: importing arcpy in this session breaks terra::project()
+arcgis_python <- "C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe"
+
+arcpy_run <- function(tool, ...){
+  callr::r(function(tool, args, python){
+    reticulate::use_python(python, required = TRUE)
+    arcpy <- reticulate::import("arcpy")
+    arcpy$env$overwriteOutput <- TRUE # Allow ArcGIS tools to replace existing outputs
+    do.call(arcpy[[tool]], args)
+    invisible(NULL)
+  },
+  args = list(tool = tool, args = list(...), python = arcgis_python),
+  show = TRUE)
+}
 
 wd <- "D:/00_Ontario_eFRI/10_livrables" # wd
 summary_metrics <- c("vmerch_ha", "qmdbh", "dens", "ba_ha", "z_p95", "z_above2", "slope", "sagawi")
@@ -245,9 +256,10 @@ for(p in seq_len(nrow(params))){ # ALL
              delete_layer = TRUE,
              quiet = T)
 
-  arcpy$Clip_analysis(in_features = paste0(segmentation_wd, "/data.gpkg/", names(param$models)),
-                      clip_features = paste0(segmentation_wd, "/data.gpkg/fmu"),
-                      out_feature_class = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_clipped"))
+  arcpy_run("Clip_analysis",
+            in_features = paste0(segmentation_wd, "/data.gpkg/", names(param$models)),
+            clip_features = paste0(segmentation_wd, "/data.gpkg/fmu"),
+            out_feature_class = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_clipped"))
 
   # Polygons cut by the boundary can become multipart, so they are split again and renumbered
   st_read(paste0(segmentation_wd, "/data.gpkg"),
@@ -308,12 +320,13 @@ for(p in seq_len(nrow(params))){ # ALL
   
   # Smooth polygons
   processing_start <- Sys.time()
-  arcpy$SmoothPolygon_cartography(in_features = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_data_imputation"),
-                                  out_feature_class = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_data_imputation_smoothed"),
-                                  algorithm = "PAEK",
-                                  tolerance = 100,
-                                  endpoint_option = "FIXED_ENDPOINT",
-                                  error_option = "RESOLVE_ERRORS")
+  arcpy_run("SmoothPolygon_cartography",
+            in_features = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_data_imputation"),
+            out_feature_class = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_data_imputation_smoothed"),
+            algorithm = "PAEK",
+            tolerance = 100,
+            endpoint_option = "FIXED_ENDPOINT",
+            error_option = "RESOLVE_ERRORS")
   processing_time_smoothing <- difftime(Sys.time(), processing_start, units = "mins")
 
   # Processing time (rows of this forest and model are replaced, the others are kept)
