@@ -533,7 +533,7 @@ The next table shows the processing time (in minutes) of each step of the workfl
 #| message: false
 #| warning: false
 #| tbl-cap: "Processing time (minutes) of each step of the workflow by forest and segmentation model."
-readRDS(paste0(wd, "/analysis/processing_time.rds")) %>%
+readRDS(paste0(wd, "/analysis/segmentation/processing_time.rds")) %>%
   mutate(forest = factor(forest, levels = forests),
          model_id = factor(model_id, levels = names(models)),
          step = factor(step, levels = c("eFRI_segmentation", "Clip_analysis", "eFRI_attribute_table", "eFRI_imputation", "SmoothPolygon_cartography"))) %>%
