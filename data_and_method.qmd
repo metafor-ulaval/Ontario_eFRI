@@ -98,28 +98,26 @@ params <- expand.grid(forests = forests,
 #| eval: false # Activate when the chunk have been run once before rendering to be sure that the chunk doesn't run
 #| message: false
 #| warning: false
-# for(p in seq_len(nrow(params))[c(1, 3, 5)]){ # RMF
-# for(p in seq_len(nrow(params))[c(2, 4, 6)]){ # OVF
-for(p in seq_len(nrow(params))){ # ALL
-  param <- params[p,]
-  
-  cat("Forest :", param$forests, "/", names(param$models), ":", unlist(param$models), "\n")
-  
-  # Parameters
-  segmentation_metrics <- param$models[[1]]
-  
-  list.files(paste0(wd, "/metrics/", param$forests), full.names = TRUE) %>%
+# Outer loop: data of the forest, read once (metrics of all models, rasters, polygons, imputation reference)
+# Inner loop: segmentation, attribute table, imputation and smoothing of each model
+# for(forest_name in "RMF"){ # RMF
+# for(forest_name in "OVF"){ # OVF
+for(forest_name in forests){ # ALL
+
+  cat("Forest :", forest_name, "\n")
+
+  list.files(paste0(wd, "/metrics/", forest_name), full.names = TRUE) %>%
     read_metrics() -> metrics_infos
-  
-  metrics_infos %>% 
-    filter(name == "dem") %>% 
-    pull(path) %>% 
+
+  metrics_infos %>%
+    filter(name == "dem") %>%
+    pull(path) %>%
     rast() -> epsg_rast
-  
-  epsg_rast %>% 
+
+  epsg_rast %>%
     st_crs() -> epsg
-  
-  list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", param$forests), full.names = T) %>% 
+
+  list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", forest_name), full.names = T) %>%
     map_dfr(function(x){
       read.csv(x) %>%
         arrange(desc(accuracy)) %>%
@@ -127,61 +125,56 @@ for(p in seq_len(nrow(params))){ # ALL
     }) -> imputation_results
 
   imputation_results %>%
-    pull(knn_vars) %>% 
-    str_remove(",X,Y") %>% 
-    strsplit(",") %>% 
-    unlist() %>% 
+    pull(knn_vars) %>%
+    str_remove(",X,Y") %>%
+    strsplit(",") %>%
+    unlist() %>%
     unique() -> imputation_metrics
-  
-  readRDS(paste0(wd, "/analysis/segmentation/best_parameters_all.rds")) %>% 
-    filter(forest == param$forests,
-           model_id == names(param$models),
-           type == "by_forest_model") -> segmentation_parameters
-  
-  segmentation_wd <- paste0(wd, "/segmentation/", param$forests, "/", names(param$models))
-  dir.create(segmentation_wd, recursive = TRUE, showWarnings = FALSE)
-  
+
+  # Metrics used by the imputation: z_p95 and z_above2 filter the reference polygons, the others are knn variables
+  imputation_metrics_all <- unique(c("z_p95", "z_above2", imputation_metrics))
+
   # Catalog
-  st_read(paste0(wd, "/shapefiles/", param$forests, "/ctg.shp"), quiet = T) %>%
+  st_read(paste0(wd, "/shapefiles/", forest_name, "/ctg.shp"), quiet = T) %>%
     st_transform(epsg) -> ctg
 
   # Forest Management Unit (FMU) boundary
   st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>%
-    filter(FMU_NAME == fmu_names[[param$forests]]) %>%
+    filter(FMU_NAME == fmu_names[[forest_name]]) %>%
     st_transform(epsg) -> fmu
 
-  # Metrics
+  # Metrics (segmentation metrics of all models, imputation and summary metrics)
   metrics_infos %>%
-    filter(name %in% c(segmentation_metrics,
+    filter(name %in% c(unlist(models),
                        imputation_metrics,
                        summary_metrics)) -> metrics_infos_selected
-  
+
   metrics_infos_selected %>%
     pull(name) -> metrics_names
-  
+
   metrics_infos_selected %>%
     pull(path) %>%
     map(rast) %>%
     map(project, epsg_rast, method = "bilinear") %>%
     map(resample, epsg_rast) %>%
     rast -> metrics
-  
+
   names(metrics) <- metrics_names # Assign metrics names
-  
+
   # # Masks
-  # list(vect(paste0(wd, "/shapefiles/", param$forests, "/roads.shp")),
-  #      vect(paste0(wd, "/shapefiles/", param$forests, "/waterbodies.shp"))) %>%
+  # list(vect(paste0(wd, "/shapefiles/", forest_name, "/roads.shp")),
+  #      vect(paste0(wd, "/shapefiles/", forest_name, "/waterbodies.shp"))) %>%
   #   map(project, epsg_rast) -> masks
-  
+
   # Photo-interpreted polygons (fri)
-  st_read(paste0(wd, "/shapefiles/", param$forests, "/PolygonForest.shp"), quiet = T) %>%
+  st_read(paste0(wd, "/shapefiles/", forest_name, "/PolygonForest.shp"), quiet = T) %>%
     rowid_to_column("id") %>%
     st_transform(epsg) -> fri_polygons
-  
+
   # Landcover
-  rast(paste0(wd, "/metrics/", param$forests, "/other/landcover.tif")) %>%
+  rast(paste0(wd, "/metrics/", forest_name, "/other/landcover.tif")) %>%
     terra::project(epsg_rast, method = "near") -> landcover
-  
+
   landcover_codes <- c(`1` = "Clear_Open_Water",
                        `2` = "Turbid_Water",
                        `3` = "Shoreline",
@@ -211,142 +204,168 @@ for(p in seq_len(nrow(params))){ # ALL
                        `28` = "Agriculture_Undifferentiated_Rural_Land_Use",
                        `157` = "Other",
                        `247` = "Cloud_Shadow")
-  
+
   # Attach levels (lookup table)
   levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
                                   class = unname(landcover_codes))
-  
+
   # Forest age in 2022
-  rast(paste0(wd, "/metrics/", param$forests, "/other/forest_age_2022.tif")) %>%
+  rast(paste0(wd, "/metrics/", forest_name, "/other/forest_age_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_age_2022
-  
+
   # Forest fire between 1985-2022
-  rast(paste0(wd, "/metrics/", param$forests, "/other/forest_fire_1985_2022.tif")) %>%
+  rast(paste0(wd, "/metrics/", forest_name, "/other/forest_fire_1985_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_fire_1985_2022
-  
+
   # Forest harvest between 1985-2022
-  rast(paste0(wd, "/metrics/", param$forests, "/other/forest_harvest_1985_2022.tif")) %>%
+  rast(paste0(wd, "/metrics/", forest_name, "/other/forest_harvest_1985_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_harvest_1985_2022
-  
-  # Segmentation
+
+  # Imputation reference polygons (they don't depend on the segmentation model, so they are built once per forest)
   processing_start <- Sys.time()
-  eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
-                    # masks = masks,
-                    masks = NULL,
-                    thresh = segmentation_parameters$thresh,
-                    spec = segmentation_parameters$spec,
-                    spat = segmentation_parameters$spat,
-                    method = "bs",
-                    clean_nodata = TRUE,
-                    ofile = paste0(segmentation_wd, "/", names(param$models), ".tif"),
-                    otb_dir = otb_dir) -> segmentation
-  processing_time_segmentation <- difftime(Sys.time(), processing_start, units = "mins")
+  eFRI_build_imputation_reference(forest_polygon = fri_polygons,
+                                  metrics = metrics[[imputation_metrics_all]],
+                                  landcover = landcover,
+                                  forest_fire = forest_fire_1985_2022,
+                                  forest_harvest = forest_harvest_1985_2022,
+                                  ctg = ctg,
+                                  lidar_year_column = "Fl_Cr_Y",
+                                  forest_year_column = "YRUPD",
+                                  forest_composition_column = "SPCOMP",
+                                  forest_type_column = "POLYTYPE") -> imputation_reference
+  processing_time_imputation_reference <- difftime(Sys.time(), processing_start, units = "mins")
 
-  segmentation %>%
-    st_write(paste0(segmentation_wd, "/data.gpkg"),
-             layer = names(param$models),
-             delete_layer = TRUE,
-             quiet = T)
+  # for(model_name in "spl_only"){ # One model
+  for(model_name in names(models)){ # ALL
 
-  # Clip segmentation with the FMU boundary
-  processing_start <- Sys.time()
-  fmu %>%
-    st_write(paste0(segmentation_wd, "/data.gpkg"),
-             layer = "fmu",
-             delete_layer = TRUE,
-             quiet = T)
+    segmentation_metrics <- models[[model_name]]
 
-  arcpy_run("Clip_analysis",
-            in_features = paste0(segmentation_wd, "/data.gpkg/", names(param$models)),
-            clip_features = paste0(segmentation_wd, "/data.gpkg/fmu"),
-            out_feature_class = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_clipped"))
+    cat("Forest :", forest_name, "/", model_name, ":", segmentation_metrics, "\n")
 
-  # Polygons cut by the boundary can become multipart, so they are split again and renumbered
-  st_read(paste0(segmentation_wd, "/data.gpkg"),
-          layer = paste0(names(param$models), "_clipped"),
-          quiet = T) %>%
-    st_cast("MULTIPOLYGON") %>%
-    st_cast("POLYGON") %>%
-    dplyr::select(id_seg) %>%
-    mutate(id = seq_len(n())) -> segmentation
-  processing_time_clip <- difftime(Sys.time(), processing_start, units = "mins")
+    readRDS(paste0(wd, "/analysis/segmentation/best_parameters_all.rds")) %>%
+      filter(forest == forest_name,
+             model_id == model_name,
+             type == "by_forest_model") -> segmentation_parameters
 
-  # eFRI attibute table
-  processing_start <- Sys.time()
-  eFRI_attribute_table(segmentation = segmentation,
-                       metrics = metrics,
-                       summary_metrics = summary_metrics,
-                       landcover = landcover,
-                       forest_fire = forest_fire_1985_2022,
-                       forest_harvest = forest_harvest_1985_2022,
-                       forest_age = forest_age_2022,
-                       raster_year = 2022) -> segmentation_data
-  processing_time_attribute_table <- difftime(Sys.time(), processing_start, units = "mins")
+    segmentation_wd <- paste0(wd, "/segmentation/", forest_name, "/", model_name)
+    dir.create(segmentation_wd, recursive = TRUE, showWarnings = FALSE)
 
-  segmentation_data %>% 
-    dplyr::select(-id_seg, -id) %>% 
-    rename(HEIGHT = Z_P95,
-           CANOPY_COVER = Z_ABOVE2,
-           MOISTURE = SAGAWI) -> segmentation_data
-  
-  segmentation_data %>% 
-    st_write(paste0(segmentation_wd, "/data.gpkg"), 
-             layer = paste0(names(param$models), "_data"),
-             delete_layer = TRUE,
-             quiet = T)
-  
-  # Imputation
-  processing_start <- Sys.time()
-  eFRI_imputation(segmentation = segmentation_data,
-                  forest_polygon = fri_polygons,
-                  metrics = metrics,
-                  landcover = landcover,
-                  forest_fire = forest_fire_1985_2022,
-                  forest_harvest = forest_harvest_1985_2022,
-                  ctg = ctg,
-                  lidar_year_column = "Fl_Cr_Y",
-                  forest_year_column = "YRUPD",
-                  forest_composition_column = "SPCOMP",
-                  forest_type_column = "POLYTYPE",
-                  target_variables = imputation_results$target_var,
-                  knn_variables = imputation_results$knn_vars) -> segmentation_data_imputation
-  processing_time_imputation <- difftime(Sys.time(), processing_start, units = "mins")
+    # Segmentation
+    processing_start <- Sys.time()
+    eFRI_segmentation(metrics = metrics[[segmentation_metrics]],
+                      # masks = masks,
+                      masks = NULL,
+                      thresh = segmentation_parameters$thresh,
+                      spec = segmentation_parameters$spec,
+                      spat = segmentation_parameters$spat,
+                      method = "bs",
+                      clean_nodata = TRUE,
+                      ofile = paste0(segmentation_wd, "/", model_name, ".tif"),
+                      otb_dir = otb_dir) -> segmentation
+    processing_time_segmentation <- difftime(Sys.time(), processing_start, units = "mins")
 
-  segmentation_data_imputation %>% 
-    st_write(paste0(segmentation_wd, "/data.gpkg"), 
-             layer = paste0(names(param$models), "_data_imputation"),
-             delete_layer = TRUE,
-             quiet = T)
-  
-  # Smooth polygons
-  processing_start <- Sys.time()
-  arcpy_run("SmoothPolygon_cartography",
-            in_features = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_data_imputation"),
-            out_feature_class = paste0(segmentation_wd, "/data.gpkg/", names(param$models), "_data_imputation_smoothed"),
-            algorithm = "PAEK",
-            tolerance = 100,
-            endpoint_option = "FIXED_ENDPOINT",
-            error_option = "RESOLVE_ERRORS")
-  processing_time_smoothing <- difftime(Sys.time(), processing_start, units = "mins")
+    segmentation %>%
+      st_write(paste0(segmentation_wd, "/data.gpkg"),
+               layer = model_name,
+               delete_layer = TRUE,
+               quiet = T)
 
-  # Processing time (rows of this forest and model are replaced, the others are kept)
-  tibble(forest = param$forests,
-         model_id = names(param$models),
-         n_polygons = nrow(segmentation),
-         step = c("eFRI_segmentation", "Clip_analysis", "eFRI_attribute_table", "eFRI_imputation", "SmoothPolygon_cartography"),
-         time_min = round(as.numeric(c(processing_time_segmentation,
-                                       processing_time_clip,
-                                       processing_time_attribute_table,
-                                       processing_time_imputation,
-                                       processing_time_smoothing)), 2)) -> processing_time
+    # Clip segmentation with the FMU boundary
+    processing_start <- Sys.time()
+    fmu %>%
+      st_write(paste0(segmentation_wd, "/data.gpkg"),
+               layer = "fmu",
+               delete_layer = TRUE,
+               quiet = T)
 
-  processing_time_file <- paste0(wd, "/analysis/segmentation/processing_time.rds")
-  if(file.exists(processing_time_file)){
-    readRDS(processing_time_file) %>%
-      filter(!(forest == param$forests & model_id == names(param$models))) %>%
-      bind_rows(processing_time) -> processing_time
+    arcpy_run("Clip_analysis",
+              in_features = paste0(segmentation_wd, "/data.gpkg/", model_name),
+              clip_features = paste0(segmentation_wd, "/data.gpkg/fmu"),
+              out_feature_class = paste0(segmentation_wd, "/data.gpkg/", model_name, "_clipped"))
+
+    # Polygons cut by the boundary can become multipart, so they are split again and renumbered
+    st_read(paste0(segmentation_wd, "/data.gpkg"),
+            layer = paste0(model_name, "_clipped"),
+            quiet = T) %>%
+      st_cast("MULTIPOLYGON") %>%
+      st_cast("POLYGON") %>%
+      dplyr::select(id_seg) %>%
+      mutate(id = seq_len(n())) -> segmentation
+    processing_time_clip <- difftime(Sys.time(), processing_start, units = "mins")
+
+    # eFRI attibute table
+    processing_start <- Sys.time()
+    eFRI_attribute_table(segmentation = segmentation,
+                         metrics = metrics,
+                         summary_metrics = summary_metrics,
+                         landcover = landcover,
+                         forest_fire = forest_fire_1985_2022,
+                         forest_harvest = forest_harvest_1985_2022,
+                         forest_age = forest_age_2022,
+                         raster_year = 2022) -> segmentation_data
+    processing_time_attribute_table <- difftime(Sys.time(), processing_start, units = "mins")
+
+    segmentation_data %>%
+      dplyr::select(-id_seg, -id) %>%
+      rename(HEIGHT = Z_P95,
+             CANOPY_COVER = Z_ABOVE2,
+             MOISTURE = SAGAWI) -> segmentation_data
+
+    segmentation_data %>%
+      st_write(paste0(segmentation_wd, "/data.gpkg"),
+               layer = paste0(model_name, "_data"),
+               delete_layer = TRUE,
+               quiet = T)
+
+    # Imputation
+    processing_start <- Sys.time()
+    eFRI_imputation(segmentation = segmentation_data,
+                    reference = imputation_reference,
+                    metrics = metrics[[imputation_metrics_all]],
+                    target_variables = imputation_results$target_var,
+                    knn_variables = imputation_results$knn_vars) -> segmentation_data_imputation
+    processing_time_imputation <- difftime(Sys.time(), processing_start, units = "mins")
+
+    segmentation_data_imputation %>%
+      st_write(paste0(segmentation_wd, "/data.gpkg"),
+               layer = paste0(model_name, "_data_imputation"),
+               delete_layer = TRUE,
+               quiet = T)
+
+    # Smooth polygons
+    processing_start <- Sys.time()
+    arcpy_run("SmoothPolygon_cartography",
+              in_features = paste0(segmentation_wd, "/data.gpkg/", model_name, "_data_imputation"),
+              out_feature_class = paste0(segmentation_wd, "/data.gpkg/", model_name, "_data_imputation_smoothed"),
+              algorithm = "PAEK",
+              tolerance = 100,
+              endpoint_option = "FIXED_ENDPOINT",
+              error_option = "RESOLVE_ERRORS")
+    processing_time_smoothing <- difftime(Sys.time(), processing_start, units = "mins")
+
+    # Processing time (rows of this forest and model are replaced, the others are kept).
+    # The reference is built once per forest; its time is given to each model, since a model
+    # run alone has to build it.
+    tibble(forest = forest_name,
+           model_id = model_name,
+           n_polygons = nrow(segmentation),
+           step = c("eFRI_segmentation", "Clip_analysis", "eFRI_attribute_table",
+                    "eFRI_build_imputation_reference", "eFRI_imputation", "SmoothPolygon_cartography"),
+           time_min = round(as.numeric(c(processing_time_segmentation,
+                                         processing_time_clip,
+                                         processing_time_attribute_table,
+                                         processing_time_imputation_reference,
+                                         processing_time_imputation,
+                                         processing_time_smoothing)), 2)) -> processing_time
+
+    processing_time_file <- paste0(wd, "/analysis/segmentation/processing_time.rds")
+    if(file.exists(processing_time_file)){
+      readRDS(processing_time_file) %>%
+        filter(!(forest == forest_name & model_id == model_name)) %>%
+        bind_rows(processing_time) -> processing_time
+    }
+    saveRDS(processing_time, processing_time_file)
   }
-  saveRDS(processing_time, processing_time_file)
 }
 ```
 

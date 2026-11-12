@@ -536,11 +536,14 @@ The next table shows the processing time (in minutes) of each step of the workfl
 readRDS(paste0(wd, "/analysis/segmentation/processing_time.rds")) %>%
   mutate(forest = factor(forest, levels = forests),
          model_id = factor(model_id, levels = names(models)),
-         step = factor(step, levels = c("eFRI_segmentation", "Clip_analysis", "eFRI_attribute_table", "eFRI_imputation", "SmoothPolygon_cartography"))) %>%
+         step = factor(step, levels = c("eFRI_segmentation", "Clip_analysis", "eFRI_attribute_table",
+                                        "eFRI_build_imputation_reference", "eFRI_imputation", "SmoothPolygon_cartography"))) %>%
   arrange(forest, model_id, step) %>%
-  pivot_wider(names_from = step, values_from = time_min) %>%
+  pivot_wider(names_from = step, values_from = time_min, names_expand = TRUE) %>%
+  # Older runs have no reference step: its time was included in eFRI_imputation
+  mutate(eFRI_build_imputation_reference = coalesce(eFRI_build_imputation_reference, 0)) %>%
   mutate(Total = rowSums(across(eFRI_segmentation:SmoothPolygon_cartography)),
-         `Attribute table and imputation` = eFRI_attribute_table + eFRI_imputation,
+         `Attribute table and imputation` = eFRI_attribute_table + eFRI_build_imputation_reference + eFRI_imputation,
          model_id = recode(model_id,
                            spl_only = "SPL only",
                            spl_s2_red_edge = "SPL + S2 red edge",
