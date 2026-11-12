@@ -340,7 +340,7 @@ for(p in seq_len(nrow(params))){ # ALL
                                        processing_time_imputation,
                                        processing_time_smoothing)), 2)) -> processing_time
 
-  processing_time_file <- paste0(wd, "/analysis/processing_time.rds")
+  processing_time_file <- paste0(wd, "/analysis/segmentation/processing_time.rds")
   if(file.exists(processing_time_file)){
     readRDS(processing_time_file) %>%
       filter(!(forest == param$forests & model_id == names(param$models))) %>%
