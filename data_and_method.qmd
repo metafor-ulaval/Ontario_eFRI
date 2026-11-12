@@ -86,10 +86,6 @@ fmu_names <- c(RMF = "Romeo Malette Forest",
 models <- list(spl_only = c("z_p95", "z_above2", "z_skew"),
                spl_s2_red_edge = c("z_p95", "z_above2", "B6"),
                s2_only = c("B6", "B8", "B11"))
-
-params <- expand.grid(forests = forests,
-                      models = models,
-                      stringsAsFactors = FALSE)
 ```
 
 ```{r}
@@ -375,12 +371,13 @@ for(forest_name in forests){ # ALL
 #| message: false
 #| warning: false
 # Parameters
-param_figures <- params[1,]
-segmentation_metrics <- param_figures$models[[1]]
+forest_figures <- "RMF"
+model_figures <- "spl_only"
+segmentation_metrics <- models[[model_figures]]
 
-segmentation_wd <- paste0(wd, "/segmentation/", param_figures$forest, "/", names(param_figures$models))
+segmentation_wd <- paste0(wd, "/segmentation/", forest_figures, "/", model_figures)
 
-list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", param_figures$forest), full.names = T) %>% 
+list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", forest_figures), full.names = T) %>% 
   map_dfr(function(x){
     read.csv(x) %>%
       arrange(desc(accuracy)) %>%
@@ -388,7 +385,7 @@ list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", para
   }) -> imputation_results
 
 # Metrics infos
-list.files(paste0(wd, "/metrics/", param_figures$forest), full.names = TRUE) %>%
+list.files(paste0(wd, "/metrics/", forest_figures), full.names = TRUE) %>%
   read_metrics() -> metrics_infos
 
 # EPSG
@@ -419,7 +416,7 @@ coord_fmu <- coord_sf(crs = epsg,
 
 # Read metrics
 metrics_infos %>%
-  filter(name %in% c("vmerch_ha", "qmdbh", "dens", "ba_ha", param_figures$models[[1]])) -> metrics_infos_selected
+  filter(name %in% c("vmerch_ha", "qmdbh", "dens", "ba_ha", segmentation_metrics)) -> metrics_infos_selected
   
 metrics_infos_selected %>%
   pull(name) -> metrics_names
@@ -434,7 +431,7 @@ metrics_infos_selected %>%
 names(metrics) <- metrics_names # Assign metrics names
 
 # Landcover
-rast(paste0(wd, "/metrics/", param_figures$forest, "/other/landcover.tif")) %>%
+rast(paste0(wd, "/metrics/", forest_figures, "/other/landcover.tif")) %>%
   terra::project(epsg_rast, method = "near") -> landcover
 
 landcover_codes <- c(`1` = "Clear open water",
@@ -472,17 +469,17 @@ levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
                                 class = unname(landcover_codes))
 
 # Forest age in 2022
-rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_age_2022.tif")) %>%
+rast(paste0(wd, "/metrics/", forest_figures, "/other/forest_age_2022.tif")) %>%
   terra::project(crs(epsg_rast), method = "near") -> forest_age_2022
 
 # Forest fire between 1985-2022
-rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_fire_1985_2022.tif")) %>%
+rast(paste0(wd, "/metrics/", forest_figures, "/other/forest_fire_1985_2022.tif")) %>%
   terra::project(crs(epsg_rast), method = "near") -> forest_fire_1985_2022
 
 forest_fire_1985_2022[forest_fire_1985_2022 == 0] <- NA
 
 # Forest harvest between 1985-2022
-rast(paste0(wd, "/metrics/", param_figures$forest, "/other/forest_harvest_1985_2022.tif")) %>%
+rast(paste0(wd, "/metrics/", forest_figures, "/other/forest_harvest_1985_2022.tif")) %>%
   terra::project(crs(epsg_rast), method = "near") -> forest_harvest_1985_2022
 
 forest_harvest_1985_2022[forest_harvest_1985_2022 == 0] <- NA
@@ -601,7 +598,7 @@ The next three figures represent the metrics used in the "SPL only" model, which
 #| message: false
 #| warning: false
 #| fig-cap: "First metric used for \"SPL only\" model : z_p95."
-for(metric in param_figures$models[[1]]){
+for(metric in segmentation_metrics){
   ggplot() +
     geom_spatraster_rgb(data = sat_forest*1.5) +
     geom_spatraster(data = metrics[[metric]]) +
