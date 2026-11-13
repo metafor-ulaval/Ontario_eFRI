@@ -241,8 +241,8 @@ for(forest_name in forests){ # ALL
     cat("Forest :", forest_name, "/", model_name, ":", segmentation_metrics, "\n")
 
     readRDS(paste0(wd, "/analysis/segmentation/best_parameters_all.rds")) %>%
-      filter(forest == forest_name,
-             model_id == model_name,
+      filter(forest == .env$forest_name,
+             model_id == .env$model_name, # .env: the table also has a model_name column
              type == "by_forest_model") -> segmentation_parameters
 
     segmentation_wd <- paste0(wd, "/segmentation/", forest_name, "/", model_name)
