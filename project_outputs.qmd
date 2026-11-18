@@ -63,6 +63,7 @@ imputation_dir <- dir_imputation # Imputation results (imputation_validation.R)
 metrics_dir <- dir_metrics_cleaned # Metrics of each forest (dendro, lidar, other, sentinel2)
 segmentation_dir <- dir_segmentation # Segmentation models, one folder per forest and model
 statistics_dir <- paste0(dir_statistics, "/00_archive/results_old") # Performance assessment results with the old model names (model_B, model_F, model_G)
+random_forest_dir <- paste0(dir_random_forest, "/00_archive/results_old") # Random forest predictions of the validation areas (vmb_ha, dens, zq90)
 summary_metrics <- c("vmerch_ha", "qmdbh", "dens", "ba_ha", "z_p95", "z_above2", "slope", "sagawi")
 
 forests <- c("RMF", "OVF")
@@ -176,7 +177,7 @@ list(vect(paste0(shp_dir, "/", param_figures_rmf$forest, "/roads.shp")),
 
 # Segmentation
 st_read(paste0(segmentation_wd_rmf, "/data.gpkg"), 
-         layer = paste0(names(param_figures_rmf$models), "_data_imputation_clipped"), # Clipped on ArcGIS
+         layer = paste0(names(param_figures_rmf$models), "_data_imputation"), # Already clipped on the FMU right after the segmentation
          quiet = T) %>% 
   st_cast("POLYGON") %>%
   st_transform(epsg_rmf) -> segmentation_rmf
@@ -187,7 +188,7 @@ segmentation_rmf %>%
 
 # Segmentation smoothed
 st_read(paste0(segmentation_wd_rmf, "/data.gpkg"), 
-         layer = paste0(names(param_figures_rmf$models), "_data_imputation_smoothed_clipped"), # Clipped on ArcGIS
+         layer = paste0(names(param_figures_rmf$models), "_data_imputation_smoothed"), # Already clipped on the FMU right after the segmentation
          quiet = T) %>% 
   st_cast("POLYGON") %>%
   st_transform(epsg_rmf) -> segmentation_smoothed_rmf
@@ -197,8 +198,9 @@ segmentation_smoothed_rmf  %>%
   ms_clip(subset_area_rmf) -> segmentation_smoothed_rmf_clip
 
 # Segmentation with masks smoothed
-st_read(paste0(segmentation_wd_rmf, "/data.gpkg"), 
-         layer = paste0(names(param_figures_rmf$models), "_masks_smoothed_clipped"), # Clipped on ArcGIS
+# TODO: temporary, the current models have no masks layer, the archived model_B one is used for now
+st_read(paste0(segmentation_dir, "/RMF/00_archive/with_data/model_B/data.gpkg"),
+         layer = "model_B_masks_smoothed_clipped", # Clipped on ArcGIS
          quiet = T) %>% 
   st_cast("POLYGON") %>%
   st_transform(epsg_rmf) -> segmentation_masks_smoothed_rmf
@@ -379,7 +381,7 @@ visualisation_figure <- function(sector){
   # Reference forest-attribute layers (kept in their original CRS)
   for(d in c("vmb_ha", "dens")){
 
-    rast(paste0(wd, "/analysis/random_forest/", dfa_temp$forest, "_", d, "_", sector, "_prediction.tif")) -> metric
+    rast(paste0(random_forest_dir, "/", dfa_temp$forest, "_", d, "_", sector, "_prediction.tif")) -> metric
 
     metric %>%
       crop(dfa_temp %>% st_transform(st_crs(metric))) -> metric
@@ -391,7 +393,7 @@ visualisation_figure <- function(sector){
   dfa_temp %>%
     st_transform(st_crs(metric)) -> dfa_temp
 
-  rast(paste0(wd, "/analysis/random_forest/", dfa_temp$forest, "_zq90_prediction.tif")) %>%
+  rast(paste0(random_forest_dir, "/", dfa_temp$forest, "_zq90_prediction.tif")) %>%
     crop(dfa_temp %>% st_buffer(50)) %>%
     project(metric, method = "bilinear") %>%
     crop(dfa_temp) -> zq90
