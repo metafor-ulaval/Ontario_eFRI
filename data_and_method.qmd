@@ -60,7 +60,8 @@ library(reticulate)
 Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
 Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
 Sys.setenv(GDAL_CACHEMAX = "65536") # 64 GO
-otb_dir <- "D:/00_Ontario_eFRI/10_livrables/app/softwares/OTB-9.1.0-Win64/bin"
+source("../Misc_Scripts/R/Ontario/paths.R") # Project folders (dir_*), working directory = Ontario_eFRI
+otb_dir <- paste0(dir_app, "/softwares/OTB-9.1.0-Win64/bin")
 
 # ArcGIS tools are run in a separate R session: importing arcpy in this session breaks terra::project()
 arcgis_python <- "C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe"
@@ -77,7 +78,12 @@ arcpy_run <- function(tool, ...){
   show = TRUE)
 }
 
-wd <- "D:/00_Ontario_eFRI/10_livrables" # wd
+wd <- dir_livrables # Deliverables (12_livrables, built by livrable_copy.R)
+shp_dir <- dir_shapefiles # Shapefiles, one folder per forest, FORMGMT and province_territory
+segmentation_results_dir <- paste0(dir_grm, "/results") # best_parameters_all.rds (processing_time.rds is in dir_segmentation)
+imputation_dir <- dir_imputation # Imputation results (imputation_validation.R)
+metrics_dir <- dir_metrics_cleaned # Metrics of each forest (dendro, lidar, other, sentinel2)
+segmentation_dir <- dir_segmentation # Segmentation models, one folder per forest and model
 summary_metrics <- c("vmerch_ha", "qmdbh", "dens", "ba_ha", "z_p95", "z_above2", "slope", "sagawi")
 
 forests <- c("RMF", "OVF")
@@ -102,7 +108,7 @@ for(forest_name in forests){ # ALL
 
   cat("Forest :", forest_name, "\n")
 
-  list.files(paste0(wd, "/metrics/", forest_name), full.names = TRUE) %>%
+  list.files(metrics_dir(forest_name), full.names = TRUE) %>%
     read_metrics() -> metrics_infos
 
   metrics_infos %>%
@@ -113,7 +119,7 @@ for(forest_name in forests){ # ALL
   epsg_rast %>%
     st_crs() -> epsg
 
-  list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", forest_name), full.names = T) %>%
+  list.files(imputation_dir, pattern = paste0("results_", forest_name), full.names = T) %>%
     map_dfr(function(x){
       read.csv(x) %>%
         arrange(desc(accuracy)) %>%
@@ -131,11 +137,11 @@ for(forest_name in forests){ # ALL
   imputation_metrics_all <- unique(c("z_p95", "z_above2", imputation_metrics))
 
   # Catalog
-  st_read(paste0(wd, "/shapefiles/", forest_name, "/ctg.shp"), quiet = T) %>%
+  st_read(paste0(shp_dir, "/", forest_name, "/ctg.shp"), quiet = T) %>%
     st_transform(epsg) -> ctg
 
   # Forest Management Unit (FMU) boundary
-  st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>%
+  st_read(paste0(shp_dir, "/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>%
     filter(FMU_NAME == fmu_names[[forest_name]]) %>%
     st_transform(epsg) -> fmu
 
@@ -158,17 +164,17 @@ for(forest_name in forests){ # ALL
   names(metrics) <- metrics_names # Assign metrics names
 
   # # Masks
-  # list(vect(paste0(wd, "/shapefiles/", forest_name, "/roads.shp")),
-  #      vect(paste0(wd, "/shapefiles/", forest_name, "/waterbodies.shp"))) %>%
+  # list(vect(paste0(shp_dir, "/", forest_name, "/roads.shp")),
+  #      vect(paste0(shp_dir, "/", forest_name, "/waterbodies.shp"))) %>%
   #   map(project, epsg_rast) -> masks
 
   # Photo-interpreted polygons (fri)
-  st_read(paste0(wd, "/shapefiles/", forest_name, "/PolygonForest.shp"), quiet = T) %>%
+  st_read(paste0(shp_dir, "/", forest_name, "/PolygonForest.shp"), quiet = T) %>%
     rowid_to_column("id") %>%
     st_transform(epsg) -> fri_polygons
 
   # Landcover
-  rast(paste0(wd, "/metrics/", forest_name, "/other/landcover.tif")) %>%
+  rast(paste0(metrics_dir(forest_name), "/other/landcover.tif")) %>%
     terra::project(epsg_rast, method = "near") -> landcover
 
   landcover_codes <- c(`1` = "Clear_Open_Water",
@@ -206,15 +212,15 @@ for(forest_name in forests){ # ALL
                                   class = unname(landcover_codes))
 
   # Forest age in 2022
-  rast(paste0(wd, "/metrics/", forest_name, "/other/forest_age_2022.tif")) %>%
+  rast(paste0(metrics_dir(forest_name), "/other/forest_age_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_age_2022
 
   # Forest fire between 1985-2022
-  rast(paste0(wd, "/metrics/", forest_name, "/other/forest_fire_1985_2022.tif")) %>%
+  rast(paste0(metrics_dir(forest_name), "/other/forest_fire_1985_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_fire_1985_2022
 
   # Forest harvest between 1985-2022
-  rast(paste0(wd, "/metrics/", forest_name, "/other/forest_harvest_1985_2022.tif")) %>%
+  rast(paste0(metrics_dir(forest_name), "/other/forest_harvest_1985_2022.tif")) %>%
     terra::project(epsg_rast, method = "near") -> forest_harvest_1985_2022
 
   # Imputation reference polygons (they don't depend on the segmentation model, so they are built once per forest)
@@ -240,12 +246,12 @@ for(forest_name in forests){ # ALL
 
     cat("Forest :", forest_name, "/", model_name, ":", segmentation_metrics, "\n")
 
-    readRDS(paste0(wd, "/analysis/segmentation/best_parameters_all.rds")) %>%
+    readRDS(paste0(segmentation_results_dir, "/best_parameters_all.rds")) %>%
       filter(forest == .env$forest_name,
              model_id == .env$model_name, # .env: the table also has a model_name column
              type == "by_forest_model") -> segmentation_parameters
 
-    segmentation_wd <- paste0(wd, "/segmentation/", forest_name, "/", model_name)
+    segmentation_wd <- paste0(segmentation_dir, "/", forest_name, "/", model_name)
     dir.create(segmentation_wd, recursive = TRUE, showWarnings = FALSE)
 
     # Segmentation
@@ -359,7 +365,7 @@ for(forest_name in forests){ # ALL
                                          processing_time_imputation,
                                          processing_time_smoothing)), 2)) -> processing_time
 
-    processing_time_file <- paste0(wd, "/analysis/segmentation/processing_time.rds")
+    processing_time_file <- paste0(dir_segmentation, "/processing_time.rds")
     if(file.exists(processing_time_file)){
       readRDS(processing_time_file) %>%
         filter(!(forest == forest_name & model_id == model_name)) %>%
@@ -380,9 +386,9 @@ forest_figures <- "RMF"
 model_figures <- "spl_only"
 segmentation_metrics <- models[[model_figures]]
 
-segmentation_wd <- paste0(wd, "/segmentation/", forest_figures, "/", model_figures)
+segmentation_wd <- paste0(segmentation_dir, "/", forest_figures, "/", model_figures)
 
-list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", forest_figures), full.names = T) %>% 
+list.files(imputation_dir, pattern = paste0("results_", forest_figures), full.names = T) %>% 
   map_dfr(function(x){
     read.csv(x) %>%
       arrange(desc(accuracy)) %>%
@@ -390,7 +396,7 @@ list.files(paste0(wd, "/analysis/imputation"), pattern = paste0("results_", fore
   }) -> imputation_results
 
 # Metrics infos
-list.files(paste0(wd, "/metrics/", forest_figures), full.names = TRUE) %>%
+list.files(metrics_dir(forest_figures), full.names = TRUE) %>%
   read_metrics() -> metrics_infos
 
 # EPSG
@@ -403,7 +409,7 @@ epsg_rast %>%
   st_crs() -> epsg
 
 # RMF FMU
-st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>% 
+st_read(paste0(shp_dir, "/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>% 
   filter(FMU_NAME == "Romeo Malette Forest") %>% 
   st_transform(epsg) -> fmu
 
@@ -436,7 +442,7 @@ metrics_infos_selected %>%
 names(metrics) <- metrics_names # Assign metrics names
 
 # Landcover
-rast(paste0(wd, "/metrics/", forest_figures, "/other/landcover.tif")) %>%
+rast(paste0(metrics_dir(forest_figures), "/other/landcover.tif")) %>%
   terra::project(epsg_rast, method = "near") -> landcover
 
 landcover_codes <- c(`1` = "Clear open water",
@@ -474,17 +480,17 @@ levels(landcover) <- data.frame(value = as.integer(names(landcover_codes)),
                                 class = unname(landcover_codes))
 
 # Forest age in 2022
-rast(paste0(wd, "/metrics/", forest_figures, "/other/forest_age_2022.tif")) %>%
+rast(paste0(metrics_dir(forest_figures), "/other/forest_age_2022.tif")) %>%
   terra::project(crs(epsg_rast), method = "near") -> forest_age_2022
 
 # Forest fire between 1985-2022
-rast(paste0(wd, "/metrics/", forest_figures, "/other/forest_fire_1985_2022.tif")) %>%
+rast(paste0(metrics_dir(forest_figures), "/other/forest_fire_1985_2022.tif")) %>%
   terra::project(crs(epsg_rast), method = "near") -> forest_fire_1985_2022
 
 forest_fire_1985_2022[forest_fire_1985_2022 == 0] <- NA
 
 # Forest harvest between 1985-2022
-rast(paste0(wd, "/metrics/", forest_figures, "/other/forest_harvest_1985_2022.tif")) %>%
+rast(paste0(metrics_dir(forest_figures), "/other/forest_harvest_1985_2022.tif")) %>%
   terra::project(crs(epsg_rast), method = "near") -> forest_harvest_1985_2022
 
 forest_harvest_1985_2022[forest_harvest_1985_2022 == 0] <- NA
@@ -572,7 +578,7 @@ The next table shows the segmentation parameters retained by the [optimization](
 #| message: false
 #| warning: false
 #| tbl-cap: "Segmentation parameters of the Generic Region Merging algorithm (Baatz & Schape criterion) by forest and segmentation model."
-readRDS(paste0(wd, "/analysis/segmentation/best_parameters_all.rds")) %>%
+readRDS(paste0(segmentation_results_dir, "/best_parameters_all.rds")) %>%
   filter(type == "by_forest_model",
          model_id %in% names(models)) %>%
   mutate(forest = factor(forest, levels = forests),

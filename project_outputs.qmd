@@ -52,11 +52,17 @@ library(metafortools)
 Sys.setenv(OTB_MAX_RAM_HINT = "65536") # 64 GO
 Sys.setenv(OTB_MEMORY_AVAILABLE = "65536") # 64 GO
 Sys.setenv(GDAL_CACHEMAX = "65536") # 64 GO
-otb_dir <- "D:/00_Ontario_eFRI/10_livrables/app/softwares/OTB-9.1.0-Win64/bin"
+source("../Misc_Scripts/R/Ontario/paths.R") # Project folders (dir_*), working directory = Ontario_eFRI
+otb_dir <- paste0(dir_app, "/softwares/OTB-9.1.0-Win64/bin")
 
 
-wd <- "D:/00_Ontario_eFRI/10_livrables" # wd
-statistics_dir <- "D:/00_Ontario_eFRI/07_analysis/statistics/old" # Performance assessment results (temporary location, will be moved to the deliverables)
+wd <- dir_livrables # Deliverables (12_livrables, built by livrable_copy.R)
+shp_dir <- dir_shapefiles # Shapefiles, one folder per forest, FORMGMT and province_territory
+segmentation_results_dir <- paste0(dir_grm, "/results") # best_parameters_all.rds (processing_time.rds is in dir_segmentation)
+imputation_dir <- dir_imputation # Imputation results (imputation_validation.R)
+metrics_dir <- dir_metrics_cleaned # Metrics of each forest (dendro, lidar, other, sentinel2)
+segmentation_dir <- dir_segmentation # Segmentation models, one folder per forest and model
+statistics_dir <- paste0(dir_statistics, "/00_archive/results_old") # Performance assessment results with the old model names (model_B, model_F, model_G)
 summary_metrics <- c("vmerch_ha", "qmdbh", "dens", "ba_ha", "z_p95", "z_above2", "slope", "sagawi")
 
 forests <- c("RMF", "OVF")
@@ -79,10 +85,10 @@ params <- expand.grid(forests = forests,
 param_figures_rmf <- params[1,]
 segmentation_metrics <- param_figures_rmf$models[[1]]
 
-segmentation_wd_rmf <- paste0(wd, "/segmentation/", param_figures_rmf$forest, "/", names(param_figures_rmf$models))
+segmentation_wd_rmf <- paste0(segmentation_dir, "/", param_figures_rmf$forest, "/", names(param_figures_rmf$models))
 
 # Best imputation combination of each target variable, for both forests
-list.files(paste0(wd, "/analysis/imputation"), pattern = "^results_(RMF|OVF)_.*\\.csv$", full.names = T) %>%
+list.files(imputation_dir, pattern = "^results_(RMF|OVF)_.*\\.csv$", full.names = T) %>%
   map_dfr(function(x){
     read.csv(x) %>%
       arrange(desc(accuracy)) %>%
@@ -96,7 +102,7 @@ imputation_results %>%
   {setNames(.$accuracy, .$forest)} -> accuracy_functional_group
 
 # Metrics infos
-list.files(paste0(wd, "/metrics/", param_figures_rmf$forest), full.names = TRUE) %>%
+list.files(metrics_dir(param_figures_rmf$forest), full.names = TRUE) %>%
   read_metrics() -> metrics_infos_rmf
 
 # EPSG
@@ -109,7 +115,7 @@ epsg_rast_rmf %>%
   st_crs() -> epsg_rmf
 
 # FMU
-st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>% 
+st_read(paste0(shp_dir, "/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>% 
   filter(FMU_NAME == "Romeo Malette Forest") %>% 
   st_transform(epsg_rmf) -> rmf
 
@@ -163,8 +169,8 @@ metrics_infos_selected_rmf %>%
 names(metrics_rmf) <- metrics_names # Assign metrics names
 
 # Masks
-list(vect(paste0(wd, "/shapefiles/", param_figures_rmf$forest, "/roads.shp")),
-     vect(paste0(wd, "/shapefiles/", param_figures_rmf$forest, "/waterbodies.shp"))) %>%
+list(vect(paste0(shp_dir, "/", param_figures_rmf$forest, "/roads.shp")),
+     vect(paste0(shp_dir, "/", param_figures_rmf$forest, "/waterbodies.shp"))) %>%
   map(project, epsg_rast_rmf) %>% 
   map(crop, subset_area_rmf) -> masks_rmf
 
@@ -202,7 +208,7 @@ segmentation_masks_smoothed_rmf  %>%
   ms_clip(subset_area_rmf) -> segmentation_masks_smoothed_rmf_clip
 
 # Photo-interpreted polygons
-st_read(paste0(wd, "/shapefiles/", param_figures_rmf$forest, "/PolygonForest.shp"), 
+st_read(paste0(shp_dir, "/", param_figures_rmf$forest, "/PolygonForest.shp"), 
         quiet = T) %>% 
   st_cast("POLYGON") %>% 
   rowid_to_column("id") %>%
@@ -218,10 +224,10 @@ fri_polygons_rmf %>%
 param_figures_ovf <- params[2,]
 segmentation_metrics <- param_figures_ovf$models[[1]]
 
-segmentation_wd_ovf <- paste0(wd, "/segmentation/", param_figures_ovf$forest, "/", names(param_figures_ovf$models))
+segmentation_wd_ovf <- paste0(segmentation_dir, "/", param_figures_ovf$forest, "/", names(param_figures_ovf$models))
 
 # Metrics infos
-list.files(paste0(wd, "/metrics/", param_figures_ovf$forest), full.names = TRUE) %>%
+list.files(metrics_dir(param_figures_ovf$forest), full.names = TRUE) %>%
   read_metrics() -> metrics_infos_ovf
 
 # EPSG
@@ -234,7 +240,7 @@ epsg_rast_ovf %>%
   st_crs() -> epsg_ovf
 
 # FMU
-st_read(paste0(wd, "/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>% 
+st_read(paste0(shp_dir, "/FORMGMT/FOREST_MANAGEMENT_UNIT.shp"), quiet = T) %>% 
   filter(FMU_NAME == "Ottawa Valley Forest") %>% 
   st_transform(epsg_ovf) -> ovf
 
@@ -293,7 +299,7 @@ segmentation_smoothed_ovf  %>%
   ms_clip(subset_area_ovf) -> segmentation_smoothed_ovf_clip
 
 # Photo-interpreted polygons
-st_read(paste0(wd, "/shapefiles/", param_figures_ovf$forest, "/PolygonForest.shp"), 
+st_read(paste0(shp_dir, "/", param_figures_ovf$forest, "/PolygonForest.shp"), 
         quiet = T) %>% 
   st_cast("POLYGON") %>%
   rowid_to_column("id")  %>% 
@@ -367,7 +373,7 @@ before_after <- function(before,
 # over the imagery and the reference forest-attribute layers of one validation area (drone flight area)
 visualisation_figure <- function(sector){
 
-  st_read(paste0(wd, "/shapefiles/drone_flight_areas/drone_flight_areas.shp"), quiet = T) %>%
+  st_read(paste0(dir_base_data, "/drone_flight_areas/drone_flight_areas.shp"), quiet = T) %>%
     filter(sector == !!sector) -> dfa_temp
 
   # Reference forest-attribute layers (kept in their original CRS)
@@ -397,7 +403,7 @@ visualisation_figure <- function(sector){
 
   map_dfr(names(model_labels),
           function(m){
-            st_read(paste0(wd, "/segmentation/", dfa_temp$forest, "/", m, "/data.gpkg"),
+            st_read(paste0(segmentation_dir, "/", dfa_temp$forest, "/", m, "/data.gpkg"),
                     layer = paste0(m, "_data_imputation_smoothed"),
                     quiet = T) %>%
               st_geometry() %>%
@@ -412,7 +418,7 @@ visualisation_figure <- function(sector){
   st_geometry(segmentation) <- "geom"
 
   # Photo-interpreted polygons
-  st_read(paste0(wd, "/shapefiles/", dfa_temp$forest, "/PolygonForest.shp"), quiet = T) %>%
+  st_read(paste0(shp_dir, "/", dfa_temp$forest, "/PolygonForest.shp"), quiet = T) %>%
     st_geometry() %>%
     st_as_sf() %>%
     st_cast("MULTIPOLYGON") %>%
@@ -533,7 +539,7 @@ The next table shows the processing time (in minutes) of each step of the workfl
 #| message: false
 #| warning: false
 #| tbl-cap: "Processing time (minutes) of each step of the workflow by forest and segmentation model."
-readRDS(paste0(wd, "/analysis/segmentation/processing_time.rds")) %>%
+readRDS(paste0(dir_segmentation, "/processing_time.rds")) %>%
   mutate(forest = factor(forest, levels = forests),
          model_id = factor(model_id, levels = names(models)),
          step = factor(step, levels = c("eFRI_segmentation", "Clip_analysis", "eFRI_attribute_table",

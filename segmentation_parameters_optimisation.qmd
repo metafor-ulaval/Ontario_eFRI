@@ -38,6 +38,7 @@ library(eFRItools)
 library(basemapR)
 library(patchwork)
 library(maptiles)
+source("../Misc_Scripts/R/Ontario/paths.R") # Project folders (dir_*), working directory = Ontario_eFRI
 ```
 
 ```{r}
@@ -148,9 +149,9 @@ Romeo Malette Forest is the forest management unit used for parameter optimizati
 #| message: false
 #| warning: false
 #| fig-cap: "Romeo Malette Forest with the ten 5 km × 5 km square areas used for segmentation parameters optimisation."
-st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/PolygonForest.shp", quiet = T) -> polygon_forest
+st_read(paste0(dir_shapefiles, "/RMF/PolygonForest.shp"), quiet = T) -> polygon_forest
   
-st_read("D:/00_Ontario_eFRI/03_shp_data/RMF/ctg.shp", quiet = T) %>%
+st_read(paste0(dir_shapefiles, "/RMF/ctg.shp"), quiet = T) %>%
   st_transform(st_crs(polygon_forest)) -> ctg
 
 ctg %>%
@@ -170,7 +171,7 @@ coord_area <- coord_sf(crs = st_crs(area_clean),
                        ylim = st_bbox(st_buffer(area_clean, 1000))[c("ymin", "ymax")],
                        expand = FALSE)
   
-st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/sampling_square_RMF.shp",
+st_read(paste0(dir_grm, "/base_data/sampling_square_RMF.shp"),
         quiet = T) %>% 
   st_transform(st_crs(area_clean)) -> sampling_square
   
@@ -341,7 +342,7 @@ coord_square <- coord_sf(crs = st_crs(sampling_square_temp),
                          ylim = st_bbox(st_buffer(sampling_square_temp, 250))[c("ymin", "ymax")],
                          expand = FALSE)
 
-sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
+sf::st_read(paste0(dir_grm, "/base_data/polygon_forest_FOR_RMF.shp"), quiet = T) %>%
   sf::st_cast("MULTIPOLYGON") %>%
   sf::st_cast("POLYGON") %>%
   st_filter(sampling_square_temp) -> polygon_forest_temp
@@ -393,7 +394,7 @@ The "SPL only" model was used for segmentation parameterization. Theses metrics 
 #| message: false
 #| warning: false
 #| fig-cap: "First metric used for \"SPL only\" model : z_p95."
-terra::rast("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/metrics_RMF.tif") -> metrics
+terra::rast(paste0(dir_grm, "/base_data/metrics_RMF.tif")) -> metrics
 
 metrics %>%
   terra::crop(sampling_square_temp %>% st_transform(st_crs(metrics))) %>%
@@ -479,7 +480,7 @@ weight_area <- 1/2
 weight_shape <- 1/2
 
 # Read data
-readRDS("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/results/results.rds") %>%
+readRDS(paste0(dir_grm, "/results/results.rds")) %>%
   rename(dens_smape = dens_sspe) %>% 
   mutate(area_score = overlap_area_raster,
          shape_score = overlap_shape_smoothed_raster) %>%
@@ -577,7 +578,7 @@ The following figure shows an example of segmentation in Romeo Malette Forest us
 #| message: false
 #| warning: false
 # Compute performance metrics
-sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/base_data/polygon_forest_FOR_RMF.shp", quiet = T) %>%
+sf::st_read(paste0(dir_grm, "/base_data/polygon_forest_FOR_RMF.shp"), quiet = T) %>%
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%
   sf::st_cast("POLYGON") %>%
@@ -587,7 +588,7 @@ sf::st_read("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/bas
          shape_index = perimeter / sqrt(pi * area)) %>%
   filter_if(is.numeric, is.finite) -> polygon_forest_temp # A voir si je peux enlever cette ligne
 
-st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forests, "/", best_parameters_temp$model_name, "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, ".shp"),
+st_read(paste0(dir_grm, "/segmentation/", param$forests, "/", best_parameters_temp$model_name, "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, ".shp"),
         quiet = T) %>% 
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%
@@ -598,7 +599,7 @@ st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/
          shape_index = perimeter / sqrt(pi * area)) %>%
   filter_if(is.numeric, is.finite) -> segmentation # A voir si je peux enlever cette ligne
 
-st_read(paste0("D:/00_Ontario_eFRI/07_analysis/segmentation/grm_parametrization/segmentation/", param$forests, "/", best_parameters_temp$model_name, "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, "_smoothed.shp"),
+st_read(paste0(dir_grm, "/segmentation/", param$forests, "/", best_parameters_temp$model_name, "/segmentation_thresh", best_parameters_temp$thresh, "_spec", best_parameters_temp$spec*100, "_spat", best_parameters_temp$spat*100, "_smoothed.shp"),
         quiet = T) %>% 
   sf::st_make_valid() %>%
   sf::st_cast("MULTIPOLYGON") %>%

@@ -39,7 +39,10 @@ library(patchwork)
 #| results: hide
 #| message: false
 #| warning: false
-wd  <- "D:/00_Ontario_eFRI/10_livrables"
+source("../Misc_Scripts/R/Ontario/paths.R") # Project folders (dir_*), working directory = Ontario_eFRI
+wd  <- dir_livrables
+shp_dir <- dir_shapefiles # Shapefiles, one folder per forest, FORMGMT and province_territory
+metrics_dir <- dir_metrics_cleaned # Metrics of each forest (dendro, lidar, other, sentinel2)
 pal <- c(OVF = "#5B9BD5", RMF = "#A9D18E", DFA = "red")
 lab <- c(OVF = "A) Ottawa Valley Forest",
          RMF = "B) Romeo Malette Forest",
@@ -51,16 +54,16 @@ lab <- c(OVF = "A) Ottawa Valley Forest",
 #| include: false
 #| message: false
 #| warning: false
-canada <- st_read(paste0(wd, "/shapefiles/province_territory/lpr_000b16a_e_simplify.shp"),
+canada <- st_read(paste0(shp_dir, "/province_territory/lpr_000b16a_e_simplify.shp"),
                   quiet = TRUE) %>% 
   st_transform(3979)
 
-st_read("D:/00_Ontario_eFRI/10_livrables/shapefiles/FORMGMT/FOREST_MANAGEMENT_UNIT.shp") %>% 
+st_read(paste0(shp_dir, "/FORMGMT/FOREST_MANAGEMENT_UNIT.shp")) %>% 
   filter(FMU_NAME %in% c("Ottawa Valley Forest", "Romeo Malette Forest")) %>% 
   mutate(site = c("OVF", "RMF")) %>% 
   st_transform(4326) -> fmu
 
-st_read("D:/00_Ontario_eFRI/01_base_data/drone_flight_areas/drone_flight_areas.shp", quiet = TRUE) %>%
+st_read(paste0(dir_base_data, "/drone_flight_areas/drone_flight_areas.shp"), quiet = TRUE) %>%
   filter(!sector %in% c("S5", "S8")) %>%
   st_transform(4326) -> dfa
 ```
@@ -140,7 +143,7 @@ The project developed and applied a validation framework based on three compleme
 #| fig-cap: "Study area of the forest management units of Ottawa Valley Forest and Romeo Malette Forest, located in Canada and validation areas."
 panel <- function(f, letter, buffer) {
   # Original CRS of the forest (UTM zone of its LiDAR metrics)
-  crs_forest <- st_crs(rast(paste0(wd, "/metrics/", f, "/lidar/dem.tif")))
+  crs_forest <- st_crs(rast(paste0(metrics_dir(f), "/lidar/dem.tif")))
 
   g <- st_transform(filter(fmu, site == f), crs_forest)
 
